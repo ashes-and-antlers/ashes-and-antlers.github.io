@@ -10,41 +10,28 @@ import './landing.css';
  * game page, which owns the worker and worlds.
  */
 
-// The burning field: a fire breathes at the bottom edge (warm glow in CSS),
-// a few sparks rise from it, and ash drifts back down through the night.
-// Decorative, reduced-motion aware.
-const ashField = document.getElementById('ash-field');
-if (
-  ashField &&
-  window.matchMedia &&
-  !window.matchMedia('(prefers-reduced-motion: reduce)').matches
-) {
-  // Falling ash — grey motes populating the whole field, drifting downward.
-  const ashCount = Math.min(26, Math.max(14, Math.floor(window.innerWidth / 60)));
-  for (let i = 0; i < ashCount; i++) {
-    const ash = document.createElement('span');
-    ash.className = 'ash';
-    const size = 1.5 + Math.random() * 2.2;
-    ash.style.left = `${Math.random() * 100}%`;
-    ash.style.top = `${Math.random() * 100}%`;
-    ash.style.width = `${size}px`;
-    ash.style.height = `${size}px`;
-    ash.style.animationDelay = `${Math.random() * 14}s`;
-    ash.style.animationDuration = `${10 + Math.random() * 14}s`;
-    ashField.appendChild(ash);
-  }
-  // Rising sparks — sparse, bright embers climbing from the bottom edge.
-  const sparkCount = Math.max(3, Math.floor(window.innerWidth / 260));
-  for (let i = 0; i < sparkCount; i++) {
-    const spark = document.createElement('span');
-    spark.className = 'spark';
-    const size = 1.5 + Math.random() * 1.5;
-    spark.style.left = `${4 + Math.random() * 92}%`;
-    spark.style.width = `${size}px`;
-    spark.style.height = `${size}px`;
-    spark.style.animationDelay = `${Math.random() * 8}s`;
-    spark.style.animationDuration = `${4 + Math.random() * 5}s`;
-    ashField.appendChild(spark);
+// The deep field: a cold nebula breathes behind the page (CSS body::before),
+// and a scatter of stars twinkles across the void. Decorative, reduced-motion
+// aware — under reduced motion the stars stay visible but hold still (CSS).
+const starField = document.getElementById('star-field');
+if (starField) {
+  const starCount = Math.min(140, Math.max(70, Math.floor(window.innerWidth / 11)));
+  for (let i = 0; i < starCount; i++) {
+    const star = document.createElement('span');
+    star.className = 'star';
+    const roll = Math.random();
+    if (roll < 0.1) star.classList.add('is-ice');
+    else if (roll > 0.96) star.classList.add('is-bright');
+    const size = star.classList.contains('is-bright')
+      ? 1.8 + Math.random() * 0.9
+      : 1 + Math.random() * 1.2;
+    star.style.left = `${Math.random() * 100}%`;
+    star.style.top = `${Math.random() * 100}%`;
+    star.style.width = `${size}px`;
+    star.style.height = `${size}px`;
+    star.style.animationDelay = `${Math.random() * 6}s`;
+    star.style.animationDuration = `${2.5 + Math.random() * 4.5}s`;
+    starField.appendChild(star);
   }
 }
 

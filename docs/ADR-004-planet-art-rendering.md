@@ -48,6 +48,15 @@ ramp, a cloud layer, and an atmosphere rim.
   star layer so stars stay crisp. Space therefore varies per planet, not just
   star positions. The disc radius also moved into `PLANET_ART` config
   (data-driven, per the content rule) instead of a renderer constant.
+- **art-4 matched the site's space retheme.** DESIGN.md moved from the
+  deep-forest "Ember Archive" to the near-black "Deep Archive": the portrait
+  backdrop is now the same void as the UI (`#0a0e14`), stars are star-white
+  with rare ice and cool-white variants (no more ember stars), and the nebula
+  tints are space neutrals (deep indigo, slate, cool grey) with ice rare (The
+  Ice Seal Rule). `ART_VERSION` bumped so the `?v=` cache-bust re-renders
+  every cached portrait. The planet's own clouds and atmosphere rim stay
+  warm bone (`#d3c7ac`) by design — the world carries its warmth against the
+  cold void, echoing the brand mark's cream accents.
 
 ## Consequences
 

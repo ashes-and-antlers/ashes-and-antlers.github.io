@@ -1,18 +1,20 @@
 :root {
-  /* Brand palette derived from logo.png: deep forest, bone, worn stone, ember. */
-  --bg: #162218;
-  --panel: rgba(29, 42, 32, 0.9);
-  --panel-border: rgba(211, 199, 172, 0.14);
-  --text: #d3c7ac;
-  --muted: #9c8e76;
-  --accent: #c97844;
-  --accent-soft: rgba(201, 120, 68, 0.16);
-  --accent-on: #162218;
+  /* Space palette (DESIGN.md "The Deep Archive"): near-black field, star-white
+     text, cool star-tinted hairlines, and a single ice seal (The Ice Seal
+     Rule). Surfaces are solid per The Flat Ledger Rule. */
+  --bg: #0a0e14;
+  --panel: #121826;
+  --panel-border: rgba(205, 219, 238, 0.14);
+  --text: #dbe5f2;
+  --muted: #93a2b8;
+  --accent: #a8c9f0;
+  --accent-soft: rgba(168, 201, 240, 0.16);
+  --accent-on: #0a0e14;
   --danger: #e0605a;
   --ok: #6fcf7f;
   --radius: 10px;
-  --shadow-sm: 0 6px 20px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 8px 28px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 6px 20px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 8px 28px rgba(0, 0, 0, 0.55);
   --mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace;
   --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
@@ -98,8 +100,6 @@ body {
   background: var(--panel);
   border: 1px solid var(--panel-border);
   border-radius: var(--radius);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   box-shadow: var(--shadow-sm);
 }
 
@@ -114,7 +114,7 @@ body {
   letter-spacing: 0.14em;
   color: var(--accent);
   background: var(--accent-soft);
-  border: 1px solid rgba(201, 120, 68, 0.35);
+  border: 1px solid rgba(168, 201, 240, 0.35);
   border-radius: 999px;
   padding: 2px 8px;
 }
@@ -135,8 +135,6 @@ body {
   color: var(--muted);
   font-family: var(--mono);
   font-size: 12px;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
 }
 
 .chip .dot {
@@ -161,8 +159,6 @@ body {
   background: var(--panel);
   border: 1px solid var(--panel-border);
   border-radius: var(--radius);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   box-shadow: var(--shadow-md);
   max-width: calc(100vw - 28px);
 }
@@ -188,7 +184,7 @@ body {
   font-family: var(--mono);
   font-size: 13px;
   color: var(--text);
-  background: rgba(211, 199, 172, 0.05);
+  background: rgba(205, 219, 238, 0.05);
   border: 1px solid var(--panel-border);
   border-radius: 8px;
   cursor: pointer;
@@ -201,8 +197,8 @@ body {
 }
 
 .speed-group button:hover {
-  background: rgba(211, 199, 172, 0.1);
-  border-color: rgba(211, 199, 172, 0.2);
+  background: rgba(205, 219, 238, 0.1);
+  border-color: rgba(205, 219, 238, 0.2);
   transform: translateY(-1px);
 }
 
@@ -258,7 +254,7 @@ body {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
-  background: rgba(211, 199, 172, 0.05);
+  background: rgba(205, 219, 238, 0.05);
   border: 1px solid var(--panel-border);
   border-radius: 8px;
   cursor: pointer;
@@ -270,12 +266,12 @@ body {
 
 .toggle:hover {
   color: var(--text);
-  background: rgba(211, 199, 172, 0.1);
+  background: rgba(205, 219, 238, 0.1);
 }
 
 .toggle.is-active {
   color: var(--accent);
-  border-color: rgba(201, 120, 68, 0.45);
+  border-color: rgba(168, 201, 240, 0.45);
   background: var(--accent-soft);
 }
 
@@ -296,7 +292,7 @@ body {
   padding: 7px 8px;
   font-size: 12px;
   color: var(--text);
-  background: rgba(211, 199, 172, 0.05);
+  background: rgba(205, 219, 238, 0.05);
   border: 1px solid var(--panel-border);
   border-radius: 8px;
   cursor: pointer;
@@ -309,7 +305,7 @@ body {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text);
-  background: rgba(211, 199, 172, 0.05);
+  background: rgba(205, 219, 238, 0.05);
   border: 1px solid var(--panel-border);
   border-radius: 8px;
   cursor: pointer;
@@ -320,7 +316,7 @@ body {
 }
 
 .build-btn:hover {
-  background: rgba(211, 199, 172, 0.1);
+  background: rgba(205, 219, 238, 0.1);
 }
 
 .build-btn.is-active {
@@ -363,7 +359,7 @@ body {
   font-size: 13px;
   line-height: 1;
   color: var(--text);
-  background: rgba(211, 199, 172, 0.05);
+  background: rgba(205, 219, 238, 0.05);
   border: 1px solid var(--panel-border);
   border-radius: 6px;
   cursor: pointer;
@@ -374,8 +370,8 @@ body {
 }
 
 .reserve-step:hover {
-  background: rgba(211, 199, 172, 0.1);
-  border-color: rgba(211, 199, 172, 0.2);
+  background: rgba(205, 219, 238, 0.1);
+  border-color: rgba(205, 219, 238, 0.2);
   transform: translateY(-1px);
 }
 
@@ -415,8 +411,6 @@ body {
   background: var(--panel);
   border: 1px solid var(--panel-border);
   border-radius: 8px;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   box-shadow: var(--shadow-sm);
   animation: alert-in 220ms ease;
 }
@@ -468,8 +462,6 @@ body {
   background: var(--panel);
   border: 1px solid var(--panel-border);
   border-radius: var(--radius);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   box-shadow: var(--shadow-md);
 }
 

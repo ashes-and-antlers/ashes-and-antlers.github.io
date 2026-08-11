@@ -45,7 +45,7 @@ type Star = {
   radius: number;
   /** 0..1 star strength. */
   brightness: number;
-  /** 0..1 → mostly bone; small chances of ember or cool-white. */
+  /** 0..1 → mostly star-white; small chances of ice or cool-white. */
   tint: number;
 };
 
@@ -56,7 +56,7 @@ type Nebula = {
   radius: number;
   /** 0..1 peak strength of the tint. */
   strength: number;
-  /** Tint color (in-palette; ember is rare). */
+  /** Tint color (in-palette; ice is rare per The Ice Seal Rule). */
   tint: [number, number, number];
 };
 
@@ -272,8 +272,9 @@ function buildStars(size: number, seed: number): Map<number, Star> {
 
 /**
  * Build the deterministic nebula blobs for an image: 0–3 soft dust clouds,
- * each with a seeded center, radius, strength, and tint (in-palette; ember
- * is rare). Some planets get no nebula at all — the sky varies by planet id.
+ * each with a seeded center, radius, strength, and tint (in-palette space
+ * neutrals; ice is rare per The Ice Seal Rule). Some planets get no nebula
+ * at all — the sky varies by planet id.
  */
 function buildNebulae(size: number, seed: number): Nebula[] {
   const cfg = PLANET_ART.nebula;
@@ -284,9 +285,9 @@ function buildNebulae(size: number, seed: number): Nebula[] {
   for (let i = 0; i < count; i++) {
     const radius = (cfg.blobRadius.min + rng() * (cfg.blobRadius.max - cfg.blobRadius.min)) * size;
     const strength = cfg.maxStrength * (1 - cfg.strengthJitter + cfg.strengthJitter * rng());
-    const ember = rng() < cfg.emberChance;
-    const tint = ember
-      ? hexRgb(cfg.emberTint)
+    const ice = rng() < cfg.iceChance;
+    const tint = ice
+      ? hexRgb(cfg.iceTint)
       : hexRgb(cfg.tints[Math.floor(rng() * cfg.tints.length)]);
     blobs.push({
       cx: rng() * size,
@@ -352,12 +353,12 @@ function spaceColor(
       if (dist > star.radius) continue;
       const falloff = smoothstep(star.radius, star.radius * 0.25, dist);
       const strength = falloff * star.brightness;
-      // Mostly bone-white; occasional ember (the seal) or cool-white stars.
-      let sr = 226;
-      let sg = 220;
-      let sb = 205;
+      // Mostly star-white; occasional ice (the seal) or cool-white stars.
+      let sr = 219;
+      let sg = 229;
+      let sb = 244;
       if (star.tint < 0.08) {
-        [sr, sg, sb] = hexRgb('#c97844'); // ember
+        [sr, sg, sb] = hexRgb('#a8c9f0'); // ice
       } else if (star.tint < 0.22) {
         [sr, sg, sb] = [196, 214, 232]; // cool white
       }

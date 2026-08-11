@@ -9,9 +9,11 @@
  *
  * The terrain gamut is the DESIGN.md "living map" palette (deep water → water →
  * marsh → grass → forest → hill → mountain); the renderer shades each band by
- * elevation (×0.78–1.10) exactly as the design doc specifies.
+ * elevation (×0.78–1.10) exactly as the design doc specifies. The deep-space
+ * backdrop matches the site's space field (DESIGN.md art-4): near-black with
+ * a whisper of cool blue, cool star-white/ice nebula dust.
  */
-export const ART_VERSION = 'art-3';
+export const ART_VERSION = 'art-4';
 
 export const PLANET_ART = {
   /**
@@ -44,10 +46,14 @@ export const PLANET_ART = {
     rimColor: '#d3c7ac',
     rimStrength: 0.32,
   },
-  /** Deep-space backdrop painted behind the planet disc (art-2). */
+  /**
+   * Deep-space backdrop painted behind the planet disc (art-4). Matches the
+   * site's space field (DESIGN.md "The Deep Archive"): near-black with a
+   * whisper of cool blue, so the portraits sit inside the same void as the UI.
+   */
   starfield: {
-    /** Space color — the night-bound deep forest, darkened. */
-    backgroundColor: '#0b130d',
+    /** Space color — deep space, a whisper of cool blue (matches --bg). */
+    backgroundColor: '#0a0e14',
     /** Stars are drawn on a hash lattice: roughly one per cell. */
     cellSize: 14,
     /** Probability a cell contains a star. */
@@ -58,13 +64,14 @@ export const PLANET_ART = {
     brightStarChance: 0.06,
     /** Bright-star size in pixels. */
     brightStarRadius: 1.9,
-    /** Base star brightness multiplier (restrained: bone-tinted, not white-hot). */
+    /** Base star brightness multiplier (restrained: star-white, not white-hot). */
     starBrightness: 0.75,
   },
   /**
-   * Nebula / dust-cloud backdrop (art-3): a seeded set of soft-tinted blobs
-   * so each planet's sky varies beyond star positions. Subtle and
-   * in-palette — the field stays night-bound, and ember stays rare.
+   * Nebula / dust-cloud backdrop (art-4): a seeded set of soft-tinted blobs
+   * so each planet's sky varies beyond star positions. Subtle and in-palette
+   * (space neutrals — deep indigo, slate, cool grey — with ice rare, per The
+   * Ice Seal Rule).
    */
   nebula: {
     /** Probability a planet carries any nebula at all. */
@@ -77,11 +84,11 @@ export const PLANET_ART = {
     maxStrength: 0.38,
     /** Per-blob strength jitter (0..1 of maxStrength). */
     strengthJitter: 0.5,
-    /** Probability the blob takes the ember tint (The Ember Seal Rule). */
-    emberChance: 0.12,
-    /** Palette tints, in-palette and restrained (design system gamut). */
-    tints: ['#4e5f35', '#8a7a52', '#9ca2aa'],
-    emberTint: '#c97844',
+    /** Probability the blob takes the ice tint (The Ice Seal Rule). */
+    iceChance: 0.12,
+    /** Palette tints, in-palette and restrained (space-neutrals gamut). */
+    tints: ['#2c3d5c', '#4a5a7a', '#7c8ca8'],
+    iceTint: '#a8c9f0',
   },
   lighting: {
     ambient: 0.45,
