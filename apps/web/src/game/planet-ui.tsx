@@ -7,6 +7,12 @@ import { fetchPlanetImage } from './api';
 export const PLANET_THUMB_SIZE = 64;
 
 /**
+ * Full-size portrait render — shared by the planet detail page and the
+ * overview home card, so both show the same asset (cache keys include size).
+ */
+export const PLANET_PORTRAIT_SIZE = 512;
+
+/**
  * In-flight and settled thumbnail blobs, keyed by world+planet+size, so the
  * overview's 2s poll never re-fetches a thumbnail it already has. The blob is
  * immutable for a given (planet, ART_VERSION), so caching across polls is safe.

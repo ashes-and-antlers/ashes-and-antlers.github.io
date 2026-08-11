@@ -9,17 +9,15 @@ import { expect, test } from '@playwright/test';
 test('command overview boots and shows the authoritative tick', async ({ page }) => {
   await page.goto('/game.html?seed=424242');
 
-  // World identity from the seed (424242 is the dedicated e2e seed — it must
-  // not collide with the dev world 1337 in the shared Postgres database).
-  await expect(page.getByTestId('world-id')).toHaveText('world:424242');
-  await expect(page.getByTestId('game-seed')).toHaveText('424242');
+  // Player surface only: the commander identity and the home world render;
+  // engine internals (world id, seed, hash, resolution record) must not.
+  await expect(page.getByTestId('commander-name')).not.toHaveText('');
+  await expect(page.getByTestId('world-id')).toHaveCount(0);
+  await expect(page.getByTestId('game-seed')).toHaveCount(0);
+  await expect(page.getByTestId('world-hash')).toHaveCount(0);
 
   // Home planet coordinate (galaxy:sector:system:planet).
   await expect(page.getByTestId('home-coordinate')).toHaveText(/^\d+:\d+:\d+:\d+$/);
-
-  // Player surface only: engine internals (world hash, resolution record,
-  // status chips) must not render.
-  await expect(page.getByTestId('world-hash')).toHaveCount(0);
 
   // The tick counter is a number and advances as the scheduler resolves.
   const tick = page.getByTestId('overview-tick');
@@ -64,5 +62,5 @@ test('shows the offline card, stops polling, and recovers on retry', async ({ pa
   await page.unroute('**/api/**');
   await page.getByTestId('retry-button').click();
   await expect(page.getByTestId('overview-tick')).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByTestId('world-id')).toHaveText('world:424242');
+  await expect(page.getByTestId('home-coordinate')).toBeVisible();
 });

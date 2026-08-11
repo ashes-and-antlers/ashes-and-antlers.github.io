@@ -9,7 +9,7 @@ test('navigates from the overview to a planet ledger with a generated portrait',
   page,
 }) => {
   await page.goto('/game.html?seed=424242');
-  await expect(page.getByTestId('world-id')).toHaveText('world:424242');
+  await expect(page.getByTestId('commander-name')).not.toHaveText('');
 
   // Each row shows a small generated thumbnail portrait.
   const thumb = page.locator('img.planet-thumb').first();
@@ -50,7 +50,7 @@ test('navigates from the overview to a planet ledger with a generated portrait',
   // Back to the overview works.
   await page.getByTestId('planet-back').click();
   await expect(page).toHaveURL(/game\.html\?seed=424242/);
-  await expect(page.getByTestId('world-id')).toHaveText('world:424242');
+  await expect(page.getByTestId('commander-name')).not.toHaveText('');
 });
 
 test('shows a distinct unknown-planet state for a planet that does not exist', async ({ page }) => {

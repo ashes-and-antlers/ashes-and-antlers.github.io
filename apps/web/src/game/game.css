@@ -203,10 +203,12 @@ body {
 }
 
 .planet-thumb.planet-thumb-large {
-  width: 200px;
-  height: 200px;
+  /* The 512px render (same asset as the planet page) fills the card. */
+  width: min(100%, 460px);
+  aspect-ratio: 1;
+  height: auto;
   margin: 0 auto 14px;
-  border-radius: 14px;
+  border-radius: 16px;
 }
 
 .home-card-name {

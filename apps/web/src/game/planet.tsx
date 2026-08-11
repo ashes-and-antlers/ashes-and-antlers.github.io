@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatCoordinate, type PlanetView } from '@ashes/contracts';
 import { ApiError, assertProtocol, fetchOverview, fetchPlanet, fetchPlanetImage } from './api';
-import { AbundanceBar, formatNet, formatResources, WarningsChips } from './planet-ui';
+import {
+  AbundanceBar,
+  formatNet,
+  formatResources,
+  PLANET_PORTRAIT_SIZE,
+  WarningsChips,
+} from './planet-ui';
 
 const POLL_MS = 2_000;
 const MAX_CONSECUTIVE_FAILURES = 3;
-const IMAGE_SIZE = 512;
 
 type LoadState =
   | { status: 'loading' }
@@ -83,7 +88,7 @@ export function PlanetApp() {
   useEffect(() => {
     let cancelled = false;
     if (readyView) {
-      fetchPlanetImage(worldId, readyView.id, IMAGE_SIZE)
+      fetchPlanetImage(worldId, readyView.id, PLANET_PORTRAIT_SIZE)
         .then((blob) => {
           if (cancelled) return;
           const url = URL.createObjectURL(blob);
@@ -121,16 +126,6 @@ export function PlanetApp() {
             ← Command overview
           </a>
         </div>
-        <dl className="header-meta">
-          <div className="meta-item">
-            <dt>World</dt>
-            <dd data-testid="planet-world-id">{worldId}</dd>
-          </div>
-          <div className="meta-item">
-            <dt>Seed</dt>
-            <dd data-testid="planet-seed">{seed}</dd>
-          </div>
-        </dl>
       </header>
 
       {state.status === 'loading' && <p className="status-line">Opening the ledger…</p>}
@@ -211,8 +206,8 @@ function PlanetLedger({ view, imageUrl }: { view: PlanetView; imageUrl: string |
                 data-testid="planet-image"
                 src={imageUrl}
                 alt={`Procedurally generated portrait of ${view.name}`}
-                width={IMAGE_SIZE}
-                height={IMAGE_SIZE}
+                width={PLANET_PORTRAIT_SIZE}
+                height={PLANET_PORTRAIT_SIZE}
               />
               {/* The brand mark, stamped small at the portrait's corner. It is
                   never recolored, tinted, or distorted (The Brand Mark Rule). */}

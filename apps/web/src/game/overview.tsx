@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatCoordinate, type PlanetView, type WorldView } from '@ashes/contracts';
 import { assertProtocol, fetchOverview } from './api';
-import { PlanetThumb, RESOURCE_NAMES } from './planet-ui';
+import { PLANET_PORTRAIT_SIZE, PlanetThumb, RESOURCE_NAMES } from './planet-ui';
 
 const POLL_MS = 2_000;
 const MAX_CONSECUTIVE_FAILURES = 3;
-/** Portrait render size for the home-planet card (displayed at 200px). */
-const HOME_PORTRAIT_SIZE = 220;
 
 /** mm:ss until the next tick resolves. */
 function formatCountdown(nextTickAt: number, now: number): string {
@@ -103,19 +101,11 @@ export function OverviewApp() {
           <h1 className="brand-word">Command Overview</h1>
         </div>
         <dl className="header-meta">
-          <div className="meta-item">
-            <dt>World</dt>
-            <dd data-testid="world-id">{worldId}</dd>
-          </div>
-          <div className="meta-item">
-            <dt>Seed</dt>
-            <dd data-testid="game-seed">{seed}</dd>
-          </div>
           {readyView && (
             <>
               <div className="meta-item">
                 <dt>Commander</dt>
-                <dd>{readyView.player.name}</dd>
+                <dd data-testid="commander-name">{readyView.player.name}</dd>
               </div>
               <div className="meta-item meta-divider">
                 <dt>Current tick</dt>
@@ -192,7 +182,7 @@ function Overview({ view, seed }: { view: WorldView; seed: string }) {
             worldId={view.worldId}
             planetId={home.id}
             name={home.name}
-            size={HOME_PORTRAIT_SIZE}
+            size={PLANET_PORTRAIT_SIZE}
             className="planet-thumb-large"
             priority
           />
