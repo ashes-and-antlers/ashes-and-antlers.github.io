@@ -1,4 +1,4 @@
-import { Octokit } from "octokit";
+import { Octokit } from 'octokit';
 
 /**
  * GitHub API client — browser-safe.
@@ -10,12 +10,13 @@ import { Octokit } from "octokit";
  * PAT with `public_repo` read access.
  */
 function getToken(): string | undefined {
-  const viteToken = (import.meta as unknown as { env?: Record<string, string> }).env
-    ?.["VITE_GITHUB_TOKEN"];
+  const viteToken = (import.meta as unknown as { env?: Record<string, string> }).env?.[
+    'VITE_GITHUB_TOKEN'
+  ];
   if (viteToken && viteToken.length > 0) return viteToken;
   try {
     const nodeToken = (globalThis as unknown as { process?: { env?: Record<string, string> } })
-      .process?.env?.["GITHUB_TOKEN"];
+      .process?.env?.['GITHUB_TOKEN'];
     if (nodeToken && nodeToken.length > 0) return nodeToken;
   } catch {
     // no process in browser
