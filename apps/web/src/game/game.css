@@ -211,27 +211,42 @@ body {
   border-radius: 16px;
 }
 
+/* The caption plate below the portrait: name, faction, coordinate, CTA.
+   An opaque solid one step off the panel surface (Flat Ledger Rule) so
+   the section reads as designed even before the hover state — not
+   floating text. */
+.home-card-plate {
+  background: #171f31;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 12px 14px 10px;
+}
+
 .home-card-name {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  margin: 0 0 4px;
+  margin: 0 0 6px;
   flex-wrap: wrap;
 }
 
 .home-card-name strong {
-  font-size: 18px;
+  font-family: var(--font);
+  font-size: 20px;
   font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--text);
 }
 
 .home-card .home-coord {
   justify-content: center;
-  margin: 0 0 12px;
+  margin: 0 0 10px;
 }
 
 .home-card-cta {
   display: inline-block;
+  margin: 10px 0 0;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.14em;

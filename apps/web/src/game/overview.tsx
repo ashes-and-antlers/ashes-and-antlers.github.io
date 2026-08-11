@@ -186,15 +186,17 @@ function Overview({ view, seed }: { view: WorldView; seed: string }) {
             className="planet-thumb-large"
             priority
           />
-          <p className="home-card-name">
-            <strong>{home.name}</strong>
-            {home.factionId && <span className="faction-tag">{home.factionId}</span>}
-          </p>
-          <p className="home-coord">
-            <span className="micro-label">Coordinate</span>
-            <strong data-testid="home-coordinate">{formatCoordinate(home.coordinate)}</strong>
-          </p>
-          <span className="home-card-cta">Open the ledger →</span>
+          <div className="home-card-plate">
+            <p className="home-card-name">
+              <strong>{home.name}</strong>
+              {home.factionId && <span className="faction-tag">{home.factionId}</span>}
+            </p>
+            <p className="home-coord">
+              <span className="micro-label">Coordinate</span>
+              <strong data-testid="home-coordinate">{formatCoordinate(home.coordinate)}</strong>
+            </p>
+            <span className="home-card-cta">Open the ledger →</span>
+          </div>
         </a>
       </section>
 
