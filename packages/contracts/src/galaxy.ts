@@ -37,7 +37,20 @@ export type GalaxyView = {
   };
   homePlanetId: PlanetId;
   bounds: GalaxyBounds;
-  galaxies: Array<{ galaxy: number; position: MapPosition }>;
+  galaxies: Array<{
+    galaxy: number;
+    position: MapPosition;
+    /** Disc radius that holds every sector of this galaxy, for the chart. */
+    discRadius: number;
+  }>;
+  /** Every sector's cell — its center and axis-aligned bounds. */
+  sectors: Array<{
+    galaxy: number;
+    sector: number;
+    position: MapPosition;
+    bounds: GalaxyBounds;
+    planetCount: number;
+  }>;
   systems: Array<{
     galaxy: number;
     sector: number;

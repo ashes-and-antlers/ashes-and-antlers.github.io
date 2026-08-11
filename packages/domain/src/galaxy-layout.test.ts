@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { WORLD_CONFIG } from '@ashes/content';
+import { GALAXY_LAYOUT, WORLD_CONFIG } from '@ashes/content';
 import type { MapPosition } from '@ashes/contracts';
 import {
   galaxyBounds,
+  galaxyDiscRadius,
   galaxyOrigin,
   planetPosition,
+  sectorBounds,
   sectorPosition,
   systemPosition,
 } from './galaxy-layout';
@@ -30,6 +32,61 @@ describe('galaxy layout', () => {
       seen.add(JSON.stringify(systemPosition(1337, 1, 1, s)));
     }
     expect(seen.size).toBe(WORLD_CONFIG.systemsPerSector);
+  });
+
+  it('lays sectors out along spiral arms, not a grid', () => {
+    const seed = 1337;
+    const origin = galaxyOrigin(seed, 1);
+    const dist = (a: MapPosition, b: MapPosition) => Math.hypot(a.x - b.x, a.y - b.y);
+    const radii: number[] = [];
+    const angles: number[] = [];
+    for (let s = 1; s <= WORLD_CONFIG.sectorsPerGalaxy; s++) {
+      const p = sectorPosition(seed, 1, s);
+      radii.push(dist(p, origin));
+      angles.push(Math.atan2(p.y - origin.y, p.x - origin.x));
+    }
+    // Later sectors sit farther from the core (the spiral winds outward).
+    for (let i = 1; i < radii.length; i++) {
+      expect(radii[i]).toBeGreaterThan(radii[i - 1]);
+    }
+    // The arm sweep is neither a grid (no two angles match) nor degenerate.
+    expect(new Set(angles.map((a) => a.toFixed(3))).size).toBeGreaterThan(2);
+    // The innermost sector sits near the core, the outermost near the rim.
+    expect(radii[0]).toBeLessThan(GALAXY_LAYOUT.galaxyCoreRadius * 2);
+  });
+
+  it('sector bounds contain every system and planet of the sector', () => {
+    const seed = 1337;
+    const bounds = sectorBounds(seed, 1, 1);
+    for (let sy = 1; sy <= WORLD_CONFIG.systemsPerSector; sy++) {
+      const star = systemPosition(seed, 1, 1, sy);
+      expect(star.x).toBeGreaterThanOrEqual(bounds.minX);
+      expect(star.x).toBeLessThanOrEqual(bounds.maxX);
+      expect(star.y).toBeGreaterThanOrEqual(bounds.minY);
+      expect(star.y).toBeLessThanOrEqual(bounds.maxY);
+      for (let p = 1; p <= WORLD_CONFIG.planetsPerSystem; p++) {
+        const pos = planetPosition(seed, { galaxy: 1, sector: 1, system: sy, planet: p });
+        expect(pos.x).toBeGreaterThanOrEqual(bounds.minX);
+        expect(pos.x).toBeLessThanOrEqual(bounds.maxX);
+        expect(pos.y).toBeGreaterThanOrEqual(bounds.minY);
+        expect(pos.y).toBeLessThanOrEqual(bounds.maxY);
+      }
+    }
+  });
+
+  it('galaxy disc radius holds every sector of the galaxy', () => {
+    const seed = 1337;
+    const origin = galaxyOrigin(seed, 1);
+    const radius = galaxyDiscRadius(seed, 1);
+    for (let s = 1; s <= WORLD_CONFIG.sectorsPerGalaxy; s++) {
+      const b = sectorBounds(seed, 1, s);
+      for (const corner of [
+        { x: b.minX, y: b.minY },
+        { x: b.maxX, y: b.maxY },
+      ]) {
+        expect(Math.hypot(corner.x - origin.x, corner.y - origin.y)).toBeLessThanOrEqual(radius);
+      }
+    }
   });
 
   it('orbits planets within the configured radii of their star', () => {

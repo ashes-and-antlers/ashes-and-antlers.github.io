@@ -817,6 +817,48 @@ details[open] > summary .fold-chevron {
 
 /* ---------- galaxy map page ---------- */
 
+/* Breadcrumb: where you are in the chart. */
+.map-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.map-crumb {
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--muted);
+  background: none;
+  border: none;
+  padding: 2px 0;
+  cursor: pointer;
+  transition: color 150ms ease;
+}
+
+.map-crumb:hover {
+  color: var(--accent);
+}
+
+.map-crumb-current {
+  color: var(--text);
+  cursor: default;
+}
+
+.map-crumb-current:hover {
+  color: var(--text);
+}
+
+.map-crumb-sep {
+  color: var(--muted);
+  opacity: 0.5;
+}
+
 .header-right {
   display: flex;
   align-items: center;
@@ -872,6 +914,93 @@ details[open] > summary .fold-chevron {
   font-family: var(--mono);
   font-weight: 600;
   letter-spacing: 0.2em;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Chart viewport: each galaxy as a disc, sectors as dots on its arms. */
+.map-chart-galaxy {
+  cursor: pointer;
+}
+
+.map-galaxy-disc {
+  fill: rgba(205, 219, 238, 0.03);
+  stroke: rgba(205, 219, 238, 0.14);
+  stroke-width: 1;
+  stroke-dasharray: 3 5;
+  transition: stroke 150ms ease;
+}
+
+.map-chart-galaxy:hover .map-galaxy-disc {
+  stroke: rgba(168, 201, 240, 0.5);
+}
+
+.map-sector-dot {
+  fill: rgba(205, 219, 238, 0.28);
+  transition: fill 150ms ease;
+}
+
+.map-chart-galaxy:hover .map-sector-dot {
+  fill: rgba(205, 219, 238, 0.6);
+}
+
+.map-home-galaxy-ring {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.2;
+  opacity: 0.9;
+  /* Decorative: never intercept the click on the galaxy disc beneath. */
+  pointer-events: none;
+}
+
+/* Galaxy viewport: sector cells + system stars. */
+.map-sector-cell {
+  cursor: pointer;
+}
+
+.map-sector-cell-bg {
+  fill: rgba(205, 219, 238, 0.03);
+  stroke: rgba(205, 219, 238, 0.18);
+  stroke-width: 1;
+  transition:
+    fill 150ms ease,
+    stroke 150ms ease;
+}
+
+.map-sector-cell:hover .map-sector-cell-bg {
+  fill: rgba(168, 201, 240, 0.07);
+  stroke: rgba(168, 201, 240, 0.5);
+}
+
+.map-sector-label {
+  fill: rgba(205, 219, 238, 0.55);
+  font-family: var(--mono);
+  font-weight: 600;
+  pointer-events: none;
+  user-select: none;
+}
+
+.map-home-sector-ring {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.2;
+  opacity: 0.85;
+  /* Decorative: never intercept the click on the sector cell beneath. */
+  pointer-events: none;
+}
+
+/* Sector viewport: the worlds of one sector. */
+.map-sector-view-bg {
+  fill: rgba(205, 219, 238, 0.03);
+  stroke: rgba(205, 219, 238, 0.18);
+  stroke-width: 1;
+  pointer-events: none;
+}
+
+.map-sector-name {
+  fill: var(--accent);
+  font-family: var(--font);
+  font-weight: 600;
   pointer-events: none;
   user-select: none;
 }

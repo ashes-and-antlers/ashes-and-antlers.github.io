@@ -14,6 +14,9 @@ export const CONTENT_VERSION = 'content-3';
  * Worldgen semantics version. Bumped only when the *meaning* of a seed
  * changes (new worldgen rules, changed dimensions, renamed classes).
  *
+ * world-4: sectors now lie along per-galaxy spiral arms instead of a
+ * grid, so the map reads as a galaxy — every coordinate's map position
+ * changes (the coordinate space itself is unchanged).
  * world-3: the finite space is 8 galaxies × 8 sectors × 8 systems × 6
  * planets (3,072 worlds); planets receive deterministic unique names, and
  * every coordinate maps to a deterministic map position via the galaxy
@@ -21,7 +24,7 @@ export const CONTENT_VERSION = 'content-3';
  * world-2: planet genesis now initializes economy state (starting resources,
  * population, settlement), so the same seed produces a richer world.
  */
-export const WORLD_VERSION = 'world-3';
+export const WORLD_VERSION = 'world-4';
 
 /**
  * Finite coordinate space and global tick schedule (DEVELOPMENT_PLAN.md §2-3).
@@ -39,10 +42,17 @@ export const WORLD_CONFIG = {
 /**
  * Galaxy map geometry (DEVELOPMENT_PLAN.md §3/§5). Distances are chosen so
  * the drive tiers read naturally: planets within a system sit tens of units
- * apart, systems cluster inside their sector, sectors grid across their
- * galaxy, and galaxies are separated by a large gap (the galactic tier).
- * Positions are derived deterministically from (seed, coordinate) — never
- * stored — so fleet travel distance is always computable.
+ * apart, systems cluster inside their sector, sectors lie along spiral arms
+ * winding out of the galactic core, and galaxies are separated by a large
+ * gap (the galactic tier). Positions are derived deterministically from
+ * (seed, coordinate) — never stored — so fleet travel distance is always
+ * computable.
+ *
+ * Each galaxy is a logarithmic spiral: `armsPerGalaxy` arms, winding
+ * `armTurns` full revolutions from a core radius of `galaxyCoreRadius`. A
+ * sector's center sits at the angle/radius along its arm given by its
+ * sequence position, so consecutive sectors interleave across the arms and
+ * the galaxy reads as a spiral when the sector cells are drawn.
  */
 export const GALAXY_LAYOUT = {
   /** Galaxies lay out on a fixed grid (4 columns keeps the map wide). */
@@ -53,10 +63,20 @@ export const GALAXY_LAYOUT = {
   galaxyRowSpacing: 9_000,
   /** Max jitter of a galaxy origin from its grid point. */
   galaxyJitter: 350,
-  /** Sector grid cell size within a galaxy (sectorsPerGalaxy × cell). */
-  sectorCell: 1_000,
-  /** Max jitter of a sector center from its cell center. */
-  sectorJitter: 140,
+  /** Spiral arms per galaxy. */
+  armsPerGalaxy: 3,
+  /** How many full turns the spiral makes from core to rim. */
+  armTurns: 1.7,
+  /** Distance from the galactic core to the innermost sector center. */
+  galaxyCoreRadius: 600,
+  /** Radius multiplier per sector index along the spiral (r_n = core × step^n). */
+  galaxyRadiusStep: 1.17,
+  /** Angular advance (radians) per sector index. */
+  sectorAngleStep: 0.95,
+  /** Max angular jitter of a sector center off its arm (radians). */
+  sectorAngleJitter: 0.18,
+  /** Max radial jitter of a sector center along its arm. */
+  sectorRadiusJitter: 130,
   /** Systems scatter within this radius of their sector center. */
   systemClusterRadius: 340,
   /** Planet orbit radii around the system star. */

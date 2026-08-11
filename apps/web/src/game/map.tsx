@@ -17,21 +17,29 @@ type LoadState =
 /** A rectangular window of map space, in world units. */
 type Window = { minX: number; minY: number; maxX: number; maxY: number };
 
+/** Which viewport the map is showing: the whole chart, one galaxy, one sector. */
+type Level =
+  | { kind: 'chart' }
+  | { kind: 'galaxy'; galaxy: number }
+  | { kind: 'sector'; galaxy: number; sector: number };
+
 /**
- * Fit the galaxy bounds to a window with the frame's aspect ratio, so the
- * map never distorts and `viewBox` always fills the frame exactly.
+ * Fit a box to a window with the frame's aspect ratio, so the map never
+ * distorts and `viewBox` always fills the frame exactly.
  */
-function fitWindow(view: GalaxyView, aspect: number): Window {
-  const b = view.bounds;
-  let w = b.maxX - b.minX;
-  let h = b.maxY - b.minY;
+function fitBox(
+  box: { minX: number; minY: number; maxX: number; maxY: number },
+  aspect: number,
+): Window {
+  let w = box.maxX - box.minX;
+  let h = box.maxY - box.minY;
   if (w / h > aspect) {
     h = w / aspect;
   } else {
     w = h * aspect;
   }
-  const cx = (b.minX + b.maxX) / 2;
-  const cy = (b.minY + b.maxY) / 2;
+  const cx = (box.minX + box.maxX) / 2;
+  const cy = (box.minY + box.maxY) / 2;
   return { minX: cx - w / 2, minY: cy - h / 2, maxX: cx + w / 2, maxY: cy + h / 2 };
 }
 
@@ -105,6 +113,12 @@ export function MapApp() {
                   {readyView.planets.length.toLocaleString()}
                 </dd>
               </div>
+              <div className="meta-item meta-divider">
+                <dt>Sectors</dt>
+                <dd className="mono" data-testid="map-sector-count">
+                  {readyView.sectors.length}
+                </dd>
+              </div>
             </>
           )}
         </dl>
@@ -154,15 +168,53 @@ function GalaxyMap({ view, seed }: { view: GalaxyView; seed: string }) {
   const frameRef = useRef<HTMLDivElement | null>(null);
   const [frame, setFrame] = useState({ w: 0, h: 0 });
   const [win, setWin] = useState<Window | null>(null);
+  const [level, setLevel] = useState<Level>({ kind: 'chart' });
   const winRef = useRef<Window | null>(null);
   const dragRef = useRef<{ px: number; py: number; id: number } | null>(null);
   const draggedRef = useRef(false);
 
-  // Keep the current window readable inside native event handlers.
+  const homeGalaxy = useMemo(() => {
+    const home = view.planets.find((p) => p.id === view.homePlanetId);
+    return home?.coordinate.galaxy ?? 1;
+  }, [view]);
+
+  const homeSector = useMemo(() => {
+    const home = view.planets.find((p) => p.id === view.homePlanetId);
+    return home?.coordinate.sector ?? 1;
+  }, [view]);
+
+  // Keep the current window + level readable inside native event handlers.
   const updateWin = (next: Window) => {
     winRef.current = next;
     setWin(next);
   };
+  const updateLevel = setLevel;
+
+  const chartBox = useMemo(() => view.bounds, [view]);
+
+  const galaxyBox = useCallback(
+    (galaxy: number): Window => {
+      const g = view.galaxies.find((x) => x.galaxy === galaxy);
+      const r = g ? g.discRadius : 4_000;
+      const o = g ? g.position : { x: 0, y: 0 };
+      return { minX: o.x - r, minY: o.y - r, maxX: o.x + r, maxY: o.y + r };
+    },
+    [view],
+  );
+
+  const sectorBox = useCallback(
+    (galaxy: number, sector: number): Window => {
+      const s = view.sectors.find((x) => x.galaxy === galaxy && x.sector === sector);
+      if (!s) return galaxyBox(galaxy);
+      return {
+        minX: s.bounds.minX,
+        minY: s.bounds.minY,
+        maxX: s.bounds.maxX,
+        maxY: s.bounds.maxY,
+      };
+    },
+    [view, galaxyBox],
+  );
 
   // Measure the frame so dots/labels keep a constant screen size at any zoom
   // and the fitted window matches the frame's aspect ratio.
@@ -176,12 +228,13 @@ function GalaxyMap({ view, seed }: { view: GalaxyView; seed: string }) {
     return () => ro.disconnect();
   }, []);
 
-  // Fit once the frame is measured and the view is ready.
+  // Fit the chart once the frame is measured and the view is ready.
   useEffect(() => {
-    if (frame.w > 0 && frame.h > 0) updateWin(fitWindow(view, frame.w / frame.h));
-  }, [view, frame]);
+    if (frame.w > 0 && frame.h > 0 && !winRef.current) {
+      updateWin(fitBox(chartBox, frame.w / frame.h));
+    }
+  }, [frame, chartBox]);
 
-  const winRefValue = win ?? winRef.current;
   const frameRect = () => frameRef.current?.getBoundingClientRect() ?? null;
 
   /** Screen px → world units (the window fills the frame exactly). */
@@ -203,13 +256,9 @@ function GalaxyMap({ view, seed }: { view: GalaxyView; seed: string }) {
     const w = prev.maxX - prev.minX;
     const h = prev.maxY - prev.minY;
     if (w * factor < MIN_WINDOW_WIDTH) return;
-    // Never zoom out past the fitted view: the galaxy should not be lost
+    // Never zoom out past the chart bounds: the galaxy should not be lost
     // in empty space, with Fit as the only way back.
-    const dims = frameDimRef.current;
-    if (dims.w > 0 && dims.h > 0) {
-      const fit = fitWindow(view, dims.w / dims.h);
-      if (w * factor > fit.maxX - fit.minX) return;
-    }
+    if (w * factor > chartBox.maxX - chartBox.minX) return;
     const nw = w * factor;
     const nh = h * factor;
     const lr = (cx - prev.minX) / w;
@@ -244,21 +293,30 @@ function GalaxyMap({ view, seed }: { view: GalaxyView; seed: string }) {
     zoomAt(factor, cx, cy);
   };
 
-  const focusHome = () => {
-    const home = view.planets.find((p) => p.id === view.homePlanetId);
-    if (!home || frame.h <= 0) return;
-    const w = 1_400;
-    const h = w * (frame.h / frame.w);
-    updateWin({
-      minX: home.position.x - w / 2,
-      maxX: home.position.x + w / 2,
-      minY: home.position.y - h / 2,
-      maxY: home.position.y + h / 2,
-    });
+  /** Drill into a galaxy: frame its disc and switch to the galaxy viewport. */
+  const focusGalaxy = (galaxy: number) => {
+    if (frame.w > 0 && frame.h > 0) {
+      updateWin(fitBox(galaxyBox(galaxy), frame.w / frame.h));
+    }
+    updateLevel({ kind: 'galaxy', galaxy });
   };
 
+  /** Drill into a sector: frame its cell and switch to the sector viewport. */
+  const focusSector = (galaxy: number, sector: number) => {
+    if (frame.w > 0 && frame.h > 0) {
+      updateWin(fitBox(sectorBox(galaxy, sector), frame.w / frame.h));
+    }
+    updateLevel({ kind: 'sector', galaxy, sector });
+  };
+
+  /** Back out to the chart. */
   const reset = () => {
-    if (frame.w > 0 && frame.h > 0) updateWin(fitWindow(view, frame.w / frame.h));
+    if (frame.w > 0 && frame.h > 0) updateWin(fitBox(chartBox, frame.w / frame.h));
+    updateLevel({ kind: 'chart' });
+  };
+
+  const focusHome = () => {
+    focusSector(homeGalaxy, homeSector);
   };
 
   const onPointerDown = (e: React.PointerEvent) => {
@@ -301,13 +359,8 @@ function GalaxyMap({ view, seed }: { view: GalaxyView; seed: string }) {
     // a pan must not navigate. It resets on the next pointerdown.
   };
 
-  // The wheel handler closes over the first render, so it reads the frame
-  // dimensions through a ref (updated every render) rather than stale state.
-  const frameDimRef = useRef(frame);
-  frameDimRef.current = frame;
-
   const frameWidth = frame.w > 0 ? frame.w : 1;
-  const scale = winRefValue ? (winRefValue.maxX - winRefValue.minX) / frameWidth : 1;
+  const scale = win ? (win.maxX - win.minX) / frameWidth : 1;
   const dotR = 2.4 * scale;
   const knownR = 4.6 * scale;
   const starR = 1.7 * scale;
@@ -315,8 +368,37 @@ function GalaxyMap({ view, seed }: { view: GalaxyView; seed: string }) {
   const labelSize = 10 * scale;
   const galaxyLabelSize = 12 * scale;
 
+  const currentLevel = level;
+
   return (
     <main className="map-page">
+      {/* Breadcrumb: where you are in the chart. */}
+      <nav className="map-crumbs" aria-label="Map level">
+        <button type="button" className="map-crumb" data-testid="map-crumb-chart" onClick={reset}>
+          Chart
+        </button>
+        {currentLevel.kind !== 'chart' && (
+          <>
+            <span className="map-crumb-sep" aria-hidden="true">
+              /
+            </span>
+            <span className="map-crumb map-crumb-current" data-testid="map-crumb-galaxy">
+              Galaxy {currentLevel.kind === 'galaxy' ? currentLevel.galaxy : homeGalaxy}
+            </span>
+          </>
+        )}
+        {currentLevel.kind === 'sector' && (
+          <>
+            <span className="map-crumb-sep" aria-hidden="true">
+              /
+            </span>
+            <span className="map-crumb map-crumb-current" data-testid="map-crumb-sector">
+              Sector {currentLevel.galaxy}:{currentLevel.sector}
+            </span>
+          </>
+        )}
+      </nav>
+
       <div
         className="map-frame"
         ref={frameRef}
@@ -333,65 +415,97 @@ function GalaxyMap({ view, seed }: { view: GalaxyView; seed: string }) {
             role="img"
             aria-label="Galaxy map of the archive"
           >
-            {view.galaxies.map((g) => (
-              <text
-                key={g.galaxy}
-                className="map-galaxy-label"
-                x={g.position.x}
-                y={g.position.y}
-                fontSize={galaxyLabelSize}
-                textAnchor="middle"
-              >
-                G{g.galaxy}
-              </text>
-            ))}
-            {view.systems.map((s) => (
-              <circle
-                key={`${s.galaxy}:${s.sector}:${s.system}`}
-                className="map-star"
-                cx={s.position.x}
-                cy={s.position.y}
-                r={starR}
-              />
-            ))}
-            {view.planets.map((p) => (
-              <a
-                key={p.id}
-                className="map-planet-link"
-                data-testid={p.known ? 'map-known' : 'map-planet'}
-                href={`planet.html?seed=${seed}&planet=${encodeURIComponent(p.id)}`}
-                onClick={(e) => {
-                  if (draggedRef.current) e.preventDefault();
-                }}
-              >
-                {p.known && p.id === view.homePlanetId && (
+            {/* Chart viewport: every galaxy as a disc, sectors as dots on its arms. */}
+            {currentLevel.kind === 'chart' &&
+              view.galaxies.map((g) => (
+                <g
+                  key={g.galaxy}
+                  className="map-chart-galaxy"
+                  data-testid="map-galaxy"
+                  data-home={g.galaxy === homeGalaxy ? 'true' : undefined}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Open galaxy ${g.galaxy}`}
+                  onClick={() => {
+                    if (!draggedRef.current) focusGalaxy(g.galaxy);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      focusGalaxy(g.galaxy);
+                    }
+                  }}
+                >
                   <circle
-                    className="map-home-ring"
-                    data-testid="map-home"
-                    cx={p.position.x}
-                    cy={p.position.y}
-                    r={ringR}
+                    className="map-galaxy-disc"
+                    cx={g.position.x}
+                    cy={g.position.y}
+                    r={g.discRadius}
                   />
-                )}
-                <circle
-                  className={`map-planet${p.known ? ' known' : ''}`}
-                  cx={p.position.x}
-                  cy={p.position.y}
-                  r={p.known ? knownR : dotR}
-                />
-                {p.known && (
+                  {view.sectors
+                    .filter((s) => s.galaxy === g.galaxy)
+                    .map((s) => (
+                      <circle
+                        key={`${s.galaxy}:${s.sector}`}
+                        className="map-sector-dot"
+                        cx={s.position.x}
+                        cy={s.position.y}
+                        r={dotR * 1.6}
+                      />
+                    ))}
+                  {g.galaxy === homeGalaxy && (
+                    <circle
+                      className="map-home-galaxy-ring"
+                      data-testid="map-home-galaxy"
+                      cx={g.position.x}
+                      cy={g.position.y}
+                      r={g.discRadius + ringR}
+                    />
+                  )}
                   <text
-                    className="map-label"
-                    x={p.position.x + knownR + 6 * scale}
-                    y={p.position.y + labelSize * 0.35}
-                    fontSize={labelSize}
+                    className="map-galaxy-label"
+                    x={g.position.x}
+                    y={g.position.y - g.discRadius - 14 * scale}
+                    fontSize={galaxyLabelSize}
+                    textAnchor="middle"
                   >
-                    {p.name}
+                    G{g.galaxy}
                   </text>
-                )}
-                <title>{`${p.name} — ${formatCoordinate(p.coordinate)}`}</title>
-              </a>
-            ))}
+                </g>
+              ))}
+
+            {/* Galaxy viewport: sector cells + system stars of one galaxy. */}
+            {currentLevel.kind === 'galaxy' && (
+              <GalaxyLevelView
+                view={view}
+                galaxy={currentLevel.galaxy}
+                homeGalaxy={homeGalaxy}
+                homeSector={homeSector}
+                starR={starR}
+                labelSize={labelSize}
+                scale={scale}
+                draggedRef={draggedRef}
+                onSectorClick={(sector) => focusSector(currentLevel.galaxy, sector)}
+              />
+            )}
+
+            {/* Sector viewport: planets of one sector. */}
+            {currentLevel.kind === 'sector' && (
+              <SectorLevelView
+                view={view}
+                galaxy={currentLevel.galaxy}
+                sector={currentLevel.sector}
+                homeGalaxy={homeGalaxy}
+                homeSector={homeSector}
+                seed={seed}
+                dotR={dotR}
+                knownR={knownR}
+                starR={starR}
+                ringR={ringR}
+                labelSize={labelSize}
+                scale={scale}
+              />
+            )}
           </svg>
         )}
         <div className="map-controls" role="group" aria-label="Map controls">
@@ -424,13 +538,206 @@ function GalaxyMap({ view, seed }: { view: GalaxyView; seed: string }) {
 
       <SectionHelp id="map">
         <p>
-          Every world of the archive, in map space. Coordinates read galaxy:sector:system:planet,
-          and the map is drawn to scale: planets in the same system sit close together, systems
-          cluster inside their sector, and the eight galaxies are far apart — the same distances
-          fleet drives will later measure. Drag to pan, scroll or use the controls to zoom, and
-          click any dot to open its ledger. Filled worlds are yours; the crowned one is your home.
+          Every world of the archive, in map space. The chart shows the eight galaxies; each galaxy
+          is a spiral of sector cells winding out of its core. Open a galaxy to see its sectors,
+          then a sector to see its systems and worlds — coordinates read
+          galaxy:sector:system:planet, and the map is drawn to scale: planets in the same system sit
+          close together, systems cluster inside their sector, sectors trace the spiral arms, and
+          the galaxies are far apart — the same distances fleet drives will later measure. Drag to
+          pan, scroll or use the controls to zoom, and click any galaxy, sector, or world to open
+          it. Filled worlds are yours; the crowned one is your home.
         </p>
       </SectionHelp>
     </main>
+  );
+}
+
+/** Galaxy viewport: the sector cells and system stars of one galaxy. */
+function GalaxyLevelView({
+  view,
+  galaxy,
+  homeGalaxy,
+  homeSector,
+  starR,
+  labelSize,
+  scale,
+  draggedRef,
+  onSectorClick,
+}: {
+  view: GalaxyView;
+  galaxy: number;
+  homeGalaxy: number;
+  homeSector: number;
+  starR: number;
+  labelSize: number;
+  scale: number;
+  draggedRef: React.MutableRefObject<boolean>;
+  onSectorClick: (sector: number) => void;
+}) {
+  const sectors = view.sectors.filter((s) => s.galaxy === galaxy);
+  const systems = view.systems.filter((s) => s.galaxy === galaxy);
+  return (
+    <g className="map-galaxy-view">
+      {sectors.map((s) => (
+        <g
+          key={`${s.galaxy}:${s.sector}`}
+          className="map-sector-cell"
+          data-testid="map-sector"
+          data-home={galaxy === homeGalaxy && s.sector === homeSector ? 'true' : undefined}
+          role="button"
+          tabIndex={0}
+          aria-label={`Open sector ${s.galaxy}:${s.sector}`}
+          onClick={() => {
+            if (!draggedRef.current) onSectorClick(s.sector);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onSectorClick(s.sector);
+            }
+          }}
+        >
+          <rect
+            className="map-sector-cell-bg"
+            x={s.bounds.minX}
+            y={s.bounds.minY}
+            width={s.bounds.maxX - s.bounds.minX}
+            height={s.bounds.maxY - s.bounds.minY}
+            rx={120 * scale}
+          />
+          {galaxy === homeGalaxy && s.sector === homeSector && (
+            <circle
+              className="map-home-sector-ring"
+              data-testid="map-home-sector"
+              cx={s.position.x}
+              cy={s.position.y}
+              r={300 * scale}
+            />
+          )}
+          <text
+            className="map-sector-label"
+            x={s.position.x}
+            y={s.position.y + labelSize * 0.35}
+            fontSize={labelSize}
+            textAnchor="middle"
+          >
+            {s.sector}
+          </text>
+        </g>
+      ))}
+      {systems.map((sy) => (
+        <circle
+          key={`${sy.galaxy}:${sy.sector}:${sy.system}`}
+          className="map-star"
+          cx={sy.position.x}
+          cy={sy.position.y}
+          r={starR}
+        />
+      ))}
+    </g>
+  );
+}
+
+/** Sector viewport: one sector's systems and worlds, click-through to ledgers. */
+function SectorLevelView({
+  view,
+  galaxy,
+  sector,
+  homeGalaxy,
+  homeSector,
+  seed,
+  dotR,
+  knownR,
+  starR,
+  ringR,
+  labelSize,
+  scale,
+}: {
+  view: GalaxyView;
+  galaxy: number;
+  sector: number;
+  homeGalaxy: number;
+  homeSector: number;
+  seed: string;
+  dotR: number;
+  knownR: number;
+  starR: number;
+  ringR: number;
+  labelSize: number;
+  scale: number;
+}) {
+  const s = view.sectors.find((x) => x.galaxy === galaxy && x.sector === sector);
+  const systems = view.systems.filter((x) => x.galaxy === galaxy && x.sector === sector);
+  const planets = view.planets.filter(
+    (p) => p.coordinate.galaxy === galaxy && p.coordinate.sector === sector,
+  );
+  const isHome = galaxy === homeGalaxy && sector === homeSector;
+  if (!s) return null;
+  return (
+    <g className="map-sector-view">
+      <rect
+        className="map-sector-view-bg"
+        x={s.bounds.minX}
+        y={s.bounds.minY}
+        width={s.bounds.maxX - s.bounds.minX}
+        height={s.bounds.maxY - s.bounds.minY}
+        rx={120 * scale}
+      />
+      {systems.map((sy) => (
+        <circle
+          key={`${sy.galaxy}:${sy.sector}:${sy.system}`}
+          className="map-star"
+          cx={sy.position.x}
+          cy={sy.position.y}
+          r={starR}
+        />
+      ))}
+      {planets.map((p) => (
+        <a
+          key={p.id}
+          className="map-planet-link"
+          data-testid={p.known ? 'map-known' : 'map-planet'}
+          href={`planet.html?seed=${seed}&planet=${encodeURIComponent(p.id)}`}
+        >
+          {p.known && (
+            <circle
+              className="map-home-ring"
+              data-testid="map-home"
+              cx={p.position.x}
+              cy={p.position.y}
+              r={ringR}
+            />
+          )}
+          <circle
+            className={`map-planet${p.known ? ' known' : ''}`}
+            cx={p.position.x}
+            cy={p.position.y}
+            r={p.known ? knownR : dotR}
+          />
+          {p.known && (
+            <text
+              className="map-label"
+              x={p.position.x + knownR + 6 * scale}
+              y={p.position.y + labelSize * 0.35}
+              fontSize={labelSize}
+            >
+              {p.name}
+            </text>
+          )}
+          <title>{`${p.name} — ${formatCoordinate(p.coordinate)}`}</title>
+        </a>
+      ))}
+      {isHome && (
+        <text
+          className="map-sector-name"
+          x={s.position.x}
+          y={s.bounds.minY - 10 * scale}
+          fontSize={labelSize * 1.2}
+          textAnchor="middle"
+        >
+          Home sector — {galaxy}:{sector}
+        </text>
+      )}
+    </g>
   );
 }

@@ -18,11 +18,13 @@ import {
 import { CONTENT_VERSION, WORLD_CONFIG } from '@ashes/content';
 import {
   galaxyBounds,
+  galaxyDiscRadius,
   galaxyOrigin,
   generateWorld,
   planetPosition,
   planetView,
   resolveEconomyTick,
+  sectorBounds,
   systemPosition,
 } from '@ashes/domain';
 import type { WorldRepository } from './repository';
@@ -208,7 +210,28 @@ export class TickEngine {
 
     const galaxies: GalaxyView['galaxies'] = [];
     for (let galaxy = 1; galaxy <= WORLD_CONFIG.galaxies; galaxy++) {
-      galaxies.push({ galaxy, position: galaxyOrigin(world.seed, galaxy) });
+      galaxies.push({
+        galaxy,
+        position: galaxyOrigin(world.seed, galaxy),
+        discRadius: galaxyDiscRadius(world.seed, galaxy),
+      });
+    }
+
+    const sectors: GalaxyView['sectors'] = [];
+    for (let galaxy = 1; galaxy <= WORLD_CONFIG.galaxies; galaxy++) {
+      for (let sector = 1; sector <= WORLD_CONFIG.sectorsPerGalaxy; sector++) {
+        const bounds = sectorBounds(world.seed, galaxy, sector);
+        sectors.push({
+          galaxy,
+          sector,
+          position: {
+            x: (bounds.minX + bounds.maxX) / 2,
+            y: (bounds.minY + bounds.maxY) / 2,
+          },
+          bounds,
+          planetCount: WORLD_CONFIG.systemsPerSector * WORLD_CONFIG.planetsPerSystem,
+        });
+      }
     }
 
     const systems: GalaxyView['systems'] = [];
@@ -247,6 +270,7 @@ export class TickEngine {
       homePlanetId: player.homePlanetId,
       bounds: galaxyBounds(world.seed),
       galaxies,
+      sectors,
       systems,
       planets,
     };
