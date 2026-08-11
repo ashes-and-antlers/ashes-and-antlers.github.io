@@ -2,7 +2,7 @@ import { query } from 'bitecs';
 import type { Calendar } from '../../shared/protocol';
 import { fnv1aBytes } from '../../shared/utils';
 import { SIM_CONFIG } from '../data/config';
-import type { BuildingKind, FactionId } from '../data/content';
+import { ITEM_TYPES, type BuildingKind, type FactionId } from '../data/content';
 import { createSimWorld, pickHomeTiles, sortedQuery, type SimWorld } from '../ecs/world';
 import { generateWorld } from '../world/generation';
 import type { TileWorld, WorldGenConfig } from '../world/world';
@@ -93,6 +93,8 @@ export class Simulation {
     push(this.tick_);
     push(w.stats.foodGathered);
     push(w.stats.foodEaten);
+    push(w.stats.materialsGathered);
+    push(w.stats.crafted);
     push(w.stats.deaths);
     push(w.stats.tasksCompleted);
     push(w.stats.tasksFailed);
@@ -106,7 +108,8 @@ export class Simulation {
       push(quant(c.Hunger[e]));
       push(quant(c.Energy[e]));
       push(quant(c.Morale[e]));
-      push(c.CarryFood[e] ?? 0);
+      push(c.CarryItem[e] ?? 0);
+      push(c.CarryAmount[e] ?? 0);
       push(c.TaskId[e] ?? -1);
       push(c.CitizenState[e] ?? 0);
     }
@@ -115,7 +118,9 @@ export class Simulation {
       push(c.Position.x[e] ?? 0);
       push(c.Position.y[e] ?? 0);
       push(c.Faction[e] ?? 0);
-      push(c.StockpileFood[e] ?? 0);
+      for (const item of ITEM_TYPES) {
+        push(c.Stock[item][e] ?? 0);
+      }
     }
     for (const e of sortedQuery(query(w, [c.ResourceNode]))) {
       push(e);
@@ -132,6 +137,7 @@ export class Simulation {
       push(c.BlueprintKind[e] ?? 0);
       push(quant(c.BlueprintProgress[e]));
       push(c.BlueprintReservedBy[e] ?? -1);
+      push(c.BlueprintFunded[e] ?? 0);
     }
     for (const e of sortedQuery(query(w, [c.Task]))) {
       push(e);
@@ -139,6 +145,8 @@ export class Simulation {
       push(c.TaskState[e] ?? 0);
       push(c.TaskPhase[e] ?? 0);
       push(c.TaskTarget[e] ?? -1);
+      push(c.TaskItem[e] ?? 0);
+      push(c.TaskSource[e] ?? -1);
       push(c.TaskClaimedBy[e] ?? -1);
       push(quant(c.TaskPriority[e]));
     }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CitizenState, type FactionId } from '../../src/sim/data/content';
+import { CitizenState, ItemType, type FactionId } from '../../src/sim/data/content';
 import { firstCitizen, makeSim } from '../helpers';
 
 describe('needs system', () => {
@@ -8,13 +8,14 @@ describe('needs system', () => {
     const c = sim.world.components;
     const citizen = firstCitizen(sim.world);
     c.Hunger[citizen] = 80;
-    c.CarryFood[citizen] = 3;
+    c.CarryItem[citizen] = ItemType.Food;
+    c.CarryAmount[citizen] = 3;
     c.Energy[citizen] = 90;
     c.TaskId[citizen] = -1;
 
     sim.step(1);
 
-    expect(c.CarryFood[citizen]).toBe(2);
+    expect(c.CarryAmount[citizen]).toBe(2);
     expect(c.Hunger[citizen]).toBeLessThan(80);
     expect(sim.world.stats.foodEaten).toBe(1);
   });
@@ -27,7 +28,7 @@ describe('needs system', () => {
     // Remove all food so no GetFood task can save them.
     for (const cc of sim.world.commandCenters) {
       if (c.Faction[cc] === faction) {
-        c.StockpileFood[cc] = 0;
+        c.Stock[ItemType.Food][cc] = 0;
       }
     }
     for (const node of sim.world.nodes) {
@@ -35,7 +36,8 @@ describe('needs system', () => {
       c.NodeRegenTick[node] = 1_000_000;
     }
     c.Hunger[citizen] = 99.9;
-    c.CarryFood[citizen] = 0;
+    c.CarryItem[citizen] = 0;
+    c.CarryAmount[citizen] = 0;
     c.Energy[citizen] = 90;
     c.TaskId[citizen] = -1;
 

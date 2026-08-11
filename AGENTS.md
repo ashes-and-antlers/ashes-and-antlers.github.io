@@ -17,13 +17,21 @@ A single-player, browser-native 2D grand colony/RTS in which **two autonomous
 civilizations** share one deterministic simulation — same seed + config +
 ordered commands = same result, every time. Working title: _Ashes and Antlers_.
 
-Current state: **Milestone 1a (survival loop) is complete.** The M0 foundation
-(seeded deterministic worldgen in a Web Worker, fixed-tick clock, snapshot
-protocol, PixiJS renderer, CI) is extended with a bitECS entity layer: two
-faction command centers, ownership overlays, citizens with movement and
-needs, a deterministic task market (gather → haul → eat), stockpiles, resource
-nodes, inspectors, causal alerts, and **player-placed blueprints → builder
-construction (stockpile + hut, completed exactly once, 1b shipped).**
+Current state: **Milestone 2 iteration 2 (work buildings) is complete**, on
+top of M1a (survival loop), M1b (construction), and M2-1 (the materials
+chain). The M0 foundation (seeded deterministic worldgen in a Web Worker,
+fixed-tick clock, snapshot protocol, PixiJS renderer, CI) is extended with a
+bitECS entity layer: two faction command centers, ownership overlays,
+citizens with movement and needs, a deterministic task market (gather → haul
+→ eat), stockpiles, resource nodes, inspectors, causal alerts, and
+player-placed blueprints → builder construction (stockpile + hut + sawpit,
+completed exactly once). The M2 slices add the **materials economy**:
+harvestable wood/stone tree nodes, multi-item stockpiles (per-item `Stock`
+stores), a **sawpit work building** with real logistics (haulers supply wood
+into its buffer and carry planks out — the planks recipe is worked there,
+not at the command center), construction sites that consume material costs
+from faction stockpiles (refunded on build failure), and a haul task that
+rescues stranded carries. Protocol v3.
 
 Design pillars that constrain every change:
 
@@ -170,9 +178,10 @@ npm run build && npm run test:e2e
   publish); routine snapshots carry tick, calendar, terrain hash, signal,
   alerts, and the entity buffer.
 - **Entity buffer:** fresh `Int32Array` of 7 ints per row —
-  `[eid, kind, faction, x, y, state, extra]` (citizens, then buildings, then
-  nodes, then blueprints, whose `extra` is build progress %) — transferred
-  each publish.
+  `[eid, kind, faction, x, y, state, extra]` (citizens first — `extra` is the
+  carried amount — then buildings, then nodes, then blueprints, whose
+  `extra` is build progress %) — transferred each publish. Snapshots also
+  carry per-faction `stocks` (itemType → amount) for the HUD readouts.
 - **Ownership buffer:** `world.owner.slice().buffer` sent only when
   `ownerVersion` changes. The `slice()` copy is deliberate — **transferring
   the live buffer would detach it in the worker and corrupt future writes.**
@@ -238,8 +247,9 @@ failure — duplicate claims and leaked reservations are defects.
   no per-entity sprites, so entity death/recycled eids cannot leak or stale.
 - Camera: drag-pan, cursor-centered wheel zoom (PixiJS 8 event/pointer APIs).
 - HUD (`src/ui/hud.ts`): pause/1×/2×/4×/8× buttons, seed/tick/day/season/year/
-  terrain-hash readouts, alerts banner, ownership/grid toggles, inspector
-  panel. Keyboard: `Space` pause, `1/2/4/8` speed, `G` grid, `O` ownership.
+  terrain-hash readouts, per-faction stock readouts (wood/stone/planks/food),
+  alerts banner, ownership/grid toggles, inspector panel. Keyboard: `Space`
+  pause, `1/2/4/8` speed, `G` grid, `O` ownership.
 - All interactive elements carry `data-testid` hooks consumed by e2e tests
   (`hash`, `seed`, `status`, `tick`, `speed-0…8`, `grid-toggle`,
   `ownership-toggle`, `inspector`, `inspector-title`, `inspector-content`).
@@ -330,6 +340,22 @@ From DEVELOPMENT_PLAN §7 (contract):
   and completion-exactly-once with a causal `construction.complete` alert
   (`tests/sim/scenario-construction.test.ts` + e2e). Protocol v2 adds the
   `PlaceBlueprint` command and `commandRejected` events.
-- **Next:** M2 economy/settlement (recipes, wood/stone/planks, construction
-  priorities, stockpile rules, seasons), then M3 strategic competition, M4
-  war and logistics, M5 emergence, M6 beta quality (per the plan's roadmap).
+- **M2 iteration 1 (materials economy):** harvestable wood/stone nodes spawn
+  on forest/hill terrain; stockpiles store all four items (`Stock` map,
+  shared capacity); construction sites are funded once from faction
+  stockpiles (unfunded sites wait, materials are refunded on build failure);
+  a haul task rescues stranded material carries. Protocol v3 adds snapshot
+  `stocks` + richer inspect details (`tests/sim/scenario-economy.test.ts` +
+  e2e).
+- **M2 iteration 2 (work buildings):** the sawpit replaces the command-center
+  crafting placeholder — haulers run a `Supply` task to keep its wood buffer
+  topped up and to carry crafted planks back to stockpiles; a worker crafts
+  one planks batch at a time (2 wood → 1 plank, consumed atomically from the
+  sawpit's own buffer); a hut without a sawpit waits instead of stalling
+  gathering. `adjacentGoal` now skips tiles inside any building/blueprint
+  footprint (a site hugging the sawpit can no longer block its delivery
+  tile). `tests/sim/scenario-economy.test.ts` covers the full chain
+  wood → supply → planks → hut + e2e.
+- **Next:** M2 continued — construction priorities, stockpile rules/policy,
+  spoilage, seasons; then M3 strategic competition, M4 war and logistics,
+  M5 emergence, M6 beta quality (per the plan's roadmap).

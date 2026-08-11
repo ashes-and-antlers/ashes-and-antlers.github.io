@@ -1,8 +1,9 @@
 import { SPEED_OPTIONS } from '../shared/constants';
-import { BUILDING_NAMES, CITIZEN_STATE_NAMES, NODE_NAMES } from '../shared/labels';
+import { BUILDING_NAMES, CITIZEN_STATE_NAMES, ITEM_NAMES, NODE_NAMES } from '../shared/labels';
 import type { Calendar, InspectDetail, SimAlert } from '../shared/protocol';
 import { toHex8 } from '../shared/utils';
-import { BuildingKind, FACTION_META, type FactionId } from '../sim/data/content';
+import { SIM_CONFIG } from '../sim/data/config';
+import { BuildingKind, FACTION_META, ItemType, type FactionId } from '../sim/data/content';
 import { TERRAIN_NAMES } from '../sim/world/tiles';
 
 export interface HudCallbacks {
@@ -37,9 +38,11 @@ export class Hud {
   private readonly inspectorContent: HTMLElement;
   private readonly buildButtons = new Map<BuildingKind, HTMLButtonElement>();
   private readonly buildFaction: HTMLSelectElement;
+  private readonly stockEls = new Map<ItemType, HTMLElement>();
   private currentSpeed = 1;
   private lastNonZeroSpeed = 1;
   private activeBuild: BuildingKind | null = null;
+  private lastStocks: Record<number, Record<number, number>> = {};
 
   constructor(root: HTMLElement, callbacks: HudCallbacks) {
     this.callbacks = callbacks;
@@ -67,6 +70,9 @@ export class Hud {
     this.inspectorTitle = q('[data-testid="inspector-title"]');
     this.inspectorContent = q('[data-testid="inspector-content"]');
     this.buildFaction = q('[data-testid="build-faction"]');
+    for (const item of [ItemType.Wood, ItemType.Stone, ItemType.Planks, ItemType.Food]) {
+      this.stockEls.set(item, q(`[data-testid="stock-${ITEM_NAMES[item]}"]`));
+    }
 
     const wireBuild = (building: BuildingKind, testid: string): void => {
       const btn = q<HTMLButtonElement>(`[data-testid="${testid}"]`);
@@ -75,6 +81,12 @@ export class Hud {
     };
     wireBuild(BuildingKind.Stockpile, 'build-stockpile');
     wireBuild(BuildingKind.Hut, 'build-hut');
+    wireBuild(BuildingKind.Sawpit, 'build-sawpit');
+    this.buildButtons.get(BuildingKind.Stockpile)!.title =
+      `stockpile — ${costLabel(BuildingKind.Stockpile)}`;
+    this.buildButtons.get(BuildingKind.Hut)!.title = `hut — ${costLabel(BuildingKind.Hut)}`;
+    this.buildButtons.get(BuildingKind.Sawpit)!.title =
+      `sawpit — ${costLabel(BuildingKind.Sawpit)}`;
     this.buildFaction.addEventListener('change', () => {
       this.callbacks.onBuildFaction(Number(this.buildFaction.value) as FactionId);
     });
@@ -159,6 +171,20 @@ export class Hud {
 
   setBuildFaction(faction: FactionId): void {
     this.buildFaction.value = String(faction);
+    this.renderStocks(faction);
+  }
+
+  /** Remember the latest snapshot stocks and show the active faction's. */
+  setStocks(stocks: Record<number, Record<number, number>>): void {
+    this.lastStocks = stocks;
+    this.renderStocks(Number(this.buildFaction.value) as FactionId);
+  }
+
+  private renderStocks(faction: FactionId): void {
+    const row = this.lastStocks[faction] ?? {};
+    for (const [item, el] of this.stockEls) {
+      el.textContent = String(row[item] ?? 0);
+    }
   }
 
   /** Show the latest alerts as a stacked banner (auto-removed oldest). */
@@ -196,20 +222,40 @@ export class Hud {
         addRow('hunger', `${detail.hunger}/100`);
         addRow('energy', `${detail.energy}/100`);
         addRow('morale', `${detail.morale}/100`);
-        addRow('carrying', `${detail.carry} food`);
+        addRow(
+          'carrying',
+          detail.carry > 0
+            ? `${detail.carry} ${ITEM_NAMES[detail.carryItem] ?? 'item'}`
+            : 'nothing',
+        );
         addRow('task', detail.taskText);
         addRow('pos', `(${detail.x}, ${detail.y})`);
         break;
       }
       case 'building': {
         this.inspectorTitle.textContent = `${BUILDING_NAMES[detail.buildingKind] ?? 'Building'} · ${factionName(detail.factionId)}`;
-        addRow('food', `${detail.food}/${detail.capacity}`);
+        const used = Object.values(detail.stock).reduce((a, b) => a + b, 0);
+        addRow('stored', `${used}/${detail.capacity}`);
+        for (const item of [ItemType.Food, ItemType.Wood, ItemType.Stone, ItemType.Planks]) {
+          const amount = detail.stock[item] ?? 0;
+          if (amount > 0) {
+            addRow(ITEM_NAMES[item] ?? String(item), String(amount));
+          }
+        }
         addRow('pos', `(${detail.x}, ${detail.y})`);
         break;
       }
       case 'blueprint': {
         this.inspectorTitle.textContent = `${BUILDING_NAMES[detail.buildingKind] ?? 'Building'} blueprint · ${factionName(detail.factionId)}`;
         addRow('progress', `${detail.progress}%`);
+        const costText = costLabelFrom(detail.cost);
+        addRow('materials', detail.funded ? 'ready' : costText === '' ? '—' : costText);
+        if (!detail.funded && detail.missing) {
+          const missingText = costLabelFrom(detail.missing);
+          if (missingText !== '') {
+            addRow('awaiting', missingText);
+          }
+        }
         addRow('builder', detail.reserved ? 'reserved' : 'awaiting builder');
         addRow('pos', `(${detail.x}, ${detail.y})`);
         break;
@@ -263,7 +309,7 @@ export class Hud {
         <header class="hud-top">
           <div class="brand">
             <span class="brand-title">Ashes &amp; Antlers</span>
-            <span class="brand-tag">MILESTONE 1</span>
+            <span class="brand-tag">MILESTONE 2</span>
           </div>
           <div class="hud-top-right">
             <div class="chip" data-testid="seed">seed …</div>
@@ -292,6 +338,12 @@ export class Hud {
             <div class="readout"><span class="readout-label">year</span><b data-testid="year">1</b></div>
             <div class="readout"><span class="readout-label">terrain hash</span><b class="mono" data-testid="hash">—</b></div>
           </div>
+          <div class="readouts stock-readouts" aria-label="Stored goods">
+            <div class="readout"><span class="readout-label">wood</span><b data-testid="stock-wood">0</b></div>
+            <div class="readout"><span class="readout-label">stone</span><b data-testid="stock-stone">0</b></div>
+            <div class="readout"><span class="readout-label">planks</span><b data-testid="stock-planks">0</b></div>
+            <div class="readout"><span class="readout-label">food</span><b data-testid="stock-food">0</b></div>
+          </div>
           <div class="build-group" role="group" aria-label="Build">
             <span class="group-label">build</span>
             <select class="build-faction" data-testid="build-faction" aria-label="Faction to build for" title="Faction to build for">
@@ -300,6 +352,7 @@ export class Hud {
             </select>
             <button type="button" class="build-btn" data-testid="build-stockpile" aria-pressed="false" title="Place a stockpile blueprint">stockpile</button>
             <button type="button" class="build-btn" data-testid="build-hut" aria-pressed="false" title="Place a hut blueprint">hut</button>
+            <button type="button" class="build-btn" data-testid="build-sawpit" aria-pressed="false" title="Place a sawpit blueprint">sawpit</button>
           </div>
           <div class="toggles">
             <button type="button" class="toggle" data-testid="grid-toggle" aria-pressed="false" title="Toggle debug grid (G)">grid</button>
@@ -309,4 +362,15 @@ export class Hud {
       </div>
     `;
   }
+}
+
+function costLabel(kind: BuildingKind): string {
+  const cost = SIM_CONFIG.constructionCosts[kind] ?? [];
+  return costLabelFrom(Object.fromEntries(cost.map((line) => [line.item, line.amount])));
+}
+
+function costLabelFrom(cost: Record<number, number>): string {
+  return Object.entries(cost)
+    .map(([item, amount]) => `${amount} ${ITEM_NAMES[Number(item)] ?? item}`)
+    .join(', ');
 }

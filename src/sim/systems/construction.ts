@@ -12,6 +12,7 @@ import { buildingWorkTicks, spawnBlueprint, spawnBuildingFromBlueprint } from '.
 import { sortedQuery, type SimWorld } from '../ecs/world';
 import { completeTask, createTask, failTask, isActiveTaskState } from './taskops';
 import { pushAlert } from './needs';
+import { fundBlueprint } from './inventory';
 
 /**
  * Construction (Milestone 1b).
@@ -19,21 +20,28 @@ import { pushAlert } from './needs';
  * - Placement: the player sends a PlaceBlueprint command; `placeBlueprint`
  *   validates deterministically (bounds, walkable land, no overlap, inside
  *   the faction's claim radius, blueprint cap) and spawns a Blueprint entity.
- * - Demand: every unreserved blueprint without an active build task gets one
- *   Build task (one site, one task — the reservation prevents duplicates).
+ * - Demand: every unreserved, funded blueprint without an active build task
+ *   gets one Build task (one site, one task — the reservation prevents
+ *   duplicates). A site is funded once from the faction's stockpiles (M2
+ *   economy); unfunded sites wait with no task until materials arrive.
  * - Execution: the builder walks to the site, then works until progress
  *   reaches the building's work requirement; the blueprint is then converted
  *   into the finished building exactly once and the task completes.
- * - Failure: unreachable sites fail with Unreachable and enter a retry
- *   cooldown (BlueprintFailTick) so demand cannot spin every tick.
+ * - Failure: unreachable sites fail with Unreachable, refund their materials
+ *   (see taskops), and enter a retry cooldown (BlueprintFailTick) so demand
+ *   cannot spin every tick.
  *
- * Read: Blueprint*, Task*, Position. Write: Blueprint*, Task*, Building list,
- * stats, alert log.
+ * Read: Blueprint*, Task*, Stock*, Position. Write: Blueprint*, Task*,
+ * Stock*, Building list, stats, alert log.
  */
 
 export type PlacementResult = { ok: true } | { ok: false; reason: string };
 
-const BUILDABLE_KINDS: readonly BuildingKind[] = [BuildingKind.Stockpile, BuildingKind.Hut];
+const BUILDABLE_KINDS: readonly BuildingKind[] = [
+  BuildingKind.Stockpile,
+  BuildingKind.Hut,
+  BuildingKind.Sawpit,
+];
 
 /** Deterministic validation of a blueprint placement. Returns null when valid. */
 export function canPlaceBlueprint(
@@ -113,7 +121,7 @@ export function placeBlueprint(
   return { ok: true };
 }
 
-/** Demand: one Build task per unreserved, unbuilt blueprint. */
+/** Demand: one Build task per unreserved, unbuilt, funded blueprint. */
 export function runBuildDemand(world: SimWorld): void {
   const c = world.components;
   const config = world.config;
@@ -123,6 +131,9 @@ export function runBuildDemand(world: SimWorld): void {
     if (hasActiveBuildTask(world, bp)) continue;
     const failTick = c.BlueprintFailTick[bp] ?? -1;
     if (failTick !== -1 && world.tick - failTick < config.buildRetryCooldownTicks) continue;
+    // Fund the site exactly once from the faction's stockpiles; an unfunded
+    // site waits (no task) until its materials arrive (M2 economy).
+    if ((c.BlueprintFunded[bp] ?? 0) !== 1 && !fundBlueprint(world, bp)) continue;
     const [gx, gy] = blueprintAdjacentGoal(world, bp);
     createTask(
       world,

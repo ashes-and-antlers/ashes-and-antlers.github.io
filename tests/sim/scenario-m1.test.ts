@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { query } from 'bitecs';
 import { WORLD_VERSION } from '../../src/shared/constants';
 import { Simulation } from '../../src/sim/core/sim';
-import { FactionId } from '../../src/sim/data/content';
+import { FactionId, ItemType } from '../../src/sim/data/content';
 import { sortedQuery } from '../../src/sim/ecs/world';
 import { checkInvariants } from '../helpers';
 
@@ -58,10 +58,11 @@ describe('Milestone 1 vertical slice (seed vertical-slice-01 = 8012)', () => {
       c.NodeRegenTick[node] = w.tick + 1_000_000;
     }
     for (const cc of w.commandCenters) {
-      c.StockpileFood[cc] = 0;
+      c.Stock[ItemType.Food][cc] = 0;
     }
     for (const e of sortedQuery(query(w, [c.Citizen]))) {
-      c.CarryFood[e] = 0;
+      c.CarryItem[e] = 0;
+      c.CarryAmount[e] = 0;
       c.Hunger[e] = 65;
     }
 

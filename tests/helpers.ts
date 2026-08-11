@@ -1,9 +1,16 @@
 import { query } from 'bitecs';
 import { WORLD_VERSION } from '../src/shared/constants';
 import { Simulation } from '../src/sim/core/sim';
-import { BuildingKind, TaskKind, type FactionId } from '../src/sim/data/content';
+import {
+  BuildingKind,
+  ITEM_TYPES,
+  TaskKind,
+  type FactionId,
+  type ItemType,
+} from '../src/sim/data/content';
 import { sortedQuery, type SimWorld } from '../src/sim/ecs/world';
 import { canPlaceBlueprint } from '../src/sim/systems/construction';
+import { factionStockpiles, stockRoom } from '../src/sim/systems/inventory';
 
 export interface SimConfigLike {
   seed: number;
@@ -65,13 +72,35 @@ export function findPlacementTile(
   throw new Error(`no valid placement tile near (${bx}, ${by})`);
 }
 
+/** Add material straight into a faction's stockpiles (spawn order). */
+export function grantStock(
+  world: SimWorld,
+  faction: FactionId,
+  item: ItemType,
+  amount: number,
+): void {
+  const c = world.components;
+  const stockpiles = factionStockpiles(world, faction);
+  const first = stockpiles[0];
+  if (first === undefined) throw new Error(`no stockpile for faction ${faction}`);
+  const put = Math.min(amount, stockRoom(world, first));
+  c.Stock[item][first] = (c.Stock[item][first] ?? 0) + put;
+  if (put < amount) throw new Error('grantStock: no room in the first stockpile');
+}
+
 /** Assert simulation invariants; any violation fails the test. */
 export function checkInvariants(world: SimWorld): void {
   const c = world.components;
   const claimedByTask = new Map<number, number>();
   for (const e of sortedQuery(query(world, [c.Citizen]))) {
-    if ((c.CarryFood[e] ?? 0) < 0) {
+    if ((c.CarryAmount[e] ?? 0) < 0) {
       throw new Error(`citizen ${e} has negative carry`);
+    }
+    if ((c.CarryAmount[e] ?? 0) === 0 && (c.CarryItem[e] ?? 0) !== 0) {
+      throw new Error(`citizen ${e} has a stale carry item with nothing carried`);
+    }
+    if ((c.CarryAmount[e] ?? 0) > 0 && !ITEM_TYPES.includes(c.CarryItem[e] ?? 0)) {
+      throw new Error(`citizen ${e} carries amount with an invalid item type`);
     }
     const task = c.TaskId[e] ?? -1;
     if (task !== -1) {
@@ -93,12 +122,22 @@ export function checkInvariants(world: SimWorld): void {
     if ((state === 4 || state === 5 || state === 6) && worker !== -1) {
       throw new Error(`terminal task ${t} still claims a worker`);
     }
+    if ((c.TaskKind[t] ?? 0) === TaskKind.Supply && (c.TaskSource[t] ?? -1) === -1) {
+      throw new Error(`supply task ${t} has no source building`);
+    }
   }
-  for (const cc of world.commandCenters) {
-    const food = c.StockpileFood[cc] ?? 0;
-    const capacity = c.StockpileCapacity[cc] ?? 0;
-    if (food < 0 || food > capacity) {
-      throw new Error(`stockpile ${cc} out of bounds: ${food}/${capacity}`);
+  for (const b of world.buildings) {
+    const capacity = c.StockpileCapacity[b] ?? 0;
+    let used = 0;
+    for (const item of ITEM_TYPES) {
+      const amount = c.Stock[item][b] ?? 0;
+      if (amount < 0) {
+        throw new Error(`building ${b} has negative ${item} stock`);
+      }
+      used += amount;
+    }
+    if (used > capacity) {
+      throw new Error(`stockpile ${b} over capacity: ${used}/${capacity}`);
     }
   }
   for (const n of world.nodes) {

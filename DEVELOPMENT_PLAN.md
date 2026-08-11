@@ -484,6 +484,25 @@ Acceptance scenario:
 
 ### Milestone 2 — Economy and Settlement (3–5 iterations)
 
+> **Progress: iteration 2 (work buildings) complete.** Iteration 1 built the
+> construction material chain: wood and stone are harvestable (tree/stone
+> nodes spawn per faction); stockpiles store all items
+> (food/wood/stone/planks) under a shared capacity; construction sites
+> consume their material cost from faction stockpiles exactly once (unfunded
+> sites wait for materials; failed builds refund them), and a haul task
+> rescues stranded material carries. **Iteration 2 replaces the
+> command-center crafting placeholder with a real work building — the
+> sawpit:** haulers run a `Supply` task to keep its wood buffer topped up
+> and to carry crafted planks back to stockpiles; a worker crafts one planks
+> batch at a time (2 wood → 1 plank, consumed atomically from the sawpit's
+> own buffer); a hut without a sawpit waits instead of stalling gatherers.
+> `adjacentGoal` now rejects tiles inside any building/blueprint footprint,
+> so a neighboring site can never become a work building's delivery goal.
+> Protocol v3 adds snapshot `stocks` and richer inspector details (item
+> carries, building stock, blueprint cost/funding). Scenario suite:
+> `tests/sim/scenario-economy.test.ts` (+ e2e `construction.spec.ts`),
+> deterministic under the same seed + command stream.
+
 **Goal:** A functioning settlement that has production chains and meaningful labor tradeoffs.
 
 Deliverables:
@@ -604,7 +623,8 @@ Create and complete issues in this order:
 4. Tile world generation + Pixi chunk renderer.
 5. ECS entity lifecycle + component serialization.
 6. Citizen movement + deterministic path request interface.
-7. Items/inventory + reservation API.
+7. Items/inventory + reservation API. **(M2: multi-item `Stock`, material
+   gather, work buildings (sawpit supply/craft), haul — done)**
 8. Task lifecycle + task inspector.
 9. Gathering/hauling/eating scenario.
 10. Blueprint/construction scenario.

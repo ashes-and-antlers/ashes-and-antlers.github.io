@@ -24,10 +24,10 @@ export const DAYS_PER_SEASON = 30;
 export const SEASONS_PER_YEAR = 4;
 
 /** Bump when world generation output or semantics change. Part of the determinism contract. */
-export const WORLD_VERSION = 1;
+export const WORLD_VERSION = 2;
 
 /** Bump when the worker<->main message protocol changes. */
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 4;
 
 /** Speed multipliers offered by the HUD (0 = pause). */
 export const SPEED_OPTIONS = [1, 2, 4, 8] as const;

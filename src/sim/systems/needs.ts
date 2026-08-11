@@ -1,11 +1,13 @@
 import { entityExists, query, removeEntity } from 'bitecs';
-import { CitizenState, FactionId, FACTION_META, TaskFailReason } from '../data/content';
+import { CitizenState, FactionId, FACTION_META, ItemType, TaskFailReason } from '../data/content';
 import { sortedQuery, type SimWorld } from '../ecs/world';
 import { failTask } from './taskops';
+import { clearCarry } from './inventory';
 
 /**
- * Needs system. Read: TaskId, CarryFood, Energy, Hunger. Write: Hunger,
- * Energy, Morale, CitizenState. Side effects: eating, starvation, deaths.
+ * Needs system. Read: TaskId, CarryItem, CarryAmount, Energy, Hunger. Write:
+ * Hunger, Energy, Morale, CitizenState. Side effects: eating, starvation,
+ * deaths.
  */
 export function runNeeds(world: SimWorld): void {
   const c = world.components;
@@ -30,13 +32,20 @@ export function runNeeds(world: SimWorld): void {
       c.Morale[eid] = Math.max(0, c.Morale[eid] - config.moraleLossPerTick);
     }
 
-    // Eat from carry when hungry.
-    if (c.Hunger[eid] >= config.eatThreshold && (c.CarryFood[eid] ?? 0) > 0) {
-      c.CarryFood[eid]--;
-      c.Hunger[eid] -= config.eatHungerRelief;
-      c.CitizenState[eid] = CitizenState.Eating;
-      world.stats.foodEaten++;
-      continue;
+    // Eat from carry when hungry (food only — wood cannot be eaten).
+    if (c.Hunger[eid] >= config.eatThreshold && c.CarryItem[eid] === ItemType.Food) {
+      const carried = c.CarryAmount[eid] ?? 0;
+      if (carried > 0) {
+        c.CarryAmount[eid] = carried - 1;
+        if (c.CarryAmount[eid] === 0) {
+          clearCarry(world, eid);
+        }
+        c.Hunger[eid] -= config.eatHungerRelief;
+        c.CitizenState[eid] = CitizenState.Eating;
+        world.stats.foodEaten++;
+        continue;
+      }
+      clearCarry(world, eid);
     }
 
     // Rest when exhausted (only when not committed to a task).

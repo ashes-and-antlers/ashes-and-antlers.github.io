@@ -1,5 +1,5 @@
 import { query } from 'bitecs';
-import { FACTIONS, FACTION_META, NodeKind, type FactionId } from '../data/content';
+import { FACTIONS, FACTION_META, ItemType, NodeKind, type FactionId } from '../data/content';
 import { sortedQuery, type SimWorld } from '../ecs/world';
 import { pushAlert } from './needs';
 import { factionStock } from './tasks';
@@ -24,7 +24,11 @@ export function runAlerts(world: SimWorld): void {
       faction,
       (hungryByFaction.get(faction) ?? 0) + (c.Hunger[eid] >= config.foodAlertHungerLevel ? 1 : 0),
     );
-    carryByFaction.set(faction, (carryByFaction.get(faction) ?? 0) + (c.CarryFood[eid] ?? 0));
+    carryByFaction.set(
+      faction,
+      (carryByFaction.get(faction) ?? 0) +
+        (c.CarryItem[eid] === ItemType.Food ? (c.CarryAmount[eid] ?? 0) : 0),
+    );
   }
 
   const berryStock = world.nodes.some(

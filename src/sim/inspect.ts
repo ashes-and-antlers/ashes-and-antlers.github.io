@@ -1,8 +1,10 @@
 import { entityExists, query } from 'bitecs';
 import { TASK_KIND_NAMES, TASK_PHASE_NAMES, TASK_STATE_NAMES } from '../shared/labels';
 import type { InspectDetail } from '../shared/protocol';
-import { BuildingKind, FactionId, NodeKind } from './data/content';
+import { BuildingKind, FactionId, ITEM_TYPES, NodeKind } from './data/content';
+import { buildingCost } from './ecs/entities';
 import { sortedQuery, type SimWorld } from './ecs/world';
+import { factionStockOf } from './systems/inventory';
 import { TERRAIN_NAMES } from './world/tiles';
 
 export { BUILDING_NAMES, NODE_NAMES, CITIZEN_STATE_NAMES } from '../shared/labels';
@@ -50,7 +52,8 @@ export function buildInspectDetail(world: SimWorld, tileIndex: number): InspectD
       hunger: Math.round(c.Hunger[citizen] ?? 0),
       energy: Math.round(c.Energy[citizen] ?? 0),
       morale: Math.round(c.Morale[citizen] ?? 0),
-      carry: c.CarryFood[citizen] ?? 0,
+      carry: c.CarryAmount[citizen] ?? 0,
+      carryItem: c.CarryItem[citizen] ?? 0,
       taskText,
       x: tileX,
       y: tileY,
@@ -66,13 +69,26 @@ export function buildInspectDetail(world: SimWorld, tileIndex: number): InspectD
       100,
       Math.round(((c.BlueprintProgress[blueprint] ?? 0) / Math.max(1, required)) * 100),
     );
+    const funded = (c.BlueprintFunded[blueprint] ?? 0) === 1;
+    const faction = c.Faction[blueprint] ?? FactionId.None;
+    const cost: Record<number, number> = {};
+    const missing: Record<number, number> = {};
+    for (const line of buildingCost(world.config, kind)) {
+      cost[line.item] = (cost[line.item] ?? 0) + line.amount;
+      missing[line.item] =
+        (missing[line.item] ?? 0) +
+        Math.max(0, line.amount - factionStockOf(world, faction as FactionId, line.item));
+    }
     return {
       kind: 'blueprint',
       eid: blueprint,
-      factionId: c.Faction[blueprint] ?? FactionId.None,
+      factionId: faction,
       buildingKind: kind,
       progress,
       reserved: (c.BlueprintReservedBy[blueprint] ?? -1) !== -1,
+      funded,
+      cost,
+      missing: funded ? {} : missing,
       x: tileX,
       y: tileY,
     };
@@ -80,12 +96,16 @@ export function buildInspectDetail(world: SimWorld, tileIndex: number): InspectD
 
   const building = findFootprintAt(sortedQuery(query(world, [c.Building])));
   if (building !== -1) {
+    const stock: Record<number, number> = {};
+    for (const item of ITEM_TYPES) {
+      stock[item] = c.Stock[item][building] ?? 0;
+    }
     return {
       kind: 'building',
       eid: building,
       factionId: c.Faction[building] ?? FactionId.None,
       buildingKind: c.BuildingKind[building] ?? BuildingKind.CommandCenter,
-      food: c.StockpileFood[building] ?? 0,
+      stock,
       capacity: c.StockpileCapacity[building] ?? 0,
       x: tileX,
       y: tileY,

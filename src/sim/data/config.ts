@@ -1,10 +1,19 @@
 import { TICKS_PER_DAY } from '../../shared/constants';
+import { BuildingKind, ItemType, RecipeKind, type ItemCost } from './content';
 
 /**
  * All tunable simulation constants live here (DEVELOPMENT_PLAN §5: content
  * must be data-driven; never hard-code balance in systems). Numbers are
  * deterministic float/int quantities.
  */
+export interface Recipe {
+  /** Consumed from the faction's stockpiles when the craft completes. */
+  input: ItemCost[];
+  output: ItemCost;
+  /** Total working ticks to produce one batch. */
+  workTicks: number;
+}
+
 export interface SimConfig {
   // Population & spawn
   citizensPerFaction: number;
@@ -38,7 +47,7 @@ export interface SimConfig {
   maxGatherTasksPerFaction: number;
   maxGatherersPerNode: number;
 
-  // Construction (Milestone 1b)
+  // Construction (Milestone 1b + M2 material chain)
   /** Blueprint progress gained per working tick. */
   buildWorkPerTick: number;
   /** Total work ticks to build a stockpile from a blueprint. */
@@ -51,6 +60,28 @@ export interface SimConfig {
   buildRetryCooldownTicks: number;
   /** Max concurrent blueprints per faction (anti-spam guard). */
   maxBlueprintsPerFaction: number;
+  /** Material cost per building kind; consumed from faction stockpiles when a site is funded. */
+  constructionCosts: Record<BuildingKind, ItemCost[]>;
+
+  // Economy (M2 materials)
+  /** Max wood a tree node holds (finite, no regrowth in M2). */
+  treeMaxAmount: number;
+  /** Max stone a stone node holds (finite, no regrowth in M2). */
+  stoneMaxAmount: number;
+  /** Tree nodes spawned per faction at startup. */
+  treeNodesPerFaction: number;
+  /** Stone nodes spawned per faction at startup. */
+  stoneNodesPerFaction: number;
+  /** Max concurrent wood/stone gather tasks per faction. */
+  maxMaterialGatherTasksPerFaction: number;
+  /** Craft progress gained per working tick. */
+  craftWorkPerTick: number;
+  /** Shared input/output capacity of a work building (plan §3.4). */
+  sawpitCapacity: number;
+  /** Wood stock a sawpit tries to keep in its input buffer. */
+  sawpitWoodBuffer: number;
+  /** Crafting recipes keyed by RecipeKind (data-driven; plan §3.4). */
+  recipes: Partial<Record<RecipeKind, Recipe>>;
 
   // Movement
   speedTilesPerTick: number;
@@ -106,6 +137,33 @@ export const SIM_CONFIG: SimConfig = {
   buildTaskPriority: 1,
   buildRetryCooldownTicks: 60,
   maxBlueprintsPerFaction: 6,
+  constructionCosts: {
+    [BuildingKind.CommandCenter]: [],
+    [BuildingKind.Stockpile]: [{ item: ItemType.Wood, amount: 8 }],
+    [BuildingKind.Hut]: [
+      { item: ItemType.Planks, amount: 8 },
+      { item: ItemType.Stone, amount: 6 },
+    ],
+    [BuildingKind.Sawpit]: [{ item: ItemType.Wood, amount: 6 }],
+  },
+
+  treeMaxAmount: 40,
+  stoneMaxAmount: 80,
+  treeNodesPerFaction: 6,
+  stoneNodesPerFaction: 2,
+  maxMaterialGatherTasksPerFaction: 4,
+  craftWorkPerTick: 1,
+  /** Shared input/output capacity of a work building (plan §3.4). */
+  sawpitCapacity: 40,
+  /** Wood stock a sawpit tries to keep in its input buffer. */
+  sawpitWoodBuffer: 8,
+  recipes: {
+    [RecipeKind.Planks]: {
+      input: [{ item: ItemType.Wood, amount: 2 }],
+      output: { item: ItemType.Planks, amount: 1 },
+      workTicks: 3,
+    },
+  },
 
   speedTilesPerTick: 1,
   maxPathNodes: 4096,

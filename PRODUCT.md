@@ -57,7 +57,7 @@ mechanism a neighboring game could not truthfully copy.
 
 ## Capabilities and Constraints
 
-### Confirmed capability (implemented, Milestone 1a)
+### Confirmed capability (implemented, Milestone 1a + 1b + M2)
 
 - Seeded deterministic worldgen (PRNG streams, terrain hash, versioned).
 - bitECS entity layer: two faction command centers, citizens with movement
@@ -65,15 +65,21 @@ mechanism a neighboring game could not truthfully copy.
 - A deterministic task market — demand, claim, execute, reservation cleanup —
   driving gather → haul → eat; stockpiles and resource nodes (renewable +
   finite).
+- Construction: player-placed blueprints — stockpile and hut — with builder
+  reservation/construction and completion-exactly-once.
+- Materials economy (M2): harvestable wood/stone, multi-item stockpiles
+  (food/wood/stone/planks), a sawpit work building with real logistics
+  (haulers supply its wood buffer, carry planks out; a worker crafts one
+  batch at a time), construction sites that consume material costs
+  (refunded on failure), and a haul task that rescues stranded carries.
 - Ownership overlay, tile/entity inspectors, causal rate-limited alerts,
-  speed controls, and a debug grid.
+  speed controls, per-faction stock readouts, and a debug grid.
 
 ### Designed but not yet implemented
 
-- Construction (Milestone 1b): player-placed blueprints — stockpile and hut —
-  with builder reservation/construction and a completion-exactly-once
-  acceptance test. After that: economy/settlement, strategic competition,
-  war and logistics, emergence, beta quality.
+- Economy/settlement depth: work buildings, construction priorities,
+  stockpile rules/policy, spoilage, food forecast, seasons. After that:
+  strategic competition, war and logistics, emergence, beta quality.
 - Two asymmetric factions: Hearth Confederacy (settled builders, strong
   institutions) and Iron Swarm (mobile, caste-based expansionists);
   asymmetry via policies, tech, templates, and starting conditions — not

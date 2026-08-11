@@ -1,5 +1,5 @@
 /**
- * Worker <-> main thread protocol (v1).
+ * Worker <-> main thread protocol (v3).
  *
  * The worker owns all authoritative simulation state. The main thread sends
  * validated commands and receives read-only snapshots. See docs/ADR-001.
@@ -70,6 +70,8 @@ export type SimSnapshot = {
   ownerVersion: number;
   /** Uint8Array per tile: FactionId (0 = neutral). Sent only when ownership changed. */
   ownerTiles?: ArrayBuffer;
+  /** Per-faction stored items (factionId -> itemType -> amount), for HUD readouts. */
+  stocks: Record<number, Record<number, number>>;
   alerts: SimAlert[];
 };
 
@@ -84,6 +86,7 @@ export type InspectDetail =
       energy: number;
       morale: number;
       carry: number;
+      carryItem: number;
       taskText: string;
       x: number;
       y: number;
@@ -93,7 +96,8 @@ export type InspectDetail =
       eid: number;
       factionId: number;
       buildingKind: number;
-      food: number;
+      /** itemType -> stored amount (M2 multi-item stockpiles). */
+      stock: Record<number, number>;
       capacity: number;
       x: number;
       y: number;
@@ -106,6 +110,11 @@ export type InspectDetail =
       /** 0-100 percent of the work required. */
       progress: number;
       reserved: boolean;
+      funded: boolean;
+      /** itemType -> total cost (empty when nothing is required). */
+      cost: Record<number, number>;
+      /** itemType -> still missing (empty once funded). */
+      missing: Record<number, number>;
       x: number;
       y: number;
     }

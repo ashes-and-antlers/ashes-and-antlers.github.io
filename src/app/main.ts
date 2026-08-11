@@ -65,6 +65,7 @@ async function boot(): Promise<void> {
   const BUILD_NAMES: Record<number, string> = {
     [BuildingKind.Stockpile]: 'stockpile',
     [BuildingKind.Hut]: 'hut',
+    [BuildingKind.Sawpit]: 'sawpit',
   };
   const exitBuildMode = (): void => {
     buildMode = null;
@@ -120,6 +121,7 @@ async function boot(): Promise<void> {
         hud.setCalendar(msg.calendar);
         hud.setHash(msg.terrainHash);
         hud.setAlerts(msg.alerts);
+        hud.setStocks(msg.stocks);
         if (msg.tilesChanged && msg.tiles !== undefined) {
           map.setTiles(new Uint8Array(msg.tiles), msg.width, msg.height);
           camera.fitView(map.naturalWidth, map.naturalHeight);

@@ -2,7 +2,7 @@
   "name": "ashes-and-antlers",
   "private": true,
   "version": "0.1.0",
-  "description": "Civilizations at War (working title: Ashes and Antlers) — browser-native 2D grand colony/RTS. Milestone 0: project shell.",
+  "description": "Ashes and Antlers (working title) — browser-native 2D grand colony/RTS. Milestone 2: the materials economy.",
   "type": "module",
   "scripts": {
     "dev": "vite",

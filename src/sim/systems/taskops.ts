@@ -8,6 +8,7 @@ import {
   type FactionId,
 } from '../data/content';
 import type { SimWorld } from '../ecs/world';
+import { refundBlueprint } from './inventory';
 
 /** Create a task entity with every component field initialized (eids recycle). */
 export function createTask(
@@ -36,6 +37,9 @@ export function createTask(
   c.TaskPhase[eid] = TaskPhase.WalkToTarget;
   c.TaskFaction[eid] = faction;
   c.TaskTarget[eid] = target;
+  c.TaskItem[eid] = 0;
+  c.TaskCitizen[eid] = -1;
+  c.TaskSource[eid] = -1;
   c.TaskGoalX[eid] = goalX;
   c.TaskGoalY[eid] = goalY;
   c.TaskPriority[eid] = priority;
@@ -54,16 +58,23 @@ export function isActiveTaskState(state: number): boolean {
   );
 }
 
+const GATHER_KINDS: readonly TaskKind[] = [
+  TaskKind.GatherFood,
+  TaskKind.GatherWood,
+  TaskKind.GatherStone,
+];
+
 /** Release a task's reservations and the worker's back-reference. */
 export function clearReservation(world: SimWorld, task: number): void {
   const c = world.components;
   const worker = c.TaskClaimedBy[task];
-  if (c.TaskKind[task] === TaskKind.GatherFood) {
+  const kind = c.TaskKind[task] ?? TaskKind.GetFood;
+  if (GATHER_KINDS.includes(kind)) {
     const node = c.TaskTarget[task];
     if (node !== -1 && c.NodeReservedBy[node] === worker) {
       c.NodeReservedBy[node] = -1;
     }
-  } else if (c.TaskKind[task] === TaskKind.Build) {
+  } else if (kind === TaskKind.Build) {
     const blueprint = c.TaskTarget[task];
     if (blueprint !== -1 && c.BlueprintReservedBy[blueprint] === worker) {
       c.BlueprintReservedBy[blueprint] = -1;
@@ -96,11 +107,13 @@ export function failTask(world: SimWorld, task: number, reason: TaskFailReason):
     c.CitizenState[worker] = CitizenState.Idle;
   }
   // Remember the failure on the blueprint so demand enters its retry cooldown
-  // instead of recreating the task every tick (unreachable-site guard).
+  // instead of recreating the task every tick (unreachable-site guard), and
+  // refund the materials the site consumed (M2 economy: no lost resources).
   if (c.TaskKind[task] === TaskKind.Build) {
     const blueprint = c.TaskTarget[task];
     if (blueprint !== -1) {
       c.BlueprintFailTick[blueprint] = world.tick;
+      refundBlueprint(world, blueprint);
     }
   }
   clearReservation(world, task);

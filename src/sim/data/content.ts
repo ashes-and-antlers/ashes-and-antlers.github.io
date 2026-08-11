@@ -24,12 +24,14 @@ export enum EntityKind {
   TreeNode = 6,
   Blueprint = 7,
   Hut = 8,
+  Sawpit = 9,
 }
 
 export enum BuildingKind {
   CommandCenter = 1,
   Stockpile = 2,
   Hut = 3,
+  Sawpit = 4,
 }
 
 export enum NodeKind {
@@ -51,6 +53,11 @@ export enum TaskKind {
   GetFood = 1,
   GatherFood = 2,
   Build = 3,
+  GatherWood = 4,
+  GatherStone = 5,
+  Craft = 6,
+  Haul = 7,
+  Supply = 8,
 }
 
 export enum TaskState {
@@ -68,6 +75,8 @@ export enum TaskPhase {
   Work = 1,
   WalkToDeliver = 2,
   Deliver = 3,
+  /** Supply: taking goods from the source building (stationary). */
+  Fetch = 4,
 }
 
 export enum TaskFailReason {
@@ -77,10 +86,33 @@ export enum TaskFailReason {
   NoFood = 3,
   StockpileFull = 4,
   WorkerDied = 5,
+  NoMaterial = 6,
 }
 
+/** Tradable goods. Values are part of the snapshot wire format. */
 export enum ItemType {
   Food = 1,
+  Wood = 2,
+  Stone = 3,
+  Planks = 4,
+}
+
+export const ITEM_TYPES: readonly ItemType[] = [
+  ItemType.Food,
+  ItemType.Wood,
+  ItemType.Stone,
+  ItemType.Planks,
+];
+
+/** One line of a recipe or construction cost: `amount` of `item`. */
+export interface ItemCost {
+  item: ItemType;
+  amount: number;
+}
+
+/** Crafting recipes, keyed by RecipeKind (values part of the wire format). */
+export enum RecipeKind {
+  Planks = 1,
 }
 
 export interface FactionMeta {

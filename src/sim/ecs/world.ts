@@ -9,6 +9,10 @@ import type { TileWorld } from '../world/world';
 export interface SimStats {
   foodGathered: number;
   foodEaten: number;
+  /** Wood + stone harvested (M2 materials economy). */
+  materialsGathered: number;
+  /** Crafting batches completed (M2 work buildings). */
+  crafted: number;
   deaths: number;
   tasksCompleted: number;
   tasksFailed: number;
@@ -73,6 +77,8 @@ export function createSimWorld(spawn: SpawnConfig): SimWorld {
     stats: {
       foodGathered: 0,
       foodEaten: 0,
+      materialsGathered: 0,
+      crafted: 0,
       deaths: 0,
       tasksCompleted: 0,
       tasksFailed: 0,

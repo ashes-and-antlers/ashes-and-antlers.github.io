@@ -52,6 +52,9 @@ export class EntityLayer {
         case EntityKind.Hut:
           this.drawHut(x * TILE_PX, y * TILE_PX, faction);
           break;
+        case EntityKind.Sawpit:
+          this.drawSawpit(x * TILE_PX, y * TILE_PX, faction);
+          break;
         case EntityKind.Blueprint:
           this.drawBlueprint(x * TILE_PX, y * TILE_PX, faction, extra);
           break;
@@ -119,6 +122,20 @@ export class EntityLayer {
       color,
       alpha: 0.9,
     });
+  }
+
+  /** A player-built sawpit: faction plate with a crossed saw-blade mark. */
+  private drawSawpit(px: number, py: number, faction: number): void {
+    const g = this.g;
+    const color = factionColor(faction);
+    const size = TILE_PX * 3;
+    g.rect(px, py, size, size).fill({ color: 0xd3c7ac, alpha: 0.14 });
+    g.rect(px, py, size, size).stroke({ width: 1.5, color });
+    // Crossed saw blade: two diagonals with a notch.
+    g.moveTo(px + 6, py + 6).lineTo(px + size - 6, py + size - 6);
+    g.moveTo(px + size - 6, py + 6).lineTo(px + 6, py + size - 6);
+    g.stroke({ width: 1.6, color, alpha: 0.9 });
+    g.circle(px + size / 2, py + size / 2, 1.6).fill({ color, alpha: 1 });
   }
 
   /** A construction site: dashed ghost outline in faction color + progress strip. */

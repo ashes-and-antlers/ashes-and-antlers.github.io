@@ -6,12 +6,14 @@ import {
   BuildingKind,
   EntityKind,
   FactionId,
+  ItemType,
   TaskKind,
   TaskState,
 } from '../../src/sim/data/content';
 import { sortedQuery } from '../../src/sim/ecs/world';
-import { checkInvariants, findPlacementTile } from '../helpers';
+import { checkInvariants, findPlacementTile, grantStock } from '../helpers';
 import { canPlaceBlueprint } from '../../src/sim/systems/construction';
+import { factionStockOf } from '../../src/sim/systems/inventory';
 import type { TileWorld } from '../../src/sim/world/world';
 
 const cfg = (seed = 8012) => ({
@@ -88,6 +90,11 @@ describe('Milestone 1b: blueprints and construction', () => {
     // Two construction sites exist.
     expect(blueprints(sim)).toHaveLength(2);
 
+    // M2: construction consumes materials — grant the costs so the sites fund.
+    grantStock(w, FactionId.Hearth, ItemType.Wood, 8); // stockpile
+    grantStock(w, FactionId.Hearth, ItemType.Planks, 8); // hut
+    grantStock(w, FactionId.Hearth, ItemType.Stone, 6); // hut
+
     // Run until both are finished (walk + 10 ticks of work each; wide margin).
     sim.step(600);
 
@@ -125,6 +132,9 @@ describe('Milestone 1b: blueprints and construction', () => {
       sim.placeBlueprint(FactionId.Hearth, BuildingKind.Stockpile, stock.x, stock.y);
       const hut = findPlacementTile(w, FactionId.Hearth, BuildingKind.Hut);
       sim.placeBlueprint(FactionId.Hearth, BuildingKind.Hut, hut.x, hut.y);
+      grantStock(w, FactionId.Hearth, ItemType.Wood, 8);
+      grantStock(w, FactionId.Hearth, ItemType.Planks, 8);
+      grantStock(w, FactionId.Hearth, ItemType.Stone, 6);
       sim.step(600);
       return sim;
     };
@@ -219,6 +229,9 @@ describe('Milestone 1b: blueprints and construction', () => {
     expect(sim.placeBlueprint(FactionId.Hearth, BuildingKind.Stockpile, t.x, t.y).ok).toBe(true);
     const bp = blueprints(sim)[0]!;
 
+    // Grant the wood so demand funds the site before the ring is blocked.
+    grantStock(w, FactionId.Hearth, ItemType.Wood, 8);
+
     // Block every walkable tile adjacent to the footprint: unreachable.
     const f = w.config.buildingFootprint;
     const ring: readonly (readonly [number, number])[] = [
@@ -238,6 +251,9 @@ describe('Milestone 1b: blueprints and construction', () => {
     // The task failed exactly once and the blueprint recorded the failure…
     expect(w.stats.tasksFailed).toBe(1);
     expect(c.BlueprintFailTick[bp]).toBeGreaterThanOrEqual(0);
+    // …the consumed materials were refunded (M2: no lost resources).
+    expect(c.BlueprintFunded[bp]).toBe(0);
+    expect(factionStockOf(w, FactionId.Hearth, ItemType.Wood)).toBe(8);
     // …demand is in cooldown, so no active build task, no progress, site intact.
     const active = sortedQuery(query(w, [c.Task])).filter(
       (task) =>

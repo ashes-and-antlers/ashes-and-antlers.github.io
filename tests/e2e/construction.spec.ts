@@ -23,12 +23,38 @@ test('places a stockpile blueprint and builders construct it', async ({ page }) 
   await expect(page.getByTestId('inspector-title')).toContainText('blueprint', {
     timeout: 5_000,
   });
+  // M2: the site needs 8 wood — the inspector shows the material cost.
+  await expect(page.getByTestId('inspector-content')).toContainText('wood');
 
-  // Resume: a builder walks over, works, and finishes the stockpile exactly once.
-  await page.getByTestId('speed-1').click();
+  // Resume at 8×: gatherers harvest wood, haul it home, the site funds, and a
+  // builder finishes the stockpile exactly once.
+  await page.getByTestId('speed-8').click();
   await expect(page.getByTestId('alert-banner')).toContainText('finished a stockpile', {
-    timeout: 15_000,
+    timeout: 30_000,
   });
+});
+
+test('places a sawpit blueprint and the inspector shows its work-building detail', async ({
+  page,
+}) => {
+  await workerReady(page);
+
+  await page.getByTestId('speed-0').click();
+
+  // Seed 1337: tile (22,59) (footprint center) lands a legal sawpit anchor
+  // at (21,58), just east of the stockpile spot.
+  const spot = await tileScreen(page, 22, 59);
+  await page.getByTestId('build-sawpit').click();
+  await expect(page.getByTestId('build-sawpit')).toHaveAttribute('aria-pressed', 'true');
+  await page.mouse.click(spot.x, spot.y);
+
+  await page.keyboard.press('Escape');
+  await page.mouse.click(spot.x, spot.y);
+  await expect(page.getByTestId('inspector-title')).toContainText('Sawpit', {
+    timeout: 5_000,
+  });
+  // M2: the sawpit costs 6 wood.
+  await expect(page.getByTestId('inspector-content')).toContainText('wood');
 });
 
 test('a placement outside claimed land is rejected with a status message', async ({ page }) => {

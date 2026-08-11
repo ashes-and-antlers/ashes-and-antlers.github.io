@@ -6,14 +6,21 @@ finite resources, adapt to pressure, wage logistics-driven war, and ultimately
 achieve dominance. Working title only — the full design lives in
 [`DEVELOPMENT_PLAN.md`](DEVELOPMENT_PLAN.md).
 
-> **Current milestone: 1a — Vertical slice, survival loop.** On top of the M0
-> foundation (seeded deterministic worldgen in a Web Worker, fixed-tick clock,
-> snapshot protocol, PixiJS tile renderer, lint/typecheck/test/build/CI),
-> Milestone 1a adds the bitECS entity layer: two faction command centers with
-> ownership overlays, citizens with movement/hunger/energy/morale, a
-> deterministic task market (gather → haul → eat), stockpiles, resource nodes,
-> inspectors, and causal alerts; Milestone 1b adds player-placed blueprints
-> and builder construction (stockpile + hut, completion-exactly-once).
+> **Current milestone: 2 — the construction material chain + work buildings.**
+> On top of the M0 foundation (seeded deterministic worldgen in a Web Worker,
+> fixed-tick clock, snapshot protocol, PixiJS tile renderer,
+> lint/typecheck/test/build/CI), Milestone 1 adds the bitECS entity layer:
+> two faction command centers with ownership overlays, citizens with
+> movement/hunger/energy/morale, a deterministic task market (gather → haul →
+> eat), stockpiles, resource nodes, inspectors, causal alerts, and
+> player-placed blueprints with builder construction (stockpile + hut,
+> completion-exactly-once). The M2 slices add the materials economy: wood and
+> stone become harvestable resources, stockpiles store all four items
+> (food/wood/stone/planks), a **sawpit work building** turns wood into planks
+> (haulers supply its wood buffer and carry planks out — a worker crafts one
+> batch at a time), and construction sites consume their material cost from
+> the faction's stockpiles — unfunded sites wait, and failed builds refund
+> the materials.
 
 ## Quickstart
 
@@ -117,8 +124,24 @@ Key invariants (see the ADR):
       deterministic placement validation; builders reserve, construct, and
       complete each site exactly once
 
+**Milestone 2 (Economy and Settlement) — iteration 1: the construction
+material chain**
+
+- [x] Wood/stone are harvestable: tree and stone nodes spawn per faction,
+      gather wood/stone tasks carry materials to the stockpile, and a haul
+      task rescues stranded carries after a full-stockpile failure
+- [x] Stockpiles store all items (food/wood/stone/planks) with a shared
+      capacity; the HUD shows per-faction stock readouts
+- [x] A sawpit work building turns wood into planks (2 wood → 1 plank,
+      worked in batches at the sawpit): haulers supply its wood buffer and
+      carry crafted planks back to stockpiles; the full chain is
+      wood → supply → planks (craft) + stone → hut
+- [x] Construction sites consume their material cost from faction stockpiles
+      exactly once; unfunded sites wait, failed builds refund the materials
+      (scenario suite `scenario-economy.test.ts` + e2e; deterministic)
+
 ## Roadmap
 
-Milestone 2 begins economy and settlement: recipes, work buildings,
-wood/stone/planks, construction priorities, stockpile rules, seasons — per
+Milestone 2 continues with work buildings, construction priorities,
+stockpile rules and policy, spoilage, and seasons — per
 [`DEVELOPMENT_PLAN.md`](DEVELOPMENT_PLAN.md) §6.

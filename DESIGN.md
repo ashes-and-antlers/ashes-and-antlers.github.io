@@ -211,7 +211,7 @@ The palette is a deep-forest neutral field, one ember seal, two faction hues, an
 The shell is a map-first canvas with floating instruments pinned to the edges on a 14px screen inset:
 
 - **Top bar:** brand (left) with milestone tag; seed + worker-status chips (right).
-- **Bottom bar:** centered instrument strip — speed group, readout cluster (tick/day/season/year/hash), overlay toggles — capped at `min(100vw - 28px)`.
+- **Bottom bar:** centered instrument strip — speed group, readout cluster (tick/day/season/year/hash), stock readouts (wood/stone/planks/food for the selected build faction), build palette, overlay toggles — capped at `min(100vw - 28px)`.
 - **Alerts:** stacked banner, centered below the top bar (top 64px).
 - **Inspector:** fixed bottom-left above the bottom bar (bottom 84px), 250px wide.
 
@@ -227,7 +227,7 @@ Direction (confirmed): **flatten**. The incumbent panels are translucent glass (
 
 ## Shapes
 
-Small radii and hairline strokes throughout: 10px panels, 8px buttons and alerts, full pills for chips and tags. Borders are 1px at panel-border strength. On the map: command centers are 3-tile squares (faction fill at 25%, 2.5px stroke, inner hairline); citizens are ~3.2px-radius dots with state rings (movement ring, white eating ring, work dot); nodes are minimal glyphs — berry clusters (three red dots), stone diamonds (polygon), tree circles (green fill, darker stroke).
+Small radii and hairline strokes throughout: 10px panels, 8px buttons and alerts, full pills for chips and tags. Borders are 1px at panel-border strength. On the map: command centers are 3-tile squares (faction fill at 25%, 2.5px stroke, inner hairline); work buildings (sawpit) and stockpiles/huts are distinct 3-tile building marks in faction fill with a stroke; citizens are ~3.2px-radius dots with state rings (movement ring, white eating ring, work dot); nodes are minimal glyphs — berry clusters (three red dots), stone diamonds (polygon), tree circles (green fill, darker stroke).
 
 ## Components### Speed Buttons
 

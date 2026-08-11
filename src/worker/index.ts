@@ -9,8 +9,15 @@ import {
   type WorkerRequest,
 } from '../shared/protocol';
 import { FixedClock } from '../sim/core/clock';
-import { EntityKind, type BuildingKind, type FactionId } from '../sim/data/content';
-import { sortedQuery } from '../sim/ecs/world';
+import {
+  BuildingKind,
+  EntityKind,
+  FACTIONS,
+  ITEM_TYPES,
+  type FactionId,
+} from '../sim/data/content';
+import { sortedQuery, type SimWorld } from '../sim/ecs/world';
+import { buildingWorkTicks } from '../sim/ecs/entities';
 import { buildInspectDetail } from '../sim/inspect';
 import { Simulation } from '../sim/core/sim';
 
@@ -48,7 +55,7 @@ function buildEntityBuffer(): { buffer: ArrayBuffer; count: number } {
       c.Position.x[e] ?? 0,
       c.Position.y[e] ?? 0,
       c.CitizenState[e] ?? 0,
-      c.CarryFood[e] ?? 0,
+      c.CarryAmount[e] ?? 0,
     );
   }
   for (const e of sortedQuery(query(world, [c.Building]))) {
@@ -75,8 +82,7 @@ function buildEntityBuffer(): { buffer: ArrayBuffer; count: number } {
   }
   for (const e of sortedQuery(query(world, [c.Blueprint]))) {
     const kind = c.BlueprintKind[e] ?? 0;
-    const required =
-      kind === 2 ? sim.world.config.stockpileWorkTicks : sim.world.config.hutWorkTicks;
+    const required = buildingWorkTicks(sim.world.config, kind as unknown as BuildingKind);
     const progress = Math.min(
       100,
       Math.round(((c.BlueprintProgress[e] ?? 0) / Math.max(1, required)) * 100),
@@ -93,6 +99,32 @@ function buildEntityBuffer(): { buffer: ArrayBuffer; count: number } {
   }
   const buffer = new Int32Array(rows);
   return { buffer: buffer.buffer, count: rows.length / 7 };
+}
+
+/** Per-faction stored items (factionId -> itemType -> amount), for HUD readouts. */
+function buildStocks(world: SimWorld): Record<number, Record<number, number>> {
+  const c = world.components;
+  const stocks: Record<number, Record<number, number>> = {};
+  for (const faction of FACTIONS) {
+    const row: Record<number, number> = {};
+    for (const item of ITEM_TYPES) {
+      row[item] = 0;
+    }
+    stocks[faction] = row;
+  }
+  for (const b of world.buildings) {
+    if ((c.StockpileCapacity[b] ?? 0) <= 0) continue;
+    const kind = c.BuildingKind[b] ?? 0;
+    // Work buildings keep their own buffers; the readout shows stockpiles only.
+    if (kind !== BuildingKind.CommandCenter && kind !== BuildingKind.Stockpile) continue;
+    const faction = c.Faction[b] ?? 0;
+    const row = stocks[faction];
+    if (row === undefined) continue;
+    for (const item of ITEM_TYPES) {
+      row[item] += c.Stock[item][b] ?? 0;
+    }
+  }
+  return stocks;
 }
 
 function buildSnapshot(includeTiles: boolean): SimSnapshot {
@@ -112,6 +144,7 @@ function buildSnapshot(includeTiles: boolean): SimSnapshot {
     signal: sim.signal,
     ownerVersion: world.ownerVersion,
     alerts: world.alertLog.slice(-8),
+    stocks: buildStocks(world),
   };
 
   const { buffer, count } = buildEntityBuffer();

@@ -1,6 +1,7 @@
 import {
   BuildingKind,
   CitizenState,
+  ItemType,
   NodeKind,
   TaskKind,
   TaskPhase,
@@ -22,6 +23,7 @@ export const BUILDING_NAMES: Record<number, string> = {
   [BuildingKind.CommandCenter]: 'Command center',
   [BuildingKind.Stockpile]: 'Stockpile',
   [BuildingKind.Hut]: 'Hut',
+  [BuildingKind.Sawpit]: 'Sawpit',
 };
 
 export const NODE_NAMES: Record<number, string> = {
@@ -30,10 +32,22 @@ export const NODE_NAMES: Record<number, string> = {
   [NodeKind.Tree]: 'Tree',
 };
 
+export const ITEM_NAMES: Record<number, string> = {
+  [ItemType.Food]: 'food',
+  [ItemType.Wood]: 'wood',
+  [ItemType.Stone]: 'stone',
+  [ItemType.Planks]: 'planks',
+};
+
 export const TASK_KIND_NAMES: Record<number, string> = {
   [TaskKind.GetFood]: 'get food',
   [TaskKind.GatherFood]: 'gather food',
   [TaskKind.Build]: 'build',
+  [TaskKind.GatherWood]: 'gather wood',
+  [TaskKind.GatherStone]: 'gather stone',
+  [TaskKind.Craft]: 'craft',
+  [TaskKind.Haul]: 'haul',
+  [TaskKind.Supply]: 'supply',
 };
 
 export const TASK_STATE_NAMES: Record<number, string> = {
@@ -51,6 +65,7 @@ export const TASK_PHASE_NAMES: Record<number, string> = {
   [TaskPhase.Work]: 'working',
   [TaskPhase.WalkToDeliver]: 'walk to deliver',
   [TaskPhase.Deliver]: 'delivering',
+  [TaskPhase.Fetch]: 'fetching',
 };
 
 export const TASK_FAIL_NAMES: Record<number, string> = {
@@ -60,4 +75,5 @@ export const TASK_FAIL_NAMES: Record<number, string> = {
   3: 'no food',
   4: 'stockpile full',
   5: 'worker died',
+  6: 'no material',
 };

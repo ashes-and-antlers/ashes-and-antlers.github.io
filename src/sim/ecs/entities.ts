@@ -1,5 +1,14 @@
 import { addComponent, addEntity, removeEntity } from 'bitecs';
-import { BuildingKind, CitizenState, EntityKind, FactionId, NodeKind } from '../data/content';
+import {
+  BuildingKind,
+  CitizenState,
+  EntityKind,
+  FactionId,
+  ITEM_TYPES,
+  ItemType,
+  NodeKind,
+  type ItemCost,
+} from '../data/content';
 import type { SimConfig } from '../data/config';
 import { TerrainType } from '../world/tiles';
 import type { SimWorld } from './world';
@@ -24,7 +33,7 @@ export function spawnCommandCenter(
   c.Kind[eid] = EntityKind.CommandCenter;
   c.Faction[eid] = faction;
   c.BuildingKind[eid] = BuildingKind.CommandCenter;
-  c.StockpileFood[eid] = world.config.startingFood;
+  c.Stock[ItemType.Food][eid] = world.config.startingFood;
   c.StockpileCapacity[eid] = world.config.stockpileCapacity;
   world.buildings.push(eid);
   return eid;
@@ -33,6 +42,11 @@ export function spawnCommandCenter(
 /** Total work ticks required to build `kind` (content-driven; see config). */
 export function buildingWorkTicks(config: SimConfig, kind: BuildingKind): number {
   return kind === BuildingKind.Stockpile ? config.stockpileWorkTicks : config.hutWorkTicks;
+}
+
+/** Material cost of a building kind (content-driven; see config). */
+export function buildingCost(config: SimConfig, kind: BuildingKind): ItemCost[] {
+  return config.constructionCosts[kind] ?? [];
 }
 
 /**
@@ -81,11 +95,23 @@ export function spawnBuildingFromBlueprint(world: SimWorld, blueprint: number): 
   }
   c.Position.x[eid] = x;
   c.Position.y[eid] = y;
-  c.Kind[eid] = kind === BuildingKind.Stockpile ? EntityKind.Stockpile : EntityKind.Hut;
+  c.Kind[eid] =
+    kind === BuildingKind.Stockpile
+      ? EntityKind.Stockpile
+      : kind === BuildingKind.Sawpit
+        ? EntityKind.Sawpit
+        : EntityKind.Hut;
   c.Faction[eid] = faction;
   c.BuildingKind[eid] = kind;
-  c.StockpileFood[eid] = 0;
-  c.StockpileCapacity[eid] = kind === BuildingKind.Stockpile ? world.config.stockpileCapacity : 0;
+  for (const item of ITEM_TYPES) {
+    c.Stock[item][eid] = 0;
+  }
+  c.StockpileCapacity[eid] =
+    kind === BuildingKind.Stockpile
+      ? world.config.stockpileCapacity
+      : kind === BuildingKind.Sawpit
+        ? world.config.sawpitCapacity
+        : 0;
   world.buildings.push(eid);
 
   removeEntity(world, blueprint);
@@ -174,7 +200,8 @@ export function spawnCitizen(
   c.Hunger[eid] = 20;
   c.Energy[eid] = 80;
   c.Morale[eid] = 70;
-  c.CarryFood[eid] = 0;
+  c.CarryItem[eid] = 0;
+  c.CarryAmount[eid] = 0;
   c.CitizenState[eid] = CitizenState.Idle;
   c.TaskId[eid] = -1;
   c.HomeId[eid] = homeId;
@@ -190,30 +217,51 @@ export function spawnNodes(world: SimWorld, cx: number, cy: number): number[] {
   const y0 = Math.max(1, Math.floor(cy) - half);
   const x1 = Math.min(world.tiles.width - 2, Math.floor(cx) + half + 2);
   const y1 = Math.min(world.tiles.height - 2, Math.floor(cy) + half + 2);
+  // One node per tile: berries (moist), trees (dry forest), stone (hill/rock).
+  const occupied = new Set<number>();
 
   let berries = 0;
-  let stone = 0;
   for (let y = y0; y <= y1 && berries < config.nodesPerFaction; y++) {
     for (let x = x0; x <= x1 && berries < config.nodesPerFaction; x++) {
       const tile = world.tiles.index(x, y);
       const terrain = world.tiles.terrain[tile] ?? TerrainType.Grass;
-      // Deterministic selection: moist land only (moisture is seeded noise).
       const moist = world.tiles.moisture[tile] ?? 0;
       if ((terrain === TerrainType.Forest || terrain === TerrainType.Grass) && moist >= 100) {
         const eid = spawnNode(world, NodeKind.Berries, x, y, config.berryMaxAmount);
         spawned.push(eid);
+        occupied.add(tile);
         berries++;
       }
     }
   }
-  // A few decorative stone nodes on hills/rock for visual interest (non-functional in M1a).
-  for (let y = y0; y <= y1 && stone < 2; y++) {
-    for (let x = x0; x <= x1 && stone < 2; x++) {
+  // Wood source (M2): forest terrain carries harvestable trees (berries take
+  // the moistest forest first; trees fill the remaining forest tiles).
+  let trees = 0;
+  for (let y = y0; y <= y1 && trees < config.treeNodesPerFaction; y++) {
+    for (let x = x0; x <= x1 && trees < config.treeNodesPerFaction; x++) {
       const tile = world.tiles.index(x, y);
       const terrain = world.tiles.terrain[tile] ?? TerrainType.Grass;
-      if (terrain === TerrainType.Hill || terrain === TerrainType.Mountain) {
-        const eid = spawnNode(world, NodeKind.Stone, x, y, 80);
+      if (terrain === TerrainType.Forest && !occupied.has(tile)) {
+        const eid = spawnNode(world, NodeKind.Tree, x, y, config.treeMaxAmount);
         spawned.push(eid);
+        occupied.add(tile);
+        trees++;
+      }
+    }
+  }
+  // Stone source (M2): finite stone on hill/rock (was decorative in M1a).
+  let stone = 0;
+  for (let y = y0; y <= y1 && stone < config.stoneNodesPerFaction; y++) {
+    for (let x = x0; x <= x1 && stone < config.stoneNodesPerFaction; x++) {
+      const tile = world.tiles.index(x, y);
+      const terrain = world.tiles.terrain[tile] ?? TerrainType.Grass;
+      if (
+        (terrain === TerrainType.Hill || terrain === TerrainType.Mountain) &&
+        !occupied.has(tile)
+      ) {
+        const eid = spawnNode(world, NodeKind.Stone, x, y, config.stoneMaxAmount);
+        spawned.push(eid);
+        occupied.add(tile);
         stone++;
       }
     }
