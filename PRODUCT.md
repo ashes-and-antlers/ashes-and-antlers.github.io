@@ -63,8 +63,8 @@ mechanism a neighboring game could not truthfully copy.
 ### Confirmed capability (current build)
 
 - **Landing page + Milestone 0 tick engine.** The landing page ships as the
-  public entry (brand mark cover, the two peoples, the rules of the archive,
-  single Enter the world action → `game.html?seed=1337`). Behind it, the
+  public entry (brand mark cover, the two powers, the rules of the archive,
+  single Enter the galaxy action → `game.html?seed=1337`). Behind it, the
   M0 server-authoritative tick engine is implemented and tested: seeded
   deterministic worldgen over a finite `galaxy:sector:system:planet` space,
   a per-world-locked, idempotent tick resolver, a dev-identity auth

@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Ashes and Antlers — a deterministic colony simulation. Two civilizations share one world; every outcome is written down."
+      content="Ashes and Antlers — a tick-based galaxy strategy. Develop planets, build fleets, forge alliances, and fight scheduled wars across a deterministic galaxy."
     />
     <link rel="icon" href="favicon.png" />
-    <title>Ashes and Antlers — Two Civilizations, One Deterministic World</title>
+    <title>Ashes and Antlers — Planets, Fleets, and Scheduled Wars</title>
     <script>
       document.documentElement.classList.add('js');
     </script>
@@ -29,10 +29,10 @@
       every figure, uppercase      micro-labels; a cold nebula breathes behind the void — layered dust gradients and a scatter
       of twinkling stars — with the vignette and one ruled frame.
       STORY: The visitor lands on the centered mark against the deep-space field, reads
-      the premise in order — one world, two peoples, the rules of the archive — and enters
+      the premise in order — one galaxy, two powers, the rules of the archive — and enters
       the game with the default seed (the game page owns worlds and seeds).
       FIRST VIEWPORT: No nav; the brand mark at display scale, dead-center in a full-viewport
-      hero, carrying the title; the tagline and lede beneath; the ember Enter the world action
+      hero, carrying the title; the tagline and lede beneath; the ice Enter the galaxy action
       beneath them; a scroll cue anchored to the hero's bottom edge.
       FORM: The Sequence — candidate 5 of 7 grounded structures, scroll-driven entry
       reveal; seed key dc472b5a.
@@ -54,15 +54,15 @@
                 height="848"
               />
             </h1>
-            <p class="cover-tagline">Two civilizations. One world. Every outcome written down.</p>
+            <p class="cover-tagline">Two powers. One galaxy. Every outcome written down.</p>
             <p class="cover-lede">
-              A browser-native colony simulation in which two autonomous peoples share a single
-              deterministic world. You advise one from a distance: setting priorities, placing
-              blueprints, reading the consequences. The other plays by the same rules, and the world
-              keeps the ledger.
+              A persistent, tick-based galaxy strategy. You command one of two great powers from a
+              single home planet — developing worlds, researching technology, building fleets, and
+              forging alliances between global ticks. The galaxy is deterministic: the same seed,
+              the same commands, the same result, every time.
             </p>
             <a class="cta cta-primary" data-testid="enter-link" href="game.html?seed=1337">
-              Enter the world
+              Enter the galaxy
             </a>
           </div>
           <div class="scroll-cue" aria-hidden="true">
@@ -82,23 +82,23 @@
         <section class="entry" id="premise" data-reveal>
           <h2>
             <span class="entry-numeral">Entry 01</span>
-            <span class="entry-title">One world, two peoples</span>
+            <span class="entry-title">One galaxy, two powers</span>
           </h2>
           <p>
-            Both peoples are born into the same procedurally generated world; every hill, river, and
-            berry patch drawn from a single seed. They gather the same finite resources, compete for
-            the same land, and feel the same pressures: hunger, supply, season, war.
+            Both powers are born into the same finite galaxy — every sector, system, and planet
+            drawn from a single seed. They develop the same worlds, mine the same resources, and
+            feel the same pressures: growth, scarcity, distance, war.
           </p>
           <p>
-            No outcome is scripted. Both civilizations run under identical rules, and every result
-            traces back to a cause you can find in the world's own record.
+            No outcome is scripted. Both powers run under identical rules, and every result traces
+            back to a cause you can find in the galaxy's own record.
           </p>
         </section>
 
         <section class="entry" id="peoples" data-reveal>
           <h2>
             <span class="entry-numeral">Entry 02</span>
-            <span class="entry-title">The two peoples</span>
+            <span class="entry-title">The two powers</span>
           </h2>
           <div class="faction-grid">
             <article class="faction-card hearth" data-reveal>
@@ -151,8 +151,9 @@
                 <h3>The Hearth Confederacy</h3>
               </div>
               <p>
-                Settled builders with strong institutions. Construction, agriculture, and defensive
-                cohesion come naturally, but a disrupted supply line is a slow, quiet wound.
+                Fortress-world builders preserving old civic institutions, hearth-reactors, and
+                archive networks. Strong infrastructure, energy stability, and a reliable economy —
+                but what they build, they must defend.
               </p>
             </article>
             <article class="faction-card iron" data-reveal>
@@ -184,12 +185,13 @@
                 <h3>The Iron Swarm</h3>
               </div>
               <p>
-                Mobile, caste-based expansionists. Fast gathering, raiding, and distributed command
-                but concentrated losses cut deep, and the soil is never tended.
+                Mobile caste fleets that strip, repurpose, and rapidly establish nests on frontier
+                worlds. Fast scouting, raiding, and colonization pressure — but concentrated losses
+                cut deep.
               </p>
             </article>
           </div>
-          <p class="entry-close">You advise one people. The other answers in kind.</p>
+          <p class="entry-close">You command one power. The other answers in kind.</p>
         </section>
 
         <section class="entry" id="rules" data-reveal>
@@ -231,10 +233,10 @@
             <li class="rule-row" data-reveal>
               <span class="rule-num" aria-hidden="true">04</span>
               <div>
-                <h3>Logistics decides wars</h3>
+                <h3>Timing decides wars</h3>
                 <p>
-                  Armies need food, tools, medicine, transport, rest, and command. So do
-                  settlements.
+                  Fleets travel in ticks, not seconds. Supply, staging, and intelligence decide wars
+                  — planning beats click speed.
                 </p>
               </div>
             </li>
@@ -243,7 +245,7 @@
       </main>
 
       <footer class="footer">
-        <span>the archive · one deterministic world</span>
+        <span>the archive · one deterministic galaxy</span>
         <span>deterministic core · versioned protocol</span>
       </footer>
     </div>
