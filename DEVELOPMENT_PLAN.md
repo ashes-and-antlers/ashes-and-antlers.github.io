@@ -22,10 +22,10 @@ A good session should take minutes, while good planning can create consequences 
 
 Keep the existing factions and setting, but place them in a mythic-industrial science-fiction galaxy.
 
-| Faction | Galactic identity | Strategic profile |
-| --- | --- | --- |
-| Hearth Confederacy | Fortress-world builders preserving old civic institutions, hearth-reactors, and archive networks | Strong infrastructure, energy stability, defenses, and reliable economy |
-| Iron Swarm | Mobile caste fleets that strip, repurpose, and rapidly establish nests on frontier worlds | Fast scouting, raiding, colonization pressure, and flexible fleet doctrine |
+| Faction            | Galactic identity                                                                                | Strategic profile                                                          |
+| ------------------ | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| Hearth Confederacy | Fortress-world builders preserving old civic institutions, hearth-reactors, and archive networks | Strong infrastructure, energy stability, defenses, and reliable economy    |
+| Iron Swarm         | Mobile caste fleets that strip, repurpose, and rapidly establish nests on frontier worlds        | Fast scouting, raiding, colonization pressure, and flexible fleet doctrine |
 
 Use the familiar gameplay language—planets, sectors, galaxies, fleets, shipyards, scans, colonization, alliance warfare—while expressing it with the game’s existing art, terminology, units, and lore.
 
@@ -98,10 +98,10 @@ type Planet = {
   name: string;
   population: bigint;
   abundance: {
-    metal: number;      // 0..100
-    mineral: number;    // 0..100
-    food: number;       // 0..100
-    energy: number;     // 0..100
+    metal: number; // 0..100
+    mineral: number; // 0..100
+    food: number; // 0..100
+    energy: number; // 0..100
   };
   resources: ResourceStore;
   buildings: BuildingLevels;
@@ -118,12 +118,12 @@ type Planet = {
 
 Use a familiar, compact production economy:
 
-| Resource | Produced by | Used for |
-| --- | --- | --- |
-| Metal | Mines, abundance, workers | Buildings, hulls, armor, defenses |
-| Mineral | Deep extraction, abundance | Advanced buildings, engines, weapons, research |
-| Food | Farms/replicators, abundance | Population, soldiers, colonization, some upkeep |
-| Energy | Reactors/solar arrays, abundance | Building upkeep, shipyard output, advanced industry |
+| Resource | Produced by                      | Used for                                            |
+| -------- | -------------------------------- | --------------------------------------------------- |
+| Metal    | Mines, abundance, workers        | Buildings, hulls, armor, defenses                   |
+| Mineral  | Deep extraction, abundance       | Advanced buildings, engines, weapons, research      |
+| Food     | Farms/replicators, abundance     | Population, soldiers, colonization, some upkeep     |
+| Energy   | Reactors/solar arrays, abundance | Building upkeep, shipyard output, advanced industry |
 
 Optional later resources: fuel, research data, influence, and rare artifacts. Do not add these until the four-resource economy is stable and understandable.
 
@@ -166,19 +166,19 @@ Resources are **planet-local**. A remote colony cannot spend home-world stock au
 
 ### Initial buildings
 
-| Building | Purpose | Key tradeoff |
-| --- | --- | --- |
-| Settlement / Nest | Raises population capacity and planetary administration | Food and energy upkeep |
-| Metal Mine / Salvage Pit | Produces metal | Energy upkeep |
-| Mineral Extractor / Deep Bore | Produces mineral | Energy and build cost |
-| Farm / Biomass Vat | Produces food | Uses valuable building capacity |
-| Reactor / Sun Harvester | Produces energy | Expensive but enables industry |
-| Storehouse | Raises local resource capacity | Slower direct growth than production |
-| Research Lab / Archive | Produces research progress | Diverts resources from fleet growth |
-| Shipyard / Brood Forge | Builds ships | High energy and mineral demand |
-| Barracks / Muster Hall | Trains troops | Food and upkeep |
-| Defense Grid / Burrow Wall | Raises local defense | Static, does not project power |
-| Scanner Array / Watch Spire | Improves scan range/quality and warnings | Cost and vulnerability |
+| Building                      | Purpose                                                 | Key tradeoff                         |
+| ----------------------------- | ------------------------------------------------------- | ------------------------------------ |
+| Settlement / Nest             | Raises population capacity and planetary administration | Food and energy upkeep               |
+| Metal Mine / Salvage Pit      | Produces metal                                          | Energy upkeep                        |
+| Mineral Extractor / Deep Bore | Produces mineral                                        | Energy and build cost                |
+| Farm / Biomass Vat            | Produces food                                           | Uses valuable building capacity      |
+| Reactor / Sun Harvester       | Produces energy                                         | Expensive but enables industry       |
+| Storehouse                    | Raises local resource capacity                          | Slower direct growth than production |
+| Research Lab / Archive        | Produces research progress                              | Diverts resources from fleet growth  |
+| Shipyard / Brood Forge        | Builds ships                                            | High energy and mineral demand       |
+| Barracks / Muster Hall        | Trains troops                                           | Food and upkeep                      |
+| Defense Grid / Burrow Wall    | Raises local defense                                    | Static, does not project power       |
+| Scanner Array / Watch Spire   | Improves scan range/quality and warnings                | Cost and vulnerability               |
 
 Keep buildings level-based and data-driven. Each level has resource cost, build ticks, upkeep, prerequisite, and clearly displayed next-level output.
 
@@ -252,26 +252,26 @@ Travel time is measured in ticks and determined by coordinate distance, fleet dr
 
 Use three readable drive tiers:
 
-| Drive tier | Reach |
-| --- | --- |
-| Planetary | Planets in the same system |
-| Stellar | Systems/sectors within a galaxy |
-| Galactic | Cross-galaxy movement |
+| Drive tier | Reach                           |
+| ---------- | ------------------------------- |
+| Planetary  | Planets in the same system      |
+| Stellar    | Systems/sectors within a galaxy |
+| Galactic   | Cross-galaxy movement           |
 
 The slowest relevant drive in a fleet determines its reach/speed. The send-order confirmation must display route, ETA in ticks, next arrival tick, mission, fuel/supply assumptions if used, and known target intelligence.
 
 ### Initial ship roles
 
-| Ship class | Role |
-| --- | --- |
-| Scout / Seeker | Fast scan and intelligence mission |
-| Freighter / Hauler | Carries local resources between planets |
-| Outpost Ship / Seed Barge | Colonizes valid unowned worlds |
-| Fighter / Skirmisher | Cheap early offensive and defensive combat |
-| Corvette / Raider | Fast raiding and cargo interception |
-| Cruiser / Line Vessel | Mid-game durable combat core |
-| Carrier / Brood Ark | Projects fighters/advanced units later |
-| Assault Transport | Carries troops for invasion; delay until PvP foundations are stable |
+| Ship class                | Role                                                                |
+| ------------------------- | ------------------------------------------------------------------- |
+| Scout / Seeker            | Fast scan and intelligence mission                                  |
+| Freighter / Hauler        | Carries local resources between planets                             |
+| Outpost Ship / Seed Barge | Colonizes valid unowned worlds                                      |
+| Fighter / Skirmisher      | Cheap early offensive and defensive combat                          |
+| Corvette / Raider         | Fast raiding and cargo interception                                 |
+| Cruiser / Line Vessel     | Mid-game durable combat core                                        |
+| Carrier / Brood Ark       | Projects fighters/advanced units later                              |
+| Assault Transport         | Carries troops for invasion; delay until PvP foundations are stable |
 
 Start alpha with scout, freighter, outpost ship, fighter, and one durable combat class. Avoid a large unit roster until fleet composition and combat reports prove legible.
 
@@ -409,19 +409,19 @@ Use a **server-authoritative tick engine**. The browser is a typed command clien
 
 Recommended stack:
 
-| Concern | Choice |
-| --- | --- |
-| Monorepo | pnpm workspaces |
-| Client | TypeScript, React, Vite |
-| API | TypeScript, Fastify or Hono |
-| Tick worker | TypeScript worker service using a durable job scheduler |
-| Database | PostgreSQL |
-| Cache/queue | Redis plus a durable queue/outbox approach |
-| Shared contracts | Zod schemas and branded TypeScript IDs |
-| Data access | Kysely or Drizzle with explicit transactions |
-| Realtime | WebSocket or SSE for post-tick/report notifications |
-| Tests | Vitest, PostgreSQL integration tests, Playwright, load tests |
-| Observability | Structured logs, metrics, traces, error reporting |
+| Concern          | Choice                                                       |
+| ---------------- | ------------------------------------------------------------ |
+| Monorepo         | pnpm workspaces                                              |
+| Client           | TypeScript, React, Vite                                      |
+| API              | TypeScript, Fastify or Hono                                  |
+| Tick worker      | TypeScript worker service using a durable job scheduler      |
+| Database         | PostgreSQL                                                   |
+| Cache/queue      | Redis plus a durable queue/outbox approach                   |
+| Shared contracts | Zod schemas and branded TypeScript IDs                       |
+| Data access      | Kysely or Drizzle with explicit transactions                 |
+| Realtime         | WebSocket or SSE for post-tick/report notifications          |
+| Tests            | Vitest, PostgreSQL integration tests, Playwright, load tests |
+| Observability    | Structured logs, metrics, traces, error reporting            |
 
 ### Tick execution
 
