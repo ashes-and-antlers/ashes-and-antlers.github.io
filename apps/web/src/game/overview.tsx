@@ -1,7 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { formatCoordinate, type PlanetView, type WorldView } from '@ashes/contracts';
+import {
+  formatCoordinate,
+  type PlanetView,
+  type TickResolutionStatus,
+  type WorldView,
+} from '@ashes/contracts';
 import { assertProtocol, fetchOverview } from './api';
-import { AbundanceBar, formatNet, formatResources, PlanetThumb, WarningsChips } from './planet-ui';
+import {
+  AbundanceBar,
+  formatNet,
+  formatResources,
+  PlanetThumb,
+  RESOURCE_NAMES,
+  WarningsChips,
+} from './planet-ui';
 
 const POLL_MS = 2_000;
 const MAX_CONSECUTIVE_FAILURES = 3;
@@ -143,15 +155,27 @@ export function OverviewApp() {
   );
 }
 
+/** Signed integer for rate cells, e.g. "+3" / "0" / "-2". */
+function signed(n: number): string {
+  return n > 0 ? `+${n}` : `${n}`;
+}
+
+/** Engine/resolution state chip: starting, running, completed, failed. */
+function StatusChip({ status }: { status: TickResolutionStatus | null }) {
+  if (status === null) return <span className="status-chip is-starting">starting</span>;
+  return <span className={`status-chip is-${status}`}>{status}</span>;
+}
+
 function Overview({ view, now, seed }: { view: WorldView; now: number; seed: string }) {
   const secondsLeft = Math.max(0, Math.ceil((view.nextTickAt - now) / 1000));
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
   const ss = String(secondsLeft % 60).padStart(2, '0');
   const home = view.player.homePlanet;
+  const buildCount = Object.values(home.buildings).reduce((a, b) => a + b, 0);
 
   return (
     <main className="game-grid">
-      <section className="panel tick-panel" aria-labelledby="tick-heading">
+      <section className="panel tick-hero" aria-labelledby="tick-heading">
         <h2 id="tick-heading" className="panel-title">
           The tick
         </h2>
@@ -172,27 +196,47 @@ function Overview({ view, now, seed }: { view: WorldView; now: number; seed: str
               {new Date(view.nextTickAt).toLocaleTimeString()}
             </strong>
           </div>
+          <div className="tick-hero-status">
+            <span className="micro-label">Engine</span>
+            <StatusChip status={view.lastResolution?.status ?? null} />
+          </div>
         </div>
-        <dl className="hash-list">
-          <div>
-            <dt>World hash</dt>
-            <dd data-testid="world-hash" title={view.worldHash}>
-              {view.worldHash}
-            </dd>
-          </div>
-          <div>
-            <dt>Protocol</dt>
-            <dd>{view.protocolVersion}</dd>
-          </div>
-          <div>
-            <dt>Worldgen</dt>
-            <dd>{view.worldVersion}</dd>
-          </div>
-          <div>
-            <dt>Content</dt>
-            <dd>{view.contentVersion}</dd>
-          </div>
-        </dl>
+        <div className="tick-hero-identity">
+          <dl className="hash-list">
+            <div>
+              <dt>World hash</dt>
+              <dd data-testid="world-hash" title={view.worldHash}>
+                {view.worldHash}
+              </dd>
+            </div>
+            <div>
+              <dt>Protocol</dt>
+              <dd>{view.protocolVersion}</dd>
+            </div>
+            <div>
+              <dt>Worldgen</dt>
+              <dd>{view.worldVersion}</dd>
+            </div>
+            <div>
+              <dt>Content</dt>
+              <dd>{view.contentVersion}</dd>
+            </div>
+            <div>
+              <dt>Tick length</dt>
+              <dd>{view.tickDurationMs} ms</dd>
+            </div>
+            <div>
+              <dt>Created</dt>
+              <dd>{new Date(view.createdAt).toLocaleString()}</dd>
+            </div>
+            <div>
+              <dt>Last resolved</dt>
+              <dd>
+                {view.lastResolvedAt ? new Date(view.lastResolvedAt).toLocaleTimeString() : '—'}
+              </dd>
+            </div>
+          </dl>
+        </div>
       </section>
 
       <section className="panel home-panel" aria-labelledby="home-heading">
@@ -203,6 +247,10 @@ function Overview({ view, now, seed }: { view: WorldView; now: number; seed: str
           <span className="micro-label">Player</span>
           <strong>{view.player.name}</strong>
           <span className="faction-tag">{view.player.factionId}</span>
+        </p>
+        <p className="home-player-id">
+          <span className="micro-label">Archive id</span>
+          <code className="mono">{view.player.id}</code>
         </p>
         <p className="home-coord">
           <span className="micro-label">Coordinate</span>
@@ -219,19 +267,74 @@ function Overview({ view, now, seed }: { view: WorldView; now: number; seed: str
             <strong className="mono">{home.storageCap.toLocaleString()} / resource</strong>
           </div>
           <div className="economy-cell">
-            <span className="micro-label">Net per tick</span>
-            <strong className="mono">{formatNet(home.rates.net)}</strong>
+            <span className="micro-label">Buildings</span>
+            <strong className="mono">{buildCount}</strong>
           </div>
         </div>
+        <ResourceTable planet={home} />
         <WarningsChips warnings={home.warnings} />
         <p className="home-note">The local fleet anchor. Development begins here.</p>
+      </section>
+
+      <section className="panel resolution-panel" aria-labelledby="resolution-heading">
+        <h2 id="resolution-heading" className="panel-title">
+          Last tick resolved
+        </h2>
+        {view.lastResolution === null ? (
+          <p className="empty-state">No ticks resolved yet.</p>
+        ) : (
+          <>
+            <div className="resolution-head">
+              <span className="micro-label">Tick</span>
+              <strong className="resolution-tick mono" data-testid="last-resolved-tick">
+                {view.lastResolution.tick}
+              </strong>
+              <StatusChip status={view.lastResolution.status} />
+            </div>
+            <dl className="resolution-list">
+              <div>
+                <dt>Resolved at</dt>
+                <dd>{new Date(view.lastResolution.resolvedAt).toLocaleTimeString()}</dd>
+              </div>
+              <div>
+                <dt>Command cutoff</dt>
+                <dd>{new Date(view.lastResolution.commandCutoffAt).toLocaleTimeString()}</dd>
+              </div>
+              <div>
+                <dt>Resolution seed</dt>
+                <dd title={view.lastResolution.seed}>{view.lastResolution.seed}</dd>
+              </div>
+              <div>
+                <dt>Planet state hash</dt>
+                <dd title={view.lastResolution.planetStateHash}>
+                  {view.lastResolution.planetStateHash}
+                </dd>
+              </div>
+            </dl>
+            <h3 className="ledger-subtitle">Phase hashes</h3>
+            <table className="phase-hashes">
+              <tbody>
+                {Object.entries(view.lastResolution.phaseHashes)
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([phase, hash]) => (
+                    <tr key={phase}>
+                      <th scope="row">{phase}</th>
+                      <td title={hash}>{hash}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </>
+        )}
       </section>
 
       <section className="panel planets-panel" aria-labelledby="planets-heading">
         <h2 id="planets-heading" className="panel-title">
           Known planets
         </h2>
-        <PlanetTable planets={view.planets} seed={seed} worldId={view.worldId} />
+        <div className="table-scroll">
+          <PlanetTable planets={view.planets} seed={seed} worldId={view.worldId} />
+        </div>
       </section>
 
       <section className="panel orders-panel" aria-labelledby="orders-heading">
@@ -254,6 +357,63 @@ function Overview({ view, now, seed }: { view: WorldView; now: number; seed: str
   );
 }
 
+/** Per-resource stored / production / upkeep / net breakdown for a planet. */
+function ResourceTable({ planet }: { planet: PlanetView }) {
+  return (
+    <table className="resource-table">
+      <thead>
+        <tr>
+          <th scope="col">Resource</th>
+          <th scope="col">Stored</th>
+          <th scope="col">Prod</th>
+          <th scope="col">Upkeep</th>
+          <th scope="col">Net</th>
+        </tr>
+      </thead>
+      <tbody>
+        {RESOURCE_NAMES.map(([key, label]) => {
+          const net = planet.rates.net[key];
+          return (
+            <tr key={key}>
+              <th scope="row">{label}</th>
+              <td className="mono">{planet.resources[key].toLocaleString()}</td>
+              <td className="mono">{signed(planet.rates.production[key])}</td>
+              <td className="mono">{signed(planet.rates.upkeep[key])}</td>
+              <td className={`mono ${net > 0 ? 'is-pos' : net < 0 ? 'is-neg' : ''}`}>
+                {signed(net)}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+/** Four stacked abundance bars (metal/mineral/food/energy) for table rows. */
+function AbundanceMeter({ planet }: { planet: PlanetView }) {
+  const parts = RESOURCE_NAMES.map(([key, label]) => `${label} ${planet.abundance[key]}`);
+  return (
+    <span
+      className="abundance-meter"
+      role="img"
+      aria-label={`Abundance — ${parts.join(', ')}`}
+      title={parts.join(', ')}
+    >
+      {RESOURCE_NAMES.map(([key]) => (
+        <span className="abundance-meter-col" key={key}>
+          <span className="abundance-meter-track">
+            <span
+              className="abundance-meter-fill"
+              style={{ height: `${planet.abundance[key]}%` }}
+            />
+          </span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function PlanetTable({
   planets,
   seed,
@@ -269,6 +429,7 @@ function PlanetTable({
         <tr>
           <th scope="col">Coordinate</th>
           <th scope="col">Planet</th>
+          <th scope="col">Abundance</th>
           <th scope="col">Population</th>
           <th scope="col">Resources</th>
           <th scope="col">Net / tick</th>
@@ -291,6 +452,9 @@ function PlanetTable({
                   {p.name}
                 </a>
               </span>
+            </td>
+            <td>
+              <AbundanceMeter planet={p} />
             </td>
             <td className="mono">{p.population.toLocaleString()}</td>
             <td className="mono resource-cells">{formatResources(p.resources)}</td>
