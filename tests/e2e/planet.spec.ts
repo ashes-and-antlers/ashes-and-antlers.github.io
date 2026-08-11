@@ -38,6 +38,12 @@ test('navigates from the overview to a planet ledger with a generated portrait',
   await expect(page.getByTestId('resource-stored-metal')).not.toHaveText('');
   await expect(page.getByTestId('resource-net-metal')).toHaveText(/^[+-]?\d+ \/ tick$/);
 
+  // Section help explains the ledger and toggles open inline.
+  const help = page.getByTestId('section-help-resources');
+  await expect(help.locator('.section-help-body')).toBeHidden();
+  await help.locator('summary').click();
+  await expect(help.locator('.section-help-body')).toBeVisible();
+
   // The pre-rendered portrait arrives as a real image.
   const portrait = page.getByTestId('planet-image');
   await expect(portrait).toBeVisible({ timeout: 15_000 });

@@ -20,6 +20,10 @@ test('command overview boots and shows the authoritative tick', async ({ page })
   // The home planet is marked with a crown pip in the known-planets list.
   await expect(page.getByTestId('home-planet-marker')).toHaveCount(1);
 
+  // Every section carries an inline explainer.
+  await expect(page.getByTestId('section-help-orders')).toBeVisible();
+  await expect(page.getByTestId('section-help-planets')).toBeVisible();
+
   // The tick counter is a number and advances as the scheduler resolves.
   const tick = page.getByTestId('overview-tick');
   await expect(tick).not.toHaveText('');

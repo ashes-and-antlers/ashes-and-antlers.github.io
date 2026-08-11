@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { PlanetView, PlanetWarning, ResourceKey } from '@ashes/contracts';
 import { ART_VERSION } from '@ashes/content';
 import { fetchPlanetImage } from './api';
@@ -112,6 +112,24 @@ export const RESOURCE_NAMES: Array<[ResourceKey, string]> = [
   ['food', 'Food'],
   ['energy', 'Energy'],
 ];
+
+/**
+ * One-click explainer for a ledger section: a compact 'What is this?'
+ * disclosure that expands inline. Native <details>/<summary> keeps it
+ * keyboard-accessible and works without JS state, so the fold survives
+ * the 2s overview poll re-renders.
+ */
+export function SectionHelp({ id, children }: { id: string; children: ReactNode }) {
+  return (
+    <details className="section-help" data-testid={`section-help-${id}`}>
+      <summary>
+        <span className="section-help-label">What is this?</span>
+        <span className="fold-chevron" aria-hidden="true" />
+      </summary>
+      <div className="section-help-body">{children}</div>
+    </details>
+  );
+}
 
 const WARNING_LABELS: Record<PlanetWarning, string> = {
   storage_full: 'Storage full',

@@ -473,7 +473,7 @@ body {
   color: var(--text);
 }
 
-.rates-fold-chevron {
+.fold-chevron {
   width: 7px;
   height: 7px;
   border-right: 1.5px solid var(--muted);
@@ -482,7 +482,7 @@ body {
   transition: transform 150ms ease;
 }
 
-.rates-fold[open] .rates-fold-chevron {
+details[open] > summary .fold-chevron {
   transform: rotate(-135deg);
 }
 
@@ -511,6 +511,64 @@ body {
 
 .rates-table td.mono {
   text-align: right;
+}
+
+/* ---------- section help ---------- */
+
+.section-help {
+  margin-top: 12px;
+}
+
+.section-help summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+}
+
+.section-help summary::-webkit-details-marker {
+  display: none;
+}
+
+.section-help-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0.75;
+  transition:
+    opacity 150ms ease,
+    color 150ms ease;
+}
+
+.section-help summary:hover .section-help-label {
+  opacity: 1;
+  color: var(--text);
+}
+
+.section-help summary:hover .fold-chevron {
+  border-color: var(--text);
+}
+
+.section-help-body {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: #171f31;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.section-help-body p {
+  margin: 0;
+}
+
+.section-help-body p + p {
+  margin-top: 6px;
 }
 
 .building-list {

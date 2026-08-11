@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatCoordinate, type PlanetView } from '@ashes/contracts';
 import { ApiError, assertProtocol, fetchOverview, fetchPlanet, fetchPlanetImage } from './api';
-import { AbundanceBar, PLANET_PORTRAIT_SIZE, RESOURCE_NAMES, WarningsChips } from './planet-ui';
+import {
+  AbundanceBar,
+  PLANET_PORTRAIT_SIZE,
+  RESOURCE_NAMES,
+  SectionHelp,
+  WarningsChips,
+} from './planet-ui';
 
 const POLL_MS = 2_000;
 const MAX_CONSECUTIVE_FAILURES = 3;
@@ -241,6 +247,13 @@ function PlanetLedger({ view, imageUrl }: { view: PlanetView; imageUrl: string |
         <div className="ledger-section">
           <h3 className="ledger-subtitle">Abundance</h3>
           <AbundanceBar planet={view} />
+          <SectionHelp id="abundance">
+            <p>
+              Abundance is how rich this world is in each resource by nature — the yield the land
+              offers before anything is built. A high abundance raises the ceiling on what
+              extraction can pull from the planet.
+            </p>
+          </SectionHelp>
         </div>
 
         <div className="ledger-section">
@@ -261,6 +274,13 @@ function PlanetLedger({ view, imageUrl }: { view: PlanetView; imageUrl: string |
               <dd className="mono">{view.lastResolvedTick}</dd>
             </div>
           </dl>
+          <SectionHelp id="population">
+            <p>
+              Population is the world&apos;s headcount — the hands that work your buildings. Storage
+              cap is how much of each resource the planet can hold at once; anything produced beyond
+              the cap is wasted. Resolved at tick is the last tick this ledger was advanced to.
+            </p>
+          </SectionHelp>
         </div>
 
         <div className="ledger-section">
@@ -305,11 +325,20 @@ function PlanetLedger({ view, imageUrl }: { view: PlanetView; imageUrl: string |
             })}
           </div>
 
+          <SectionHelp id="resources">
+            <p>
+              Stored is what the planet holds right now, and the bar shows how full the stock is
+              against the storage cap. Net per tick is the trend: production minus upkeep, so a
+              green surplus grows the stock and a red deficit drains it. Open Production &amp;
+              upkeep to see where the net comes from.
+            </p>
+          </SectionHelp>
+
           {/* The drivers behind the trend, one fold away. */}
           <details className="rates-fold">
             <summary>
               <span className="rates-fold-title">Production &amp; upkeep</span>
-              <span className="rates-fold-chevron" aria-hidden="true" />
+              <span className="fold-chevron" aria-hidden="true" />
             </summary>
             <table className="rates-table">
               <thead>
@@ -334,7 +363,7 @@ function PlanetLedger({ view, imageUrl }: { view: PlanetView; imageUrl: string |
                     </tr>
                   );
                 })}
-              </tbody>
+              </tbody>{' '}
             </table>
           </details>
         </div>
@@ -355,11 +384,24 @@ function PlanetLedger({ view, imageUrl }: { view: PlanetView; imageUrl: string |
                 ))}
             </ul>
           )}
+          <SectionHelp id="buildings">
+            <p>
+              Raised structures on this world. Each kind is a data-defined facility with its own
+              effect on production, storage, or population; the level shows how far it has been
+              raised.
+            </p>
+          </SectionHelp>
         </div>
 
         <div className="ledger-section">
           <h3 className="ledger-subtitle">Warnings</h3>
           <WarningsChips warnings={view.warnings} />
+          <SectionHelp id="warnings">
+            <p>
+              Flags the archive raises when a world needs attention — a full stock that is wasting
+              production, or a food or energy deficit that will bite at resolution.
+            </p>
+          </SectionHelp>
         </div>
       </section>
     </main>

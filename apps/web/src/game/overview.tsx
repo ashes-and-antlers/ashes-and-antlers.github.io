@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatCoordinate, type PlanetView, type WorldView } from '@ashes/contracts';
 import { assertProtocol, fetchOverview } from './api';
-import { PlanetThumb, RESOURCE_NAMES } from './planet-ui';
+import { PlanetThumb, RESOURCE_NAMES, SectionHelp } from './planet-ui';
 
 const POLL_MS = 2_000;
 const MAX_CONSECUTIVE_FAILURES = 3;
@@ -104,17 +104,17 @@ export function OverviewApp() {
           {readyView && (
             <>
               <div className="meta-item">
-                <dt>Commander</dt>
+                <dt title="Your name in the archive.">Commander</dt>
                 <dd data-testid="commander-name">{readyView.player.name}</dd>
               </div>
               <div className="meta-item meta-divider">
-                <dt>Current tick</dt>
+                <dt title="The latest tick the archive has resolved.">Current tick</dt>
                 <dd className="tick-value" data-testid="overview-tick">
                   {readyView.tick}
                 </dd>
               </div>
               <div className="meta-item">
-                <dt>Next tick</dt>
+                <dt title="Countdown to the next beat of the simulation.">Next tick</dt>
                 <dd className="tick-value" data-testid="next-tick-countdown">
                   {formatCountdown(readyView.nextTickAt, now)}
                 </dd>
@@ -183,7 +183,15 @@ function Overview({ view, seed }: { view: WorldView; seed: string }) {
               </li>
             ))}
           </ul>
-        )}
+        )}{' '}
+        <SectionHelp id="orders">
+          <p>
+            Orders you&apos;ve issued wait here and resolve when the next tick fires. A tick is one
+            fixed beat of the simulation — the world advances by exactly one step, and every order
+            issued before its cutoff is applied in that same beat. The header countdown is the time
+            until that next beat resolves.
+          </p>
+        </SectionHelp>
       </section>
 
       <section className="panel planets-panel" aria-labelledby="planets-heading">
@@ -198,6 +206,13 @@ function Overview({ view, seed }: { view: WorldView; seed: string }) {
             homePlanetId={home.id}
           />
         </div>
+        <SectionHelp id="planets">
+          <p>
+            Every planet the archive has encountered, with its address in the galaxy — coordinates
+            read galaxy:sector:system:planet. Abundance is the world&apos;s natural yield,
+            population its headcount, and the crown marks your home planet.
+          </p>
+        </SectionHelp>
       </section>
     </main>
   );
@@ -242,10 +257,16 @@ function PlanetTable({
     <table className="planet-table">
       <thead>
         <tr>
-          <th scope="col">Coordinate</th>
+          <th scope="col" title="The planet's address in the galaxy: galaxy:sector:system:planet">
+            Coordinate
+          </th>
           <th scope="col">Planet</th>
-          <th scope="col">Abundance</th>
-          <th scope="col">Population</th>
+          <th scope="col" title="Natural yield of each resource at this world">
+            Abundance
+          </th>
+          <th scope="col" title="Current headcount of the world">
+            Population
+          </th>
         </tr>
       </thead>
       <tbody>
