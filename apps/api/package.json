@@ -10,15 +10,18 @@
     "build": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@ashes/contracts": "workspace:*",
     "@ashes/content": "workspace:*",
+    "@ashes/contracts": "workspace:*",
     "@ashes/db": "workspace:*",
+    "@ashes/domain": "workspace:^",
     "@hono/node-server": "^1.13.7",
     "hono": "^4.6.14",
+    "pngjs": "^7.0.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "@types/pngjs": "^6.0.5",
     "tsx": "^4.19.2",
     "typescript": "^5.7.0"
   }

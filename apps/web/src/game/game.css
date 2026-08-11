@@ -375,6 +375,174 @@ body {
   color: var(--muted);
 }
 
+/* ---------- planet detail page ---------- */
+
+.planet-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.portrait-panel {
+  text-align: center;
+}
+
+.portrait-frame {
+  position: relative;
+  margin: 0 auto 12px;
+  width: min(100%, 480px);
+  aspect-ratio: 1;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(211, 199, 172, 0.06), transparent 65%), #111b13;
+}
+
+.planet-portrait {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.portrait-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+.portrait-caption {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+  margin: 4px 0;
+}
+
+.portrait-caption strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ledger-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.ledger-section {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.ledger-section:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.ledger-subtitle {
+  margin: 0 0 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ledger-list {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.ledger-list div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ledger-list dt {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ledger-list dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.building-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.building-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.building-kind {
+  font-size: 12px;
+  text-transform: capitalize;
+}
+
+.building-level {
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.back-link {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.back-link:hover {
+  color: var(--text);
+}
+
+.planet-link {
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+  border-bottom: 1px solid transparent;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease;
+}
+
+.planet-link:hover {
+  color: var(--accent);
+  border-color: rgba(201, 120, 68, 0.5);
+}
+
+@media (max-width: 720px) {
+  .planet-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ---------- tables / orders ---------- */
 
 .planet-table {

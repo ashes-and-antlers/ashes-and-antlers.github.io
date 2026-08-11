@@ -1,4 +1,5 @@
 import type {
+  PlanetId,
   PlanetView,
   TickResolution,
   TickResolutionView,
@@ -131,6 +132,14 @@ export class TickEngine {
     }
   }
 
+  /** Single-planet projection for the planet detail page and image endpoint. */
+  async getPlanetView(worldId: WorldId, planetId: PlanetId): Promise<PlanetView> {
+    const world = await this.requireWorld(worldId);
+    const planet = world.planets.find((p) => p.id === planetId);
+    if (!planet) throw new PlanetNotFoundError(worldId, planetId);
+    return planetView(planet);
+  }
+
   /** Player-scoped projection for the web client. */
   async getWorldView(worldId: WorldId): Promise<WorldView> {
     const world = await this.requireWorld(worldId);
@@ -179,6 +188,9 @@ export class TickEngine {
     if (err instanceof WorldNotFoundError) {
       return apiError('NOT_FOUND', `world ${err.worldId} not found`);
     }
+    if (err instanceof PlanetNotFoundError) {
+      return apiError('NOT_FOUND', `planet ${err.planetId} not found in world ${err.worldId}`);
+    }
     if (err instanceof TickOutOfOrderError) {
       return apiError(
         'INTERNAL',
@@ -198,6 +210,16 @@ export class TickEngine {
     const world = await tx.getWorld(worldId);
     if (!world) throw new WorldNotFoundError(worldId);
     return world;
+  }
+}
+
+export class PlanetNotFoundError extends Error {
+  constructor(
+    public readonly worldId: WorldId,
+    public readonly planetId: PlanetId,
+  ) {
+    super(`planet ${planetId} not found in world ${worldId}`);
+    this.name = 'PlanetNotFoundError';
   }
 }
 

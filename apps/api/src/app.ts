@@ -1,7 +1,16 @@
 import { Hono, type Context, type MiddlewareHandler } from 'hono';
 import { cors } from 'hono/cors';
+import { PNG } from 'pngjs';
 import { z } from 'zod';
-import { apiError, CommandEnvelopeSchema, type ApiError, type WorldId } from '@ashes/contracts';
+import {
+  apiError,
+  CommandEnvelopeSchema,
+  type ApiError,
+  type PlanetId,
+  type WorldId,
+} from '@ashes/contracts';
+import { ART_VERSION, PLANET_ART } from '@ashes/content';
+import { renderPlanetArt } from '@ashes/domain';
 import type { TickEngine } from '@ashes/db';
 
 /**
@@ -89,6 +98,65 @@ export function createApi(engine: TickEngine, auth: AuthConfig): Hono {
     return c.json({ planets: view.planets }, 200);
   });
 
+  app.get('/api/v1/worlds/:worldId/planets/:planetId', bearer(auth.playerToken), async (c) => {
+    const worldId = c.req.param('worldId') as WorldId;
+    const planetId = c.req.param('planetId') as PlanetId;
+    try {
+      return c.json(await engine.getPlanetView(worldId, planetId), 200);
+    } catch (err) {
+      const mapped = engine.toApiError(err);
+      // NOT_FOUND maps to 404; everything else is a server fault (500).
+      return c.json(mapped, mapped.error.code === 'NOT_FOUND' ? 404 : 500);
+    }
+  });
+
+  /**
+   * Pre-rendered planet portrait (PNG). Deterministic per planet id +
+   * abundance (renderPlanetArt), cached in memory keyed by ART_VERSION so a
+   * palette change re-renders but a page refresh never does. The image is
+   * immutable for the lifetime of the art version.
+   */
+  const planetImageCache = new Map<string, Buffer>();
+  const PLANET_IMAGE_CACHE_LIMIT = 256;
+
+  app.get(
+    '/api/v1/worlds/:worldId/planets/:planetId/image.png',
+    bearer(auth.playerToken),
+    async (c) => {
+      const worldId = c.req.param('worldId') as WorldId;
+      const planetId = c.req.param('planetId') as PlanetId;
+      let view;
+      try {
+        view = await engine.getPlanetView(worldId, planetId);
+      } catch (err) {
+        return c.json(engine.toApiError(err), 404);
+      }
+      const size = parseImageSize(c.req.query('size'));
+      // Planet ids are coordinate-based and repeat across worlds with different
+      // abundance, so the world id is part of the key — never just the planet id.
+      const cacheKey = `${worldId}:${view.id}:${ART_VERSION}:${size}`;
+      let png = planetImageCache.get(cacheKey);
+      if (!png) {
+        const image = renderPlanetArt(view, size);
+        png = encodePng(image.width, image.height, image.data);
+        planetImageCache.set(cacheKey, png);
+        // Simple cap: drop the oldest entry once the cache grows unbounded.
+        if (planetImageCache.size > PLANET_IMAGE_CACHE_LIMIT) {
+          const oldest = planetImageCache.keys().next().value as string;
+          planetImageCache.delete(oldest);
+        }
+      }
+      return new Response(png, {
+        status: 200,
+        headers: {
+          'content-type': 'image/png',
+          'cache-control': 'public, max-age=31536000, immutable',
+          'x-art-version': ART_VERSION,
+        },
+      });
+    },
+  );
+
   /**
    * M0 command submission: the envelope is validated strictly (idempotency
    * key, expected version, submitted timestamp, command shape), then every
@@ -124,6 +192,19 @@ export function createApi(engine: TickEngine, auth: AuthConfig): Hono {
  * Bearer-token middleware. Returns 401 with a typed error body when the
  * authorization header is missing or does not match the expected token.
  */
+function parseImageSize(raw: string | undefined): number {
+  if (raw === undefined) return PLANET_ART.render.defaultSize;
+  const n = Number(raw);
+  if (!Number.isInteger(n)) return PLANET_ART.render.defaultSize;
+  return Math.min(Math.max(n, PLANET_ART.render.minSize), PLANET_ART.render.maxSize);
+}
+
+function encodePng(width: number, height: number, rgba: Uint8Array): Buffer {
+  const png = new PNG({ width, height });
+  png.data = Buffer.from(rgba);
+  return PNG.sync.write(png);
+}
+
 function bearer(token: string): MiddlewareHandler {
   return async (c: Context, next) => {
     const header = c.req.header('authorization');

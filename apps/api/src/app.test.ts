@@ -111,6 +111,72 @@ describe('overview (player auth required)', () => {
   });
 });
 
+describe('planet detail and image (player auth required)', () => {
+  it('rejects unauthenticated planet detail and image with 401', async () => {
+    const { app } = await makeApp();
+    const detail = await app.request('/api/v1/worlds/world:1337/planets/planet:1:2:3:4');
+    expect(detail.status).toBe(401);
+    const image = await app.request('/api/v1/worlds/world:1337/planets/planet:1:2:3:4/image.png');
+    expect(image.status).toBe(401);
+  });
+
+  it('serves a planet detail view for a real planet', async () => {
+    const { app } = await makeApp();
+    const overview = (await (
+      await app.request('/api/v1/worlds/world:1337/overview', { headers: bearer(AUTH.playerToken) })
+    ).json()) as { player: { homePlanet: { id: string; name: string } } };
+    const res = await app.request(
+      `/api/v1/worlds/world:1337/planets/${overview.player.homePlanet.id}`,
+      {
+        headers: bearer(AUTH.playerToken),
+      },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      id: string;
+      name: string;
+      abundance: Record<string, number>;
+    };
+    expect(body.id).toBe(overview.player.homePlanet.id);
+    expect(body.name).toBeTruthy();
+    expect(body.abundance.metal).toBeGreaterThanOrEqual(0);
+  });
+
+  it('returns 404 for an unknown planet', async () => {
+    const { app } = await makeApp();
+    const res = await app.request('/api/v1/worlds/world:1337/planets/planet:9:9:9:9', {
+      headers: bearer(AUTH.playerToken),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it('serves a deterministic PNG image with PNG magic bytes', async () => {
+    const { app } = await makeApp();
+    const overview = (await (
+      await app.request('/api/v1/worlds/world:1337/overview', { headers: bearer(AUTH.playerToken) })
+    ).json()) as { player: { homePlanet: { id: string } } };
+    const url = `/api/v1/worlds/world:1337/planets/${overview.player.homePlanet.id}/image.png?size=64`;
+    const a = await app.request(url, { headers: bearer(AUTH.playerToken) });
+    expect(a.status).toBe(200);
+    expect(a.headers.get('content-type')).toBe('image/png');
+    const bytes = Buffer.from(await a.arrayBuffer());
+    // PNG signature: 89 50 4E 47 0D 0A 1A 0A
+    expect([...bytes.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    expect(a.headers.get('x-art-version')).toBeTruthy();
+
+    const b = await app.request(url, { headers: bearer(AUTH.playerToken) });
+    expect(Buffer.from(await b.arrayBuffer())).toEqual(bytes);
+  });
+
+  it('returns 404 for a planet image in an unknown world', async () => {
+    const { app } = await makeApp();
+    const res = await app.request('/api/v1/worlds/world:9999/planets/planet:1:1:1:1/image.png', {
+      headers: bearer(AUTH.playerToken),
+    });
+    expect(res.status).toBe(404);
+  });
+});
+
 describe('dev tick trigger', () => {
   it('advances the world tick deterministically', async () => {
     const { app } = await makeApp();

@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  formatCoordinate,
-  type PlanetView,
-  type PlanetWarning,
-  type ResourceKey,
-  type WorldView,
-} from '@ashes/contracts';
+import { formatCoordinate, type PlanetView, type WorldView } from '@ashes/contracts';
 import { assertProtocol, fetchOverview } from './api';
+import { AbundanceBar, formatNet, formatResources, WarningsChips } from './planet-ui';
 
 const POLL_MS = 2_000;
 const MAX_CONSECUTIVE_FAILURES = 3;
@@ -138,7 +133,7 @@ export function OverviewApp() {
         </section>
       )}
 
-      {state.status === 'ready' && <Overview view={state.view} now={now} />}
+      {state.status === 'ready' && <Overview view={state.view} now={now} seed={seed} />}
 
       <footer className="game-footer">
         <span>deterministic core · versioned protocol</span>
@@ -148,7 +143,7 @@ export function OverviewApp() {
   );
 }
 
-function Overview({ view, now }: { view: WorldView; now: number }) {
+function Overview({ view, now, seed }: { view: WorldView; now: number; seed: string }) {
   const secondsLeft = Math.max(0, Math.ceil((view.nextTickAt - now) / 1000));
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
   const ss = String(secondsLeft % 60).padStart(2, '0');
@@ -236,7 +231,7 @@ function Overview({ view, now }: { view: WorldView; now: number }) {
         <h2 id="planets-heading" className="panel-title">
           Known planets
         </h2>
-        <PlanetTable planets={view.planets} />
+        <PlanetTable planets={view.planets} seed={seed} />
       </section>
 
       <section className="panel orders-panel" aria-labelledby="orders-heading">
@@ -259,29 +254,7 @@ function Overview({ view, now }: { view: WorldView; now: number }) {
   );
 }
 
-function AbundanceBar({ planet }: { planet: PlanetView }) {
-  const rows: Array<[keyof PlanetView['abundance'], string]> = [
-    ['metal', 'Metal'],
-    ['mineral', 'Mineral'],
-    ['food', 'Food'],
-    ['energy', 'Energy'],
-  ];
-  return (
-    <div className="abundance" aria-label="planet abundance">
-      {rows.map(([key, label]) => (
-        <div className="abundance-row" key={key}>
-          <span className="abundance-label">{label}</span>
-          <div className="abundance-track" role="meter" aria-valuenow={planet.abundance[key]}>
-            <div className="abundance-fill" style={{ width: `${planet.abundance[key]}%` }} />
-          </div>
-          <span className="abundance-value">{planet.abundance[key]}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function PlanetTable({ planets }: { planets: PlanetView[] }) {
+function PlanetTable({ planets, seed }: { planets: PlanetView[]; seed: string }) {
   return (
     <table className="planet-table">
       <thead>
@@ -299,7 +272,15 @@ function PlanetTable({ planets }: { planets: PlanetView[] }) {
         {planets.map((p) => (
           <tr key={p.id}>
             <td className="mono">{formatCoordinate(p.coordinate)}</td>
-            <td>{p.name}</td>
+            <td>
+              <a
+                className="planet-link"
+                data-testid={`planet-link-${p.id}`}
+                href={`planet.html?seed=${seed}&planet=${encodeURIComponent(p.id)}`}
+              >
+                {p.name}
+              </a>
+            </td>
             <td className="mono">{p.population.toLocaleString()}</td>
             <td className="mono resource-cells">{formatResources(p.resources)}</td>
             <td className="mono resource-cells">{formatNet(p.rates.net)}</td>
@@ -311,42 +292,5 @@ function PlanetTable({ planets }: { planets: PlanetView[] }) {
         ))}
       </tbody>
     </table>
-  );
-}
-
-const RESOURCE_LABELS: Array<[ResourceKey, string]> = [
-  ['metal', 'M'],
-  ['mineral', 'Mn'],
-  ['food', 'F'],
-  ['energy', 'E'],
-];
-
-function formatResources(resources: PlanetView['resources']): string {
-  return RESOURCE_LABELS.map(([key, label]) => `${label} ${resources[key]}`).join(' · ');
-}
-
-function formatNet(net: PlanetView['rates']['net']): string {
-  return RESOURCE_LABELS.map(([key, label]) => {
-    const n = net[key];
-    return `${label} ${n > 0 ? `+${n}` : n}`;
-  }).join(' · ');
-}
-
-const WARNING_LABELS: Record<PlanetWarning, string> = {
-  storage_full: 'Storage full',
-  food_deficit: 'Food deficit',
-  energy_deficit: 'Energy deficit',
-};
-
-function WarningsChips({ warnings }: { warnings: PlanetWarning[] }) {
-  if (warnings.length === 0) return null;
-  return (
-    <ul className="warning-chips" aria-label="planet warnings">
-      {warnings.map((w) => (
-        <li key={w} className={`warning-chip warning-${w}`}>
-          {WARNING_LABELS[w]}
-        </li>
-      ))}
-    </ul>
   );
 }

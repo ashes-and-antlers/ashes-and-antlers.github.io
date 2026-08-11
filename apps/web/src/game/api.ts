@@ -1,4 +1,4 @@
-import { PROTOCOL_VERSION, type WorldView } from '@ashes/contracts';
+import { PROTOCOL_VERSION, type PlanetView, type WorldView } from '@ashes/contracts';
 
 /**
  * API base: baked at build time. In dev the Vite proxy serves /api from the
@@ -22,7 +22,38 @@ export class ApiError extends Error {
 }
 
 export async function fetchOverview(worldId: string): Promise<WorldView> {
-  const res = await fetch(`${API_BASE}/api/v1/worlds/${encodeURIComponent(worldId)}/overview`, {
+  return (await fetchJson(`/api/v1/worlds/${encodeURIComponent(worldId)}/overview`)) as WorldView;
+}
+
+/** Single-planet projection for the planet detail page. */
+export async function fetchPlanet(worldId: string, planetId: string): Promise<PlanetView> {
+  return (await fetchJson(
+    `/api/v1/worlds/${encodeURIComponent(worldId)}/planets/${encodeURIComponent(planetId)}`,
+  )) as PlanetView;
+}
+
+/**
+ * Fetch the pre-rendered planet PNG as a Blob (the endpoint requires the
+ * bearer token, so an <img src> cannot use it directly).
+ */
+export async function fetchPlanetImage(
+  worldId: string,
+  planetId: string,
+  size?: number,
+): Promise<Blob> {
+  const query = size === undefined ? '' : `?size=${size}`;
+  const res = await fetch(
+    `${API_BASE}/api/v1/worlds/${encodeURIComponent(worldId)}/planets/${encodeURIComponent(planetId)}/image.png${query}`,
+    { headers: { authorization: `Bearer ${PLAYER_TOKEN}` } },
+  );
+  if (!res.ok) {
+    throw new ApiError(res.status, `planet image failed (${res.status})`);
+  }
+  return res.blob();
+}
+
+async function fetchJson(path: string): Promise<unknown> {
+  const res = await fetch(`${API_BASE}${path}`, {
     headers: { authorization: `Bearer ${PLAYER_TOKEN}` },
   });
   if (!res.ok) {
@@ -30,17 +61,13 @@ export async function fetchOverview(worldId: string): Promise<WorldView> {
     try {
       const body = (await res.json()) as { error?: { code?: string; message?: string } };
       code = body.error?.code;
-      throw new ApiError(
-        res.status,
-        body.error?.message ?? `overview failed (${res.status})`,
-        code,
-      );
+      throw new ApiError(res.status, body.error?.message ?? `request failed (${res.status})`, code);
     } catch (err) {
       if (err instanceof ApiError) throw err;
-      throw new ApiError(res.status, `overview failed (${res.status})`);
+      throw new ApiError(res.status, `request failed (${res.status})`);
     }
   }
-  return (await res.json()) as WorldView;
+  return res.json();
 }
 
 export function assertProtocol(view: WorldView): void {

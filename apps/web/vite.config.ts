@@ -17,6 +17,7 @@ export default defineConfig({
       input: {
         index: resolve(root, 'index.html'),
         game: resolve(root, 'game.html'),
+        planet: resolve(root, 'planet.html'),
       },
     },
   },

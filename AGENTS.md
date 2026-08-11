@@ -56,10 +56,18 @@ now persist across restarts; `createWorld` re-creates a world whose stored
   world" action links to `game.html?seed=1337`, which boots the M0 overview.
 - `data-testid` hooks for e2e: `landing-title`, `enter-link`,
   `overview-tick`, `next-tick-countdown`, `home-coordinate`, `world-hash`,
-  `overview-offline`, `retry-button`.
+  `overview-offline`, `retry-button`, `planet-image`, `planet-coordinate`,
+  `planet-population`, `planet-back`.
 - `prefers-reduced-motion` is honored; keyboard focus is visible.
 - Surfaces are solid and opaque per the "Flat Ledger Rule" — no translucency
   or backdrop blur on new surfaces.
+- Each planet in the overview table links to its dedicated ledger page
+  (`planet.html?seed=…&planet=…`), which shows a **procedurally generated
+  portrait** (ADR-004) plus the full planet detail. The portrait is rendered
+  server-side by the API — never in the browser, never a hand-drawn asset.
+- The portrait endpoint requires the bearer token, so the web client fetches
+  the PNG and shows it via an object URL (`fetchPlanetImage`); an `<img src>`
+  cannot attach the Authorization header.
 
 ## 3. Commands and quality gates
 
@@ -126,6 +134,13 @@ From `DEVELOPMENT_PLAN.md` §9 and `docs/ADR-002`:
   optional property; spread conditionally (`...(x === undefined ? {} : { x })`).
 - **`import type` is mandatory** for type-only imports (`verbatimModuleSyntax`).
 - **Content vs. code:** tuning a number goes in `packages/content`, never inline.
+- **Planet art is presentation-only.** The renderer
+  (`packages/domain/src/planet-art.ts`) derives everything from the planet id
+  and abundance — never seed it from wall clock, `Math.random`, or renderer
+  state, or the byte-identical determinism test breaks. Palette/cloud/
+  lighting tuning lives in `packages/content/src/planet-art.ts`; bump
+  `ART_VERSION` there to re-render cached images, **never** `CONTENT_VERSION`
+  (art must not invalidate sim worlds or resolutions).
 - **PostgreSQL must be running for dev and e2e:** the API and worker boot
   requires a reachable `DATABASE_URL` (default
   `postgres://ashes:ashes@localhost:5432/ashes`, matches `docker-compose.yml`)
