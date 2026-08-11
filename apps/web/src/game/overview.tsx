@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatCoordinate, type PlanetView, type WorldView } from '@ashes/contracts';
 import { assertProtocol, fetchOverview } from './api';
-import {
-  AbundanceBar,
-  formatResources,
-  PlanetThumb,
-  RESOURCE_NAMES,
-  WarningsChips,
-} from './planet-ui';
+import { PlanetThumb, RESOURCE_NAMES } from './planet-ui';
 
 const POLL_MS = 2_000;
 const MAX_CONSECUTIVE_FAILURES = 3;
+/** Portrait render size for the home-planet card (displayed at 200px). */
+const HOME_PORTRAIT_SIZE = 220;
+
+/** mm:ss until the next tick resolves. */
+function formatCountdown(nextTickAt: number, now: number): string {
+  const secondsLeft = Math.max(0, Math.ceil((nextTickAt - now) / 1000));
+  const mm = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
+  const ss = String(secondsLeft % 60).padStart(2, '0');
+  return `${mm}:${ss}`;
+}
 
 function worldIdFromSeed(seed: string): string {
   return `world:${seed}`;
@@ -89,6 +93,7 @@ export function OverviewApp() {
   }, []);
 
   const offline = state.status === 'error' && state.offline;
+  const readyView = state.status === 'ready' ? state.view : null;
 
   return (
     <div className={`game-shell${offline ? ' is-offline' : ''}`}>
@@ -106,6 +111,26 @@ export function OverviewApp() {
             <dt>Seed</dt>
             <dd data-testid="game-seed">{seed}</dd>
           </div>
+          {readyView && (
+            <>
+              <div className="meta-item">
+                <dt>Commander</dt>
+                <dd>{readyView.player.name}</dd>
+              </div>
+              <div className="meta-item meta-divider">
+                <dt>Current tick</dt>
+                <dd className="tick-value" data-testid="overview-tick">
+                  {readyView.tick}
+                </dd>
+              </div>
+              <div className="meta-item">
+                <dt>Next tick</dt>
+                <dd className="tick-value" data-testid="next-tick-countdown">
+                  {formatCountdown(readyView.nextTickAt, now)}
+                </dd>
+              </div>
+            </>
+          )}
         </dl>
       </header>
 
@@ -139,7 +164,7 @@ export function OverviewApp() {
         </section>
       )}
 
-      {state.status === 'ready' && <Overview view={state.view} now={now} seed={seed} />}
+      {state.status === 'ready' && <Overview view={state.view} seed={seed} />}
 
       <footer className="game-footer">
         <span>deterministic core · versioned protocol</span>
@@ -149,84 +174,38 @@ export function OverviewApp() {
   );
 }
 
-/** Signed integer for rate cells, e.g. "+3" / "0" / "-2". */
-function signed(n: number): string {
-  return n > 0 ? `+${n}` : `${n}`;
-}
-
-function Overview({ view, now, seed }: { view: WorldView; now: number; seed: string }) {
-  const secondsLeft = Math.max(0, Math.ceil((view.nextTickAt - now) / 1000));
-  const mm = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
-  const ss = String(secondsLeft % 60).padStart(2, '0');
+function Overview({ view, seed }: { view: WorldView; seed: string }) {
   const home = view.player.homePlanet;
-  const buildCount = Object.values(home.buildings).reduce((a, b) => a + b, 0);
 
   return (
     <main className="game-grid">
-      <section className="panel tick-hero" aria-labelledby="tick-heading">
-        <h2 id="tick-heading" className="panel-title">
-          The tick
-        </h2>
-        <div className="tick-row">
-          <div className="tick-current">
-            <span className="micro-label">Current tick</span>
-            <strong data-testid="overview-tick">{view.tick}</strong>
-          </div>
-          <div className="tick-next">
-            <span className="micro-label">Next tick</span>
-            <strong data-testid="next-tick-countdown">
-              {mm}:{ss}
-            </strong>
-          </div>
-          <div className="tick-next">
-            <span className="micro-label">Next at</span>
-            <strong className="mono" data-testid="next-tick-at">
-              {new Date(view.nextTickAt).toLocaleTimeString()}
-            </strong>
-          </div>
-        </div>
-      </section>
-
       <section className="panel home-panel" aria-labelledby="home-heading">
         <h2 id="home-heading" className="panel-title">
           Home planet
         </h2>
-        <p className="home-player">
-          <span className="micro-label">Player</span>
-          <strong>{view.player.name}</strong>
-          <span className="faction-tag">{view.player.factionId}</span>
-        </p>
-        <p className="home-coord">
-          <span className="micro-label">Coordinate</span>
-          <strong data-testid="home-coordinate">{formatCoordinate(home.coordinate)}</strong>
-        </p>
-        <AbundanceBar planet={home} />
-        <div className="economy-grid">
-          <div className="economy-cell">
-            <span className="micro-label">Population</span>
-            <strong className="mono">{home.population.toLocaleString()}</strong>
-          </div>
-          <div className="economy-cell">
-            <span className="micro-label">Storage cap</span>
-            <strong className="mono">{home.storageCap.toLocaleString()} / resource</strong>
-          </div>
-          <div className="economy-cell">
-            <span className="micro-label">Buildings</span>
-            <strong className="mono">{buildCount}</strong>
-          </div>
-        </div>
-        <WarningsChips warnings={home.warnings} />
-        <details className="ledger-fold">
-          <summary>
-            <span className="fold-title">Resource ledger</span>
-            <span className="fold-meta">{formatResources(home.resources)}</span>
-            <span className="fold-chevron" aria-hidden="true" />
-          </summary>
-          <div className="fold-body">
-            <ResourceTable planet={home} />
-          </div>
-        </details>
-        <p className="home-note">The local fleet anchor. Development begins here.</p>
+        <a
+          className="home-card"
+          data-testid="home-planet-link"
+          href={`planet.html?seed=${seed}&planet=${encodeURIComponent(home.id)}`}
+        >
+          <PlanetThumb
+            worldId={view.worldId}
+            planetId={home.id}
+            name={home.name}
+            size={HOME_PORTRAIT_SIZE}
+            className="planet-thumb-large"
+            priority
+          />
+          <p className="home-card-name">
+            <strong>{home.name}</strong>
+            {home.factionId && <span className="faction-tag">{home.factionId}</span>}
+          </p>
+          <p className="home-coord">
+            <span className="micro-label">Coordinate</span>
+            <strong data-testid="home-coordinate">{formatCoordinate(home.coordinate)}</strong>
+          </p>
+          <span className="home-card-cta">Open the ledger →</span>
+        </a>
       </section>
 
       <section className="panel orders-panel" aria-labelledby="orders-heading">
@@ -255,39 +234,6 @@ function Overview({ view, now, seed }: { view: WorldView; now: number; seed: str
         </div>
       </section>
     </main>
-  );
-}
-
-/** Per-resource stored / production / upkeep / net breakdown for a planet. */
-function ResourceTable({ planet }: { planet: PlanetView }) {
-  return (
-    <table className="resource-table">
-      <thead>
-        <tr>
-          <th scope="col">Resource</th>
-          <th scope="col">Stored</th>
-          <th scope="col">Prod</th>
-          <th scope="col">Upkeep</th>
-          <th scope="col">Net</th>
-        </tr>
-      </thead>
-      <tbody>
-        {RESOURCE_NAMES.map(([key, label]) => {
-          const net = planet.rates.net[key];
-          return (
-            <tr key={key}>
-              <th scope="row">{label}</th>
-              <td className="mono">{planet.resources[key].toLocaleString()}</td>
-              <td className="mono">{signed(planet.rates.production[key])}</td>
-              <td className="mono">{signed(planet.rates.upkeep[key])}</td>
-              <td className={`mono ${net > 0 ? 'is-pos' : net < 0 ? 'is-neg' : ''}`}>
-                {signed(net)}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
   );
 }
 

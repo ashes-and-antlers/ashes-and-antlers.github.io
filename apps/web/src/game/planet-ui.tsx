@@ -40,11 +40,16 @@ export function PlanetThumb({
   planetId,
   name,
   size = PLANET_THUMB_SIZE,
+  className,
+  priority = false,
 }: {
   worldId: string;
   planetId: string;
   name: string;
   size?: number;
+  className?: string;
+  /** Eager-load (hero portraits above the fold); default lazy. */
+  priority?: boolean;
 }) {
   const [url, setUrl] = useState<string | null>(null);
   const urlRef = useRef<string | null>(null);
@@ -78,18 +83,19 @@ export function PlanetThumb({
     };
   }, [worldId, planetId, size]);
 
+  const cls = ['planet-thumb', className].filter(Boolean).join(' ');
   if (url === null) {
-    return <span className="planet-thumb planet-thumb-empty" aria-hidden="true" />;
+    return <span className={`${cls} planet-thumb-empty`} aria-hidden="true" />;
   }
   return (
     <img
-      className="planet-thumb"
+      className={cls}
       data-testid={`planet-thumb-${planetId}`}
       src={url}
       alt={`Portrait of ${name}`}
       width={size}
       height={size}
-      loading="lazy"
+      loading={priority ? 'eager' : 'lazy'}
     />
   );
 }
