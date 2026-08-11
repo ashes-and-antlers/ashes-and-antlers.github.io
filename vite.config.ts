@@ -7,6 +7,11 @@ import { defineConfig } from 'vite';
 const root = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
+  // Relative base: the site is served from GitHub Pages under a subpath
+  // (nordicnode.github.io/ashes-and-antlers/), so root-absolute URLs like
+  // "/logo.png" or "/game.html" would 404. './' rewrites every emitted URL
+  // to be relative and works at any mount point.
+  base: './',
   plugins: [react()],
   build: {
     target: 'es2022',
