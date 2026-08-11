@@ -109,12 +109,12 @@ From `DEVELOPMENT_PLAN.md` §9 and `docs/ADR-002`:
 - **Cold-boot e2e flake:** the overview test starts the API webServer first
   and polls for tick advancement; don't assert a specific tick value — assert
   it is a number and eventually changes.
-- **Orphaned local API breaks e2e:** a leftover API process on :3001 (from a
-  previous `pnpm dev` or an interrupted `test:e2e`) gets silently reused by
-  Playwright (`reuseExistingServer`), but with the **stale env** — e.g. the
-  30-minute default tick instead of the e2e `TICK_DURATION_MS=2000`, so the
-  boot test times out on tick advance. Before local e2e runs, check
-  `ss -tlnp | grep :3001` and kill strays. CI is unaffected (fresh runner).
+- **The e2e API runs on :3101, not :3001.** Playwright's API webServer is
+  deliberately isolated from the dev port so a running `pnpm dev` API can
+  never be reused (it would have the wrong env — 30-minute tick instead of
+  `TICK_DURATION_MS=2000` — and time out the boot test) or killed by e2e
+  teardown. If an e2e run misbehaves locally, check `ss -tlnp | grep :3101`
+  for strays from an interrupted run. CI is unaffected (fresh runner).
 - **`exactOptionalPropertyTypes`:** never pass `undefined` explicitly to an
   optional property; spread conditionally (`...(x === undefined ? {} : { x })`).
 - **`import type` is mandatory** for type-only imports (`verbatimModuleSyntax`).
