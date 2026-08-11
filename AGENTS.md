@@ -33,14 +33,19 @@ reference only — do not treat it as authoritative.
   - tick trigger. Commands validate the envelope strictly and reject all
     kinds (no command kinds exist yet).
 - `game.html?seed=1337` boot: the command overview shows tick, next-tick
-  countdown, world hash, home coordinate, and known planets.
+  countdown, world hash, home coordinate (population, storage, net rates,
+  warnings), and known planets.
 - Tests: deterministic world/planet hashes, single-resolver protection,
   idempotent replay, unauthenticated/malformed rejection, and browser
   overview boot (Playwright).
 
-**Storage is in-memory for M0** (ADR-002): `WorldRepository` is the seam
-where PostgreSQL lands in M1; there are no SQL migrations yet. Worlds do not
-survive a restart.
+**Storage is PostgreSQL for M1** (ADR-003): `WorldRepository` is backed by
+Drizzle + `pg` (migrations under `packages/db/drizzle`, applied at boot and
+via `pnpm db:migrate`). The world is a JSONB aggregate with mirrored scalar
+columns; resolutions are immutable rows. Cross-process single-resolver
+safety comes from `pg_advisory_xact_lock` inside `withWorldLocked`. Worlds
+now persist across restarts; `createWorld` re-creates a world whose stored
+`contentVersion` no longer matches the current content.
 
 ## 2. Landing page facts
 
@@ -60,6 +65,8 @@ survive a restart.
 
 ```bash
 pnpm install                 # workspace install (pnpm 9)
+pnpm db:up                   # start PostgreSQL (docker compose; DATABASE_URL default below)
+pnpm db:migrate              # apply pending Drizzle migrations (also runs at API boot)
 pnpm dev                     # API (:3001) + web dev server (:5173, /api proxied)
 pnpm dev:worker              # standalone tick worker
 pnpm run build               # typecheck + production build → apps/web/dist
@@ -119,9 +126,19 @@ From `DEVELOPMENT_PLAN.md` §9 and `docs/ADR-002`:
   optional property; spread conditionally (`...(x === undefined ? {} : { x })`).
 - **`import type` is mandatory** for type-only imports (`verbatimModuleSyntax`).
 - **Content vs. code:** tuning a number goes in `packages/content`, never inline.
-- **M0 has no persistence:** restarting the API loses worlds; the overview
-  depends on the seeded world (`WORLD_SEED`, default 1337) being created at
-  boot.
+- **PostgreSQL must be running for dev and e2e:** the API and worker boot
+  requires a reachable `DATABASE_URL` (default
+  `postgres://ashes:ashes@localhost:5432/ashes`, matches `docker-compose.yml`)
+  and apply migrations on boot. `pnpm db:up` starts it. The API fails fast
+  with a clear message otherwise.
+- **Postgres integration tests are opt-in:** `packages/db/src/postgres.test.ts`
+  runs only when `TEST_DATABASE_URL` (or `DATABASE_URL`) is set — CI always
+  sets it via the postgres service; locally export it after `pnpm db:up`.
+  Tests use distinct seeds and clean up, so they are safe beside the dev
+  world.
+- **Worlds persist now:** the seeded world survives restarts; `createWorld`
+  re-creates a world whose stored `contentVersion` is stale. A world stored
+  under old content is never silently mixed with new content.
 - **The deployed Pages build is static:** with no hosted backend, the
   overview shows the offline card after 3 failed polls and **stops polling**
   (no request spam); the retry button re-attempts. Do not treat the offline
@@ -148,7 +165,10 @@ public data schemas or architectural changes.
 ## 7. Next steps
 
 Milestones 0–6 are defined in `DEVELOPMENT_PLAN.md` §10. Milestone 1
-(economy and buildings) is next: metal/mineral/food/energy, buildings,
-storage, upkeep, one construction queue, and the first real command kinds —
-with PostgreSQL landing behind the `WorldRepository` seam (ADR-002). Do not
-start a milestone without explicit direction on its first slice.
+(economy and buildings) is in progress: the economy core (resources,
+buildings, production/upkeep, storage, population) and PostgreSQL persistence
+have landed. Next slice: the construction queue — the first real command kind
+(`StartBuilding`), command receipts, pending state, tick completion, and
+cancellation policy (M1 acceptance: two accepted build commands cannot
+overspend the same local resources). Do not start a slice without explicit
+direction.
