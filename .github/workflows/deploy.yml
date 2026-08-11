@@ -47,6 +47,20 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Verify Pages deploys from GitHub Actions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PAGE_JSON=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pages")
+          BUILD_TYPE=$(echo "$PAGE_JSON" | jq -r '.build_type // empty')
+          if [ "$BUILD_TYPE" != "workflow" ]; then
+            echo "::error::GitHub Pages is not set to deploy from GitHub Actions (build_type='${BUILD_TYPE:-unset}'). Open Settings → Pages → 'Build and deployment' → Source: select 'GitHub Actions' → Save, then re-run this workflow."
+            exit 1
+          fi
+          echo "Pages source OK (build_type=workflow)."
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
