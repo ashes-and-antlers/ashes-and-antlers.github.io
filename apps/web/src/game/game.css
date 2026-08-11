@@ -386,6 +386,93 @@ body {
   color: var(--muted);
 }
 
+.retrying-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.offline-card {
+  background: var(--panel);
+  border: 1px solid rgba(224, 90, 90, 0.5);
+  border-radius: var(--radius);
+  padding: 24px 28px;
+  max-width: 620px;
+}
+
+.offline-card h2 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  color: var(--danger);
+}
+
+.offline-explainer {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.offline-explainer code {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.offline-tech {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(211, 199, 172, 0.06);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+.retry-button {
+  margin-top: 16px;
+  padding: 9px 20px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-on);
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    transform 150ms ease;
+}
+
+.retry-button:hover {
+  background: #e09a66;
+}
+
+.retry-button:active {
+  transform: translateY(1px);
+}
+
+.game-shell.is-offline .brand-dot {
+  background: var(--danger);
+  animation: none;
+  opacity: 1;
+}
+
 .game-footer {
   display: flex;
   justify-content: space-between;

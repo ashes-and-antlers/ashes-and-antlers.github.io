@@ -50,7 +50,8 @@ survive a restart.
 - The landing page holds **no simulation state at all**; its "Enter the
   world" action links to `game.html?seed=1337`, which boots the M0 overview.
 - `data-testid` hooks for e2e: `landing-title`, `enter-link`,
-  `overview-tick`, `next-tick-countdown`, `home-coordinate`, `world-hash`.
+  `overview-tick`, `next-tick-countdown`, `home-coordinate`, `world-hash`,
+  `overview-offline`, `retry-button`.
 - `prefers-reduced-motion` is honored; keyboard focus is visible.
 - Surfaces are solid and opaque per the "Flat Ledger Rule" — no translucency
   or backdrop blur on new surfaces.
@@ -108,6 +109,12 @@ From `DEVELOPMENT_PLAN.md` §9 and `docs/ADR-002`:
 - **Cold-boot e2e flake:** the overview test starts the API webServer first
   and polls for tick advancement; don't assert a specific tick value — assert
   it is a number and eventually changes.
+- **Orphaned local API breaks e2e:** a leftover API process on :3001 (from a
+  previous `pnpm dev` or an interrupted `test:e2e`) gets silently reused by
+  Playwright (`reuseExistingServer`), but with the **stale env** — e.g. the
+  30-minute default tick instead of the e2e `TICK_DURATION_MS=2000`, so the
+  boot test times out on tick advance. Before local e2e runs, check
+  `ss -tlnp | grep :3001` and kill strays. CI is unaffected (fresh runner).
 - **`exactOptionalPropertyTypes`:** never pass `undefined` explicitly to an
   optional property; spread conditionally (`...(x === undefined ? {} : { x })`).
 - **`import type` is mandatory** for type-only imports (`verbatimModuleSyntax`).
@@ -115,6 +122,11 @@ From `DEVELOPMENT_PLAN.md` §9 and `docs/ADR-002`:
 - **M0 has no persistence:** restarting the API loses worlds; the overview
   depends on the seeded world (`WORLD_SEED`, default 1337) being created at
   boot.
+- **The deployed Pages build is static:** with no hosted backend, the
+  overview shows the offline card after 3 failed polls and **stops polling**
+  (no request spam); the retry button re-attempts. Do not treat the offline
+  card on the live site as a client bug — the engine is a local process in
+  M0 (see README "Deployed site note").
 
 ## 6. Working agreement for agents
 

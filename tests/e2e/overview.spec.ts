@@ -32,3 +32,34 @@ test('command overview boots and shows the authoritative tick', async ({ page })
   // Countdown is present and formatted mm:ss.
   await expect(page.getByTestId('next-tick-countdown')).toHaveText(/^\d{2}:\d{2}$/);
 });
+
+/**
+ * Engine-unreachable path: the deployed Pages build is static (no backend),
+ * so the overview must stop hammering the dead endpoint, show a clear offline
+ * card, and recover via the retry button once the engine is reachable again.
+ */
+test('shows the offline card, stops polling, and recovers on retry', async ({ page }) => {
+  let apiRequests = 0;
+  page.on('request', (req) => {
+    if (req.url().includes('/api/')) apiRequests += 1;
+  });
+
+  // Simulate a static deploy: every API request fails at the network layer.
+  await page.route('**/api/**', (route) => route.abort('connectionrefused'));
+  await page.goto('/game.html?seed=1337');
+
+  // Three consecutive failures flip the page into the offline state.
+  await expect(page.getByTestId('overview-offline')).toBeVisible({ timeout: 15_000 });
+
+  // Polling stops: after the offline card appears, no further API requests.
+  await page.waitForTimeout(3_500);
+  const requestsAtOffline = apiRequests;
+  await page.waitForTimeout(3_500);
+  expect(apiRequests).toBe(requestsAtOffline);
+
+  // Retry with the engine back: the overview boots normally.
+  await page.unroute('**/api/**');
+  await page.getByTestId('retry-button').click();
+  await expect(page.getByTestId('overview-tick')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('world-id')).toHaveText('world:1337');
+});

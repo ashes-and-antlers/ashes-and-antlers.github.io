@@ -13,6 +13,12 @@ anything; it is the source of truth.
 > `docs/ADR-002`). `game.html?seed=1337` boots the command overview — the
 > authoritative world tick, next-tick countdown, world hash, and your home
 > planet — served by the API.
+>
+> **Deployed site note:** the GitHub Pages build is static and hosts no
+> backend, so the deployed overview shows the **Archive offline** card and
+> stops polling once the engine is unreachable. During development the engine
+> runs locally (`pnpm dev`); a hosted API lands in M1 behind the
+> `WorldRepository` seam.
 
 ## Workspace
 

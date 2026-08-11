@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatCoordinate, type PlanetView, type WorldView } from '@ashes/contracts';
 import { assertProtocol, fetchOverview } from './api';
 
 const POLL_MS = 2_000;
+const MAX_CONSECUTIVE_FAILURES = 3;
 
 function worldIdFromSeed(seed: string): string {
   return `world:${seed}`;
@@ -19,8 +20,14 @@ function useNow(intervalMs = 250): number {
 
 type LoadState =
   | { status: 'loading' }
-  | { status: 'error'; message: string; code?: string }
+  | { status: 'error'; message: string; code?: string; offline: boolean }
   | { status: 'ready'; view: WorldView };
+
+function describeError(err: unknown): { message: string; code?: string } {
+  const message = err instanceof Error ? err.message : 'unknown error';
+  const code = err instanceof Error ? (err as { code?: string }).code : undefined;
+  return code === undefined ? { message } : { message, code };
+}
 
 export function OverviewApp() {
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
@@ -28,41 +35,56 @@ export function OverviewApp() {
   const worldId = worldIdFromSeed(seed);
   const now = useNow();
   const [state, setState] = useState<LoadState>({ status: 'loading' });
+  const [attempt, setAttempt] = useState(0);
+  const failuresRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
+    let stopped = false;
     const load = async () => {
       try {
         const view = await fetchOverview(worldId);
         assertProtocol(view);
-        if (!cancelled) setState({ status: 'ready', view });
+        if (cancelled) return;
+        failuresRef.current = 0;
+        // A success also re-arms polling: if the engine came back while a
+        // failure window was closing, we keep updating rather than freezing.
+        stopped = false;
+        setState({ status: 'ready', view });
       } catch (err) {
         if (cancelled) return;
-        const code = err instanceof Error ? (err as { code?: string }).code : undefined;
-        setState(
-          code === undefined
-            ? {
-                status: 'error',
-                message: err instanceof Error ? err.message : 'unknown error',
-              }
-            : {
-                status: 'error',
-                message: err instanceof Error ? err.message : 'unknown error',
-                code,
-              },
-        );
+        failuresRef.current += 1;
+        const { message, code } = describeError(err);
+        const offline = failuresRef.current >= MAX_CONSECUTIVE_FAILURES;
+        if (offline) stopped = true;
+        setState({
+          status: 'error',
+          message,
+          offline,
+          ...(code === undefined ? {} : { code }),
+        });
       }
     };
     void load();
-    const id = setInterval(() => void load(), POLL_MS);
+    const id = setInterval(() => {
+      if (!stopped) void load();
+    }, POLL_MS);
     return () => {
       cancelled = true;
       clearInterval(id);
     };
-  }, [worldId]);
+  }, [worldId, attempt]);
+
+  const retry = useCallback(() => {
+    failuresRef.current = 0;
+    setState({ status: 'loading' });
+    setAttempt((a) => a + 1);
+  }, []);
+
+  const offline = state.status === 'error' && state.offline;
 
   return (
-    <div className="game-shell">
+    <div className={`game-shell${offline ? ' is-offline' : ''}`}>
       <header className="game-header">
         <div className="brand-lockup">
           <span className="brand-dot" aria-hidden="true" />
@@ -82,11 +104,31 @@ export function OverviewApp() {
 
       {state.status === 'loading' && <p className="status-line">Opening the archive…</p>}
 
-      {state.status === 'error' && (
-        <section className="error-card" data-testid="overview-error">
-          <h2>Archive offline</h2>
-          <p>{state.message}</p>
-          {state.code && <p className="error-code">code: {state.code}</p>}
+      {state.status === 'error' && !state.offline && (
+        <p className="retrying-line" role="status">
+          <span className="pulse-dot" aria-hidden="true" />
+          Engine not responding — retrying…
+        </p>
+      )}
+
+      {state.status === 'error' && state.offline && (
+        <section
+          className="offline-card"
+          data-testid="overview-offline"
+          aria-labelledby="offline-heading"
+        >
+          <h2 id="offline-heading">Archive offline</h2>
+          <p className="offline-explainer">
+            The simulation engine isn&apos;t reachable from here. M0&apos;s engine runs in the local
+            API process (<code>pnpm dev</code>) — start it and reload, or retry below.
+          </p>
+          <p className="offline-tech">
+            {state.message}
+            {state.code ? ` · ${state.code}` : ''}
+          </p>
+          <button type="button" className="retry-button" data-testid="retry-button" onClick={retry}>
+            Try again
+          </button>
         </section>
       )}
 
