@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { formatCoordinate, type PlanetView, type WorldView } from '@ashes/contracts';
+import {
+  formatCoordinate,
+  type PlanetView,
+  type PlanetWarning,
+  type ResourceKey,
+  type WorldView,
+} from '@ashes/contracts';
 import { assertProtocol, fetchOverview } from './api';
 
 const POLL_MS = 2_000;
@@ -208,6 +214,21 @@ function Overview({ view, now }: { view: WorldView; now: number }) {
           <strong data-testid="home-coordinate">{formatCoordinate(home.coordinate)}</strong>
         </p>
         <AbundanceBar planet={home} />
+        <div className="economy-grid">
+          <div className="economy-cell">
+            <span className="micro-label">Population</span>
+            <strong className="mono">{home.population.toLocaleString()}</strong>
+          </div>
+          <div className="economy-cell">
+            <span className="micro-label">Storage cap</span>
+            <strong className="mono">{home.storageCap.toLocaleString()} / resource</strong>
+          </div>
+          <div className="economy-cell">
+            <span className="micro-label">Net per tick</span>
+            <strong className="mono">{formatNet(home.rates.net)}</strong>
+          </div>
+        </div>
+        <WarningsChips warnings={home.warnings} />
         <p className="home-note">The local fleet anchor. Development begins here.</p>
       </section>
 
@@ -267,8 +288,10 @@ function PlanetTable({ planets }: { planets: PlanetView[] }) {
         <tr>
           <th scope="col">Coordinate</th>
           <th scope="col">Name</th>
-          <th scope="col">Owner</th>
-          <th scope="col">Faction</th>
+          <th scope="col">Population</th>
+          <th scope="col">Resources</th>
+          <th scope="col">Net / tick</th>
+          <th scope="col">Warnings</th>
           <th scope="col">Resolved</th>
         </tr>
       </thead>
@@ -277,12 +300,53 @@ function PlanetTable({ planets }: { planets: PlanetView[] }) {
           <tr key={p.id}>
             <td className="mono">{formatCoordinate(p.coordinate)}</td>
             <td>{p.name}</td>
-            <td>{p.ownerId ?? '—'}</td>
-            <td>{p.factionId ?? '—'}</td>
+            <td className="mono">{p.population.toLocaleString()}</td>
+            <td className="mono resource-cells">{formatResources(p.resources)}</td>
+            <td className="mono resource-cells">{formatNet(p.rates.net)}</td>
+            <td>
+              <WarningsChips warnings={p.warnings} />
+            </td>
             <td className="mono">{p.lastResolvedTick}</td>
           </tr>
         ))}
       </tbody>
     </table>
+  );
+}
+
+const RESOURCE_LABELS: Array<[ResourceKey, string]> = [
+  ['metal', 'M'],
+  ['mineral', 'Mn'],
+  ['food', 'F'],
+  ['energy', 'E'],
+];
+
+function formatResources(resources: PlanetView['resources']): string {
+  return RESOURCE_LABELS.map(([key, label]) => `${label} ${resources[key]}`).join(' · ');
+}
+
+function formatNet(net: PlanetView['rates']['net']): string {
+  return RESOURCE_LABELS.map(([key, label]) => {
+    const n = net[key];
+    return `${label} ${n > 0 ? `+${n}` : n}`;
+  }).join(' · ');
+}
+
+const WARNING_LABELS: Record<PlanetWarning, string> = {
+  storage_full: 'Storage full',
+  food_deficit: 'Food deficit',
+  energy_deficit: 'Energy deficit',
+};
+
+function WarningsChips({ warnings }: { warnings: PlanetWarning[] }) {
+  if (warnings.length === 0) return null;
+  return (
+    <ul className="warning-chips" aria-label="planet warnings">
+      {warnings.map((w) => (
+        <li key={w} className={`warning-chip warning-${w}`}>
+          {WARNING_LABELS[w]}
+        </li>
+      ))}
+    </ul>
   );
 }

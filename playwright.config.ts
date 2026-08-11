@@ -29,7 +29,11 @@ export default defineConfig({
       timeout: 60_000,
       env: {
         PORT: '3101',
-        WORLD_SEED: '1337',
+        // A dedicated seed: the dev API seeds world:1337 on :3001 into the SAME
+        // database, and since worlds persist, the e2e API must never reuse a
+        // dev world (its tick cadence was fixed at creation). world:424242 is
+        // the e2e world and only ever gets the 2s tick.
+        WORLD_SEED: '424242',
         TICK_DURATION_MS: '2000',
         // Must match the web client's VITE_PLAYER_TOKEN default: the overview
         // test authenticates as the seeded player.

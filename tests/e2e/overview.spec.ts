@@ -8,11 +8,12 @@ import { expect, test } from '@playwright/test';
  * test.
  */
 test('command overview boots and shows the authoritative tick', async ({ page }) => {
-  await page.goto('/game.html?seed=1337');
+  await page.goto('/game.html?seed=424242');
 
-  // World identity from the seed.
-  await expect(page.getByTestId('world-id')).toHaveText('world:1337');
-  await expect(page.getByTestId('game-seed')).toHaveText('1337');
+  // World identity from the seed (424242 is the dedicated e2e seed — it must
+  // not collide with the dev world 1337 in the shared Postgres database).
+  await expect(page.getByTestId('world-id')).toHaveText('world:424242');
+  await expect(page.getByTestId('game-seed')).toHaveText('424242');
 
   // Home planet coordinate (galaxy:sector:system:planet) + world hash.
   await expect(page.getByTestId('home-coordinate')).toHaveText(/^\d+:\d+:\d+:\d+$/);
@@ -46,7 +47,7 @@ test('shows the offline card, stops polling, and recovers on retry', async ({ pa
 
   // Simulate a static deploy: every API request fails at the network layer.
   await page.route('**/api/**', (route) => route.abort('connectionrefused'));
-  await page.goto('/game.html?seed=1337');
+  await page.goto('/game.html?seed=424242');
 
   // Three consecutive failures flip the page into the offline state.
   await expect(page.getByTestId('overview-offline')).toBeVisible({ timeout: 15_000 });
@@ -61,5 +62,5 @@ test('shows the offline card, stops polling, and recovers on retry', async ({ pa
   await page.unroute('**/api/**');
   await page.getByTestId('retry-button').click();
   await expect(page.getByTestId('overview-tick')).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByTestId('world-id')).toHaveText('world:1337');
+  await expect(page.getByTestId('world-id')).toHaveText('world:424242');
 });
