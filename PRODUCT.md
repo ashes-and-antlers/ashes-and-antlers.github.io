@@ -2,6 +2,13 @@
 
 <!-- impeccable:product-schema 1 -->
 
+> **Direction change (2026-08-11):** the game was scrapped and restarted as a
+> **server-authoritative, tick-based galaxy strategy** (planet-and-fleet, global
+> ticks, alliances, scheduled wars). [`DEVELOPMENT_PLAN.md`](DEVELOPMENT_PLAN.md)
+> is the authoritative design; the sections below that describe the older
+> browser-native 2D colony sim are historical and superseded. The brand
+> commitments and the determinism contract carry forward.
+
 ## Platform
 
 web
@@ -55,16 +62,18 @@ mechanism a neighboring game could not truthfully copy.
 
 ### Confirmed capability (current build)
 
-- **The landing page only.** On 2026-08-11 the player-facing game
-  implementation (worldgen, simulation worker, ECS, task market,
-  construction, economy, seasons) was **scrapped** so the project could
-  restart from a clean slate. The shipped product right now is the landing
-  page: the brand mark cover, the premise entries, the two peoples, and the
-  rules of the archive, with a single Enter the world action. There is no
-  game page yet; the enter action currently links to `game.html`, which
-  does not exist until the game is rebuilt.
-- The scrapped implementation is recoverable from git history (committed at
-  `86e838f` and earlier) and remains a reference for the rebuild.
+- **Landing page + Milestone 0 tick engine.** The landing page ships as the
+  public entry (brand mark cover, the two peoples, the rules of the archive,
+  single Enter the world action → `game.html?seed=1337`). Behind it, the
+  M0 server-authoritative tick engine is implemented and tested: seeded
+  deterministic worldgen over a finite `galaxy:sector:system:planet` space,
+  a per-world-locked, idempotent tick resolver, a dev-identity auth
+  baseline, strict command-envelope validation (no command kinds yet), and a
+  command-overview web page showing the authoritative tick, next-tick
+  countdown, world hash, and home planet. Storage is in-memory for M0
+  (`docs/ADR-002`); PostgreSQL/Redis arrive in M1.
+- The scrapped 2D sim implementation is recoverable from git history
+  (committed at `86e838f` and earlier) as a reference only.
 
 ### Designed but not yet implemented
 

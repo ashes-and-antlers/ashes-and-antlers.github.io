@@ -1,64 +1,81 @@
 # Ashes and Antlers
 
-A single-player, browser-native 2D grand colony/RTS in which **two autonomous
-civilizations** inhabit the same procedurally generated world, compete for
-finite resources, adapt to pressure, wage logistics-driven war, and ultimately
-achieve dominance. Working title only — the full design lives in
-[`DEVELOPMENT_PLAN.md`](DEVELOPMENT_PLAN.md).
+A server-authoritative, tick-based galaxy strategy game (working title only).
+The player governs a small interstellar civilization: developing planets,
+researching technology, building fleets, and fighting scheduled wars on a
+global tick rhythm. The full design lives in
+[`DEVELOPMENT_PLAN.md`](DEVELOPMENT_PLAN.md) — read it before touching
+anything; it is the source of truth.
 
-> **Current state: landing page only.** The M1/M2 game implementation was
-> scrapped on 2026-08-11 for a fresh start (recoverable from git history at
-> commit `86e838f` and earlier). Only the landing page ships right now; the
-> game will be rebuilt per the plan. The landing page's "Enter the world"
-> action currently points at `game.html`, which does not exist yet.
+> **Current state (2026-08-11): Milestone 0.** The landing page ships, and
+> the first slice of the rebuilt game is in: a deterministic server-side tick
+> engine (in-memory storage for M0; PostgreSQL/Redis arrive in M1 per
+> `docs/ADR-002`). `game.html?seed=1337` boots the command overview — the
+> authoritative world tick, next-tick countdown, world hash, and your home
+> planet — served by the API.
+
+## Workspace
+
+```
+apps/
+  web/        Vite + React client: landing page + game.html command overview
+  api/        Hono API: dev identity auth, overview/planets/commands,
+              dev world creation + tick trigger (owns the M0 engine)
+  worker/     Standalone tick worker: engine + scheduler loop
+packages/
+  contracts/  Zod schemas, branded IDs, protocol/world types, PROTOCOL_VERSION
+  content/    Data-driven content: world config, factions, starting package,
+              CONTENT_VERSION / WORLD_VERSION
+  domain/     Pure deterministic core: seeded PRNG, worldgen, hashes, tick resolution
+  db/         Storage boundary: WorldRepository (in-memory for M0), WorldLock,
+              TickEngine, TickScheduler
+docs/         ADR-001 (determinism contract, superseded framing) + ADR-002 (M0 engine)
+```
 
 ## Quickstart
 
 ```bash
-npm install
-npm run dev            # dev server (Vite)
-npm run build          # typecheck + production build to dist/
-npm run preview        # serve the production build
+pnpm install            # workspace install (pnpm 9; corepack ships with Node 22)
+pnpm dev                # API on :3001 + web dev server on :5173
+pnpm dev:worker         # optional: standalone tick worker process
 ```
 
-Open the dev server URL to see the landing page: the brand mark centered as
-the cover, the premise, the two peoples, and the single Enter the world
-action.
+Open the web dev server: the landing page is at `/`, and
+`/game.html?seed=1337` is the command overview. The dev server proxies `/api`
+to the API.
 
 ## Quality gates
 
 ```bash
-npm run lint          # ESLint (typescript-eslint, flat config)
-npm run typecheck     # tsc strict for src/tests and config files
-npm run format:check  # Prettier
-npm run test          # Vitest (passes with no test files for now)
-npm run build         # typecheck + production build
-npm run test:e2e      # Playwright smoke test for the landing page
+pnpm run lint           # ESLint (flat config, all packages)
+pnpm run typecheck      # tsc strict for every package + root configs
+pnpm run format:check   # Prettier
+pnpm run test           # Vitest: worldgen/tick determinism, engine lock + replay, API
+pnpm run build          # typecheck + production build (web → apps/web/dist)
+pnpm run test:e2e       # Playwright: landing + command overview boot (auto-starts API + web)
 ```
 
 CI (`.github/workflows/ci.yml`) runs all of the above on every push/PR,
-including `npx playwright install --with-deps chromium`.
+including `pnpm exec playwright install --with-deps chromium`.
 
-## Layout (current)
+## M0 acceptance coverage
 
-```
-index.html             landing page (public entry)
-src/app/
-  landing.ts           scroll reveals + the burning field (ash/sparks)
-  landing.css          landing styles incl. inlined Cinzel
-  style.css            shared base tokens + component styles
-public/
-  logo.png             the brand mark (palette source of truth)
-  favicon.png
-tests/e2e/
-  landing.spec.ts      the surviving browser smoke test
-docs/
-  ADR-001-worker-ownership-and-determinism.md   design contract for the rebuild
-```
+- **Deterministic world hash** — same seed + content → identical `worldHash`
+  and identical `planetStateHash` after a test tick (`packages/domain` tests).
+- **Single-resolver protection** — a duplicate tick job for the same
+  world/tick runs one resolver body; concurrent calls return the stored
+  resolution (`packages/db` engine tests).
+- **Seed correctness** — worldgen produces the finite `galaxy:sector:system:
+planet` space, one seeded player, one owned home planet
+  (`packages/domain` tests; no SQL migrations in M0 — see ADR-002).
+- **Unauthenticated/malformed rejection** — every API route requires a bearer
+  token; malformed command envelopes → 400, unknown kinds → 400
+  (`apps/api` tests).
+- **Overview boot** — the command overview renders tick, countdown, world
+  hash, home coordinate, and shows the tick advancing live (`tests/e2e`).
 
 ## Roadmap
 
-Milestones 0–6 are defined in [`DEVELOPMENT_PLAN.md`](DEVELOPMENT_PLAN.md) §6.
-Per the 2026-08-11 direction change, the rebuild centers on strategic
-competition and war: dominance scoring, victory conditions, and the
-hierarchical enemy AI.
+Milestones 0–6 are defined in [`DEVELOPMENT_PLAN.md`](DEVELOPMENT_PLAN.md)
+§10. Next up: Milestone 1 (economy and buildings) with PostgreSQL/Redis
+landing behind the `WorldRepository` seam.
