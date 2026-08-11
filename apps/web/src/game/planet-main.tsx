@@ -1,7 +1,10 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { PlanetApp } from './planet';
+import { spawnStarfield } from '../starfield';
 import './game.css';
+
+spawnStarfield();
 
 const rootEl = document.getElementById('planet-root');
 if (!rootEl) {
