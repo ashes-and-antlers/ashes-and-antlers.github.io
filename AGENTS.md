@@ -181,7 +181,8 @@ npm run build && npm run test:e2e
   `[eid, kind, faction, x, y, state, extra]` (citizens first — `extra` is the
   carried amount — then buildings, then nodes, then blueprints, whose
   `extra` is build progress %) — transferred each publish. Snapshots also
-  carry per-faction `stocks` (itemType → amount) for the HUD readouts.
+  carry per-faction `stocks` (itemType → amount) for the HUD readouts and
+  per-faction `policy` (itemType → desired reserve) for the reserve panel.
 - **Ownership buffer:** `world.owner.slice().buffer` sent only when
   `ownerVersion` changes. The `slice()` copy is deliberate — **transferring
   the live buffer would detach it in the worker and corrupt future writes.**
@@ -369,6 +370,24 @@ buildPriorityStep` per level), so scarce materials and scarce builders
   favors high-priority sites.) `tests/sim/scenario-priority.test.ts`
   covers funding/completion order,
   task-priority derivation, the default, rejection, and determinism + e2e.
-- **Next:** M2 continued — stockpile rules/policy, spoilage, seasons; then
-  M3 strategic competition, M4 war and logistics, M5 emergence, M6 beta
-  quality (per the plan's roadmap).
+- **M2 iteration 4 (stockpile policy):** each faction now has a stockpile
+  policy — a desired reserve target per item (food defaults from
+  `FACTION_META`, materials start at 0 so nothing is gathered without a
+  blueprint or a set reserve). The HUD policy panel sets them via the
+  `SetStockpileReserve` command (protocol v6); out-of-range amounts,
+  unknown factions, and unknown items are rejected deterministically
+  (`bad-amount`/`bad-faction`/`bad-item`) with no side effects. Demand is
+  policy-aware: food gather tops up the food reserve, wood/stone gather and
+  sawpit supply/craft target the greater of the construction need and the
+  material reserve. At demand time the effective reserve is clamped to the
+  faction's total stockpile capacity, so an unreachable target (e.g. food
+  200 with a 100-capacity command center) cannot churn gather→full→fail
+  loops; and since material nodes are finite, a reserve beyond what trees or
+  stone can ever supply simply stops gathering once they are exhausted.
+  Snapshots carry `policy` so the panel reflects authoritative state;
+  `stateHash` covers reserves.
+  `tests/sim/scenario-policy.test.ts` covers defaults, reserve-driven
+  gather + craft, rejection, and determinism + e2e `policy.spec.ts`.
+- **Next:** M2 continued — accepted-item stockpile rules/faction access,
+  spoilage, seasons; then M3 strategic competition, M4 war and logistics,
+  M5 emergence, M6 beta quality (per the plan's roadmap).

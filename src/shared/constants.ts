@@ -27,7 +27,7 @@ export const SEASONS_PER_YEAR = 4;
 export const WORLD_VERSION = 2;
 
 /** Bump when the worker<->main message protocol changes. */
-export const PROTOCOL_VERSION = 5;
+export const PROTOCOL_VERSION = 6;
 
 /** Speed multipliers offered by the HUD (0 = pause). */
 export const SPEED_OPTIONS = [1, 2, 4, 8] as const;

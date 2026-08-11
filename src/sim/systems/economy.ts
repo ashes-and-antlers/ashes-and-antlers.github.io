@@ -19,6 +19,7 @@ import {
   addStock,
   adjacentGoal,
   clearCarry,
+  effectiveFactionReserve,
   factionStockOf,
   factionStockpiles,
   factionStockRoom,
@@ -33,8 +34,8 @@ import {
  * Materials economy (Milestone 2): the construction chain through work
  * buildings.
  *
- * Demand (construction-priority driven — nothing is gathered until a
- * blueprint needs it):
+ * Demand (construction-priority + stockpile-policy driven — nothing is
+ * gathered until a blueprint needs it or the player sets a reserve):
  * - GatherWood/GatherStone when unfunded sites need wood/stone (or wood for
  *   crafting planks at a sawpit) and the faction's stockpiles are short.
  * - Supply: haulers move wood from stockpiles into a sawpit's input buffer
@@ -97,26 +98,39 @@ function runGatherDemand(world: SimWorld, faction: FactionId): void {
   const c = world.components;
   const need = materialNeed(world, faction);
   const recipe = world.config.recipes[RecipeKind.Planks];
-  // Wood for crafting is only needed when a sawpit exists to do the work
-  // (a hut without a workshop simply waits — the inspector shows why).
+  // Planks are only crafted when a sawpit exists to do the work (a hut
+  // without a workshop simply waits — the inspector shows why). Crafting runs
+  // toward the greater of the construction need and the plank reserve.
+  const planksTarget = Math.max(
+    need[ItemType.Planks],
+    effectiveFactionReserve(world, faction, ItemType.Planks),
+  );
   const hasSawpit = world.buildings.some(
     (b) => c.Faction[b] === faction && c.BuildingKind[b] === BuildingKind.Sawpit,
   );
   const craftWood =
     recipe !== undefined && hasSawpit
-      ? Math.max(0, need[ItemType.Planks] - factionStockOf(world, faction, ItemType.Planks)) *
+      ? Math.max(0, planksTarget - factionStockOf(world, faction, ItemType.Planks)) *
         (recipe.input[0]?.amount ?? 0)
       : 0;
 
-  const woodNeed = need[ItemType.Wood] + craftWood;
-  const stoneNeed = need[ItemType.Stone];
-  if (factionStockOf(world, faction, ItemType.Wood) < woodNeed) {
-    const deficit = woodNeed - factionStockOf(world, faction, ItemType.Wood);
-    queueGather(world, faction, NodeKind.Tree, ItemType.Wood, deficit, woodNeed);
+  // Gather wood/stone toward the greater of the construction need and the
+  // faction's stockpile reserve (policy). With both at 0, nothing is gathered.
+  const woodTarget = Math.max(
+    need[ItemType.Wood] + craftWood,
+    effectiveFactionReserve(world, faction, ItemType.Wood),
+  );
+  const stoneTarget = Math.max(
+    need[ItemType.Stone],
+    effectiveFactionReserve(world, faction, ItemType.Stone),
+  );
+  if (factionStockOf(world, faction, ItemType.Wood) < woodTarget) {
+    const deficit = woodTarget - factionStockOf(world, faction, ItemType.Wood);
+    queueGather(world, faction, NodeKind.Tree, ItemType.Wood, deficit, woodTarget);
   }
-  if (factionStockOf(world, faction, ItemType.Stone) < stoneNeed) {
-    const deficit = stoneNeed - factionStockOf(world, faction, ItemType.Stone);
-    queueGather(world, faction, NodeKind.Stone, ItemType.Stone, deficit, stoneNeed);
+  if (factionStockOf(world, faction, ItemType.Stone) < stoneTarget) {
+    const deficit = stoneTarget - factionStockOf(world, faction, ItemType.Stone);
+    queueGather(world, faction, NodeKind.Stone, ItemType.Stone, deficit, stoneTarget);
   }
 }
 
@@ -228,10 +242,11 @@ function sawpitsOf(world: SimWorld, faction: FactionId): number[] {
 function runSupplyDemand(world: SimWorld, faction: FactionId): void {
   const config = world.config;
   const need = materialNeed(world, faction);
-  const planksShort = Math.max(
-    0,
-    need[ItemType.Planks] - factionStockOf(world, faction, ItemType.Planks),
+  const planksTarget = Math.max(
+    need[ItemType.Planks],
+    effectiveFactionReserve(world, faction, ItemType.Planks),
   );
+  const planksShort = Math.max(0, planksTarget - factionStockOf(world, faction, ItemType.Planks));
   if (planksShort <= 0) return;
   const recipe = config.recipes[RecipeKind.Planks];
   if (recipe === undefined) return;
@@ -320,8 +335,12 @@ function runCraftDemand(world: SimWorld, faction: FactionId): void {
   const c = world.components;
   const config = world.config;
   const need = materialNeed(world, faction);
-  if (need[ItemType.Planks] <= 0) return;
-  if (factionStockOf(world, faction, ItemType.Planks) >= need[ItemType.Planks]) return;
+  const planksTarget = Math.max(
+    need[ItemType.Planks],
+    effectiveFactionReserve(world, faction, ItemType.Planks),
+  );
+  if (planksTarget <= 0) return;
+  if (factionStockOf(world, faction, ItemType.Planks) >= planksTarget) return;
   const recipe = config.recipes[RecipeKind.Planks];
   if (recipe === undefined) return;
 

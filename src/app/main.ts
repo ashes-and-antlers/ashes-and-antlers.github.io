@@ -107,6 +107,19 @@ async function boot(): Promise<void> {
     onBuildPriorityChange: (priority) => {
       buildPriority = priority;
     },
+    onReserveChange: (faction, item, amount) => {
+      const request: WorkerRequest = {
+        kind: 'command',
+        command: {
+          kind: 'SetStockpileReserve',
+          tick: 0,
+          faction,
+          item,
+          amount,
+        } satisfies PlayerCommand,
+      };
+      worker.postMessage(request);
+    },
     onCancelBuild: () => {
       exitBuildMode();
     },
@@ -127,6 +140,7 @@ async function boot(): Promise<void> {
         hud.setHash(msg.terrainHash);
         hud.setAlerts(msg.alerts);
         hud.setStocks(msg.stocks);
+        hud.setPolicy(msg.policy);
         if (msg.tilesChanged && msg.tiles !== undefined) {
           map.setTiles(new Uint8Array(msg.tiles), msg.width, msg.height);
           camera.fitView(map.naturalWidth, map.naturalHeight);
@@ -149,7 +163,11 @@ async function boot(): Promise<void> {
         break;
       }
       case 'commandRejected':
-        hud.setStatus(`cannot build: ${msg.reason} — click the map or press Esc to cancel`);
+        if (msg.command === 'SetStockpileReserve') {
+          hud.setStatus(`reserve not changed: ${msg.reason}`);
+        } else {
+          hud.setStatus(`cannot build: ${msg.reason} — click the map or press Esc to cancel`);
+        }
         break;
       case 'error':
         hud.setStatus(`error: ${msg.message}`);

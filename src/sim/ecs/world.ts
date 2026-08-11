@@ -1,6 +1,6 @@
 import { addComponent, addEntity, createWorld, type World as BitWorld } from 'bitecs';
 import type { TileId } from '../../shared/ids';
-import { FactionId, FACTIONS, type SimAlert } from '../data/content';
+import { FactionId, FACTIONS, defaultStockpilePolicy, type SimAlert } from '../data/content';
 import type { SimConfig } from '../data/config';
 import { createSimComponents, MAX_ENTITIES, type SimComponents } from './components';
 import { spawnCitizens, spawnCommandCenter, spawnNodes } from './entities';
@@ -30,6 +30,13 @@ export interface SimWorldData {
   ownerVersion: number;
   /** Rebuilt each tick: 1 where a building occupies the tile. */
   blockedTiles: Uint8Array;
+  /**
+   * Per-faction stockpile policy: factionId -> itemType -> desired reserve the
+   * logistics AI maintains. Food defaults from FACTION_META; materials start at
+   * 0 so nothing is gathered until construction or a player-set reserve needs
+   * it (M2 iteration 4). Mutated only by validated SetStockpileReserve commands.
+   */
+  reservePolicy: Record<number, Record<number, number>>;
 
   tick: number;
   /** Monotonic alert id generator. */
@@ -68,6 +75,7 @@ export function createSimWorld(spawn: SpawnConfig): SimWorld {
     owner: new Uint8Array(tiles.tileCount),
     ownerVersion: 0,
     blockedTiles: new Uint8Array(tiles.tileCount),
+    reservePolicy: defaultStockpilePolicy(),
     tick: 0,
     alertSeq: 0,
     commandCenters: [],

@@ -3,6 +3,7 @@ import { WORLD_VERSION } from '../src/shared/constants';
 import { Simulation } from '../src/sim/core/sim';
 import {
   BuildingKind,
+  FACTIONS,
   ITEM_TYPES,
   TaskKind,
   type FactionId,
@@ -145,6 +146,18 @@ export function checkInvariants(world: SimWorld): void {
     const max = c.NodeMax[n] ?? 0;
     if (amount < 0 || amount > max) {
       throw new Error(`node ${n} amount out of bounds: ${amount}/${max}`);
+    }
+  }
+  for (const faction of FACTIONS) {
+    const row = world.reservePolicy[faction];
+    if (row === undefined) {
+      throw new Error(`faction ${faction} has no reserve policy`);
+    }
+    for (const item of ITEM_TYPES) {
+      const value = row[item] ?? 0;
+      if (!Number.isInteger(value) || value < 0 || value > world.config.maxStockpileReserve) {
+        throw new Error(`faction ${faction} reserve for item ${item} out of range: ${value}`);
+      }
     }
   }
   for (const bp of sortedQuery(query(world, [c.Blueprint]))) {

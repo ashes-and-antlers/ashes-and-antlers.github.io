@@ -2,7 +2,13 @@ import { query } from 'bitecs';
 import type { Calendar } from '../../shared/protocol';
 import { fnv1aBytes } from '../../shared/utils';
 import { SIM_CONFIG } from '../data/config';
-import { ITEM_TYPES, type BuildingKind, type FactionId } from '../data/content';
+import {
+  FACTIONS,
+  ITEM_TYPES,
+  type BuildingKind,
+  type FactionId,
+  type ItemType,
+} from '../data/content';
 import { createSimWorld, pickHomeTiles, sortedQuery, type SimWorld } from '../ecs/world';
 import { generateWorld } from '../world/generation';
 import type { TileWorld, WorldGenConfig } from '../world/world';
@@ -13,6 +19,10 @@ import {
   placeBlueprint as placeBlueprintInWorld,
   type PlacementResult,
 } from '../systems/construction';
+import {
+  setStockpileReserve as setStockpileReserveInWorld,
+  type ReserveResult,
+} from '../systems/inventory';
 
 /**
  * Milestone 1 simulation: owns the tile world and the bitECS entity world,
@@ -63,6 +73,16 @@ export class Simulation {
     return placeBlueprintInWorld(this.world, faction, building, x, y, priority);
   }
 
+  /**
+   * Set a faction's stockpile reserve target (player policy). Deterministic:
+   * the same ordered command stream reproduces the same world. Returns the
+   * reason string when the change is rejected (unknown faction/item or an
+   * out-of-range amount); a rejection leaves the policy untouched.
+   */
+  setStockpileReserve(faction: FactionId, item: ItemType, amount: number): ReserveResult {
+    return setStockpileReserveInWorld(this.world, faction, item, amount);
+  }
+
   get tick(): number {
     return this.tick_;
   }
@@ -100,6 +120,11 @@ export class Simulation {
     push(w.stats.tasksCompleted);
     push(w.stats.tasksFailed);
     push(w.stats.buildingsCompleted);
+    for (const faction of FACTIONS) {
+      for (const item of ITEM_TYPES) {
+        push(w.reservePolicy[faction]?.[item] ?? 0);
+      }
+    }
 
     const quant = (f: number): number => Math.round((f ?? 0) * 100);
     for (const e of sortedQuery(query(w, [c.Citizen]))) {

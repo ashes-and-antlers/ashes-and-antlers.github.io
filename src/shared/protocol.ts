@@ -1,11 +1,11 @@
 /**
- * Worker <-> main thread protocol (v3).
+ * Worker <-> main thread protocol (v6).
  *
  * The worker owns all authoritative simulation state. The main thread sends
  * validated commands and receives read-only snapshots. See docs/ADR-001.
  */
 
-/** Validated player commands (M1: clock control + blueprints). */
+/** Validated player commands (M1: clock + blueprints; M2-4: stockpile policy). */
 export type PlayerCommand =
   | { kind: 'SetSpeed'; tick: number; speed: number }
   | {
@@ -18,6 +18,14 @@ export type PlayerCommand =
       y: number;
       /** Construction priority: 1 = low, 2 = normal, 3 = high. */
       priority: number;
+    }
+  | {
+      kind: 'SetStockpileReserve';
+      tick: number;
+      faction: number;
+      item: number;
+      /** New desired reserve (0..SIM_CONFIG.maxStockpileReserve). */
+      amount: number;
     };
 
 /** Messages the main thread sends to the simulation worker. */
@@ -36,6 +44,13 @@ export const PLACEMENT_REASONS: Record<string, string> = {
   'outside-claim': 'outside your claimed land',
   'max-blueprints': 'too many construction sites',
   'bad-priority': 'priority must be low, normal, or high',
+};
+
+/** Why a stockpile-policy command was rejected (surfaced in the HUD status). */
+export const RESERVE_REASONS: Record<string, string> = {
+  'bad-faction': 'unknown faction',
+  'bad-item': 'unknown item',
+  'bad-amount': 'reserve must be a whole number within the allowed range',
 };
 
 export type Calendar = { day: number; season: number; year: number };
@@ -75,6 +90,8 @@ export type SimSnapshot = {
   ownerTiles?: ArrayBuffer;
   /** Per-faction stored items (factionId -> itemType -> amount), for HUD readouts. */
   stocks: Record<number, Record<number, number>>;
+  /** Per-faction stockpile policy (factionId -> itemType -> desired reserve). */
+  policy: Record<number, Record<number, number>>;
   alerts: SimAlert[];
 };
 
@@ -145,5 +162,10 @@ export type WorkerEvent =
   | { kind: 'ready'; protocolVersion: number; seed: number; width: number; height: number }
   | SimSnapshot
   | { kind: 'inspectResult'; tile: number; detail: InspectDetail | null }
-  | { kind: 'commandRejected'; reason: string }
+  | {
+      kind: 'commandRejected';
+      /** Which command was rejected, so the HUD can phrase the message. */
+      command: 'PlaceBlueprint' | 'SetStockpileReserve';
+      reason: string;
+    }
   | { kind: 'error'; message: string };
