@@ -1,0 +1,460 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-10T00:00:00.000Z",
+  "title": "Design System: Ashes and Antlers",
+  "extensions": {
+    "colorMeta": {
+      "deep-forest": {
+        "role": "neutral",
+        "displayName": "Deep Forest",
+        "canonical": "#162218",
+        "tonalRamp": [
+          "#070a07",
+          "#0b110c",
+          "#0f1811",
+          "#141f16",
+          "#162218",
+          "#505952",
+          "#8b918c",
+          "#c5c8c5"
+        ]
+      },
+      "forest-panel": {
+        "role": "neutral",
+        "displayName": "Forest Panel",
+        "canonical": "#1d2a20",
+        "tonalRamp": [
+          "#090d0a",
+          "#0f1510",
+          "#141d16",
+          "#1a261d",
+          "#1d2a20",
+          "#565f58",
+          "#8e9590",
+          "#c7cac7"
+        ]
+      },
+      "bone": {
+        "role": "neutral",
+        "displayName": "Bone",
+        "canonical": "#d3c7ac",
+        "tonalRamp": [
+          "#3f3c34",
+          "#6a6456",
+          "#948b78",
+          "#beb39b",
+          "#d3c7ac",
+          "#ded5c1",
+          "#e9e3d6",
+          "#f4f1ea"
+        ]
+      },
+      "worn-stone": {
+        "role": "neutral",
+        "displayName": "Worn Stone",
+        "canonical": "#9c8e76",
+        "tonalRamp": [
+          "#2f2b23",
+          "#4e473b",
+          "#6d6353",
+          "#8c806a",
+          "#9c8e76",
+          "#b5aa98",
+          "#cec7bb",
+          "#e6e3dd"
+        ]
+      },
+      "ember": {
+        "role": "primary",
+        "displayName": "Ember",
+        "canonical": "#c97844",
+        "tonalRamp": [
+          "#3c2414",
+          "#653c22",
+          "#8d5430",
+          "#b56c3d",
+          "#c97844",
+          "#d79a73",
+          "#e4bca2",
+          "#f2ddd0"
+        ]
+      },
+      "ember-deep": {
+        "role": "primary",
+        "displayName": "Ember Deep",
+        "canonical": "#b3673e",
+        "purpose": "The logo's own burnt orange; large fills and display-scale accents.",
+        "tonalRamp": [
+          "#361f13",
+          "#5a341f",
+          "#7d482b",
+          "#a15d38",
+          "#b3673e",
+          "#c68d6e",
+          "#d9b39f",
+          "#ecd9cf"
+        ]
+      },
+      "ember-on": {
+        "role": "neutral",
+        "displayName": "Ember On",
+        "canonical": "#162218",
+        "purpose": "Text and glyphs placed on Ember surfaces; deep forest so the seal stays legible."
+      },
+      "scorch-red": {
+        "role": "danger",
+        "displayName": "Scorch Red",
+        "canonical": "#e0605a",
+        "tonalRamp": [
+          "#431d1b",
+          "#70302d",
+          "#9d433f",
+          "#ca5651",
+          "#e0605a",
+          "#e88883",
+          "#f0b0ad",
+          "#f7d7d6"
+        ]
+      },
+      "hearth-amber": {
+        "role": "faction",
+        "displayName": "Hearth Amber",
+        "canonical": "#e8a13b",
+        "tonalRamp": [
+          "#463012",
+          "#74511e",
+          "#a27129",
+          "#d19135",
+          "#e8a13b",
+          "#eeb96c",
+          "#f4d09d",
+          "#f9e8ce"
+        ]
+      },
+      "iron-tide": {
+        "role": "faction",
+        "displayName": "Iron Tide",
+        "canonical": "#4fc3c9",
+        "tonalRamp": [
+          "#183b3c",
+          "#286265",
+          "#37898d",
+          "#47b0b5",
+          "#4fc3c9",
+          "#7bd2d7",
+          "#a7e1e4",
+          "#d3f0f2"
+        ]
+      },
+      "deep-water": {
+        "role": "terrain",
+        "displayName": "Deep Water",
+        "canonical": "#17243a",
+        "tonalRamp": [
+          "#070b11",
+          "#0c121d",
+          "#101929",
+          "#152034",
+          "#17243a",
+          "#515b6b",
+          "#8b929d",
+          "#c5c8ce"
+        ]
+      },
+      "water": {
+        "role": "terrain",
+        "displayName": "Water",
+        "canonical": "#2a4d8f",
+        "tonalRamp": [
+          "#0d172b",
+          "#152748",
+          "#1d3664",
+          "#264581",
+          "#2a4d8f",
+          "#5f7aab",
+          "#95a6c7",
+          "#cad3e3"
+        ]
+      },
+      "marsh": {
+        "role": "terrain",
+        "displayName": "Marsh",
+        "canonical": "#4e5f35",
+        "tonalRamp": [
+          "#171d10",
+          "#27301b",
+          "#374325",
+          "#465630",
+          "#4e5f35",
+          "#7a8768",
+          "#a7af9a",
+          "#d3d7cd"
+        ]
+      },
+      "grass": {
+        "role": "terrain",
+        "displayName": "Grass",
+        "canonical": "#5d8a3c",
+        "tonalRamp": [
+          "#1c2912",
+          "#2f451e",
+          "#41612a",
+          "#547c36",
+          "#5d8a3c",
+          "#86a76d",
+          "#aec59e",
+          "#d7e2ce"
+        ]
+      },
+      "forest": {
+        "role": "terrain",
+        "displayName": "Forest",
+        "canonical": "#2e5a2c",
+        "tonalRamp": [
+          "#0e1b0d",
+          "#172d16",
+          "#203f1f",
+          "#295128",
+          "#2e5a2c",
+          "#628361",
+          "#97ad96",
+          "#cbd6ca"
+        ]
+      },
+      "hill": {
+        "role": "terrain",
+        "displayName": "Hill",
+        "canonical": "#8a7a52",
+        "tonalRamp": [
+          "#292519",
+          "#453d29",
+          "#615539",
+          "#7c6e4a",
+          "#8a7a52",
+          "#a79b7d",
+          "#c5bda9",
+          "#e2ded4"
+        ]
+      },
+      "mountain": {
+        "role": "terrain",
+        "displayName": "Mountain",
+        "canonical": "#9ca2aa",
+        "tonalRamp": [
+          "#2f3133",
+          "#4e5155",
+          "#6d7177",
+          "#8c9299",
+          "#9ca2aa",
+          "#b5b9bf",
+          "#ced1d5",
+          "#e6e8ea"
+        ]
+      },
+      "hover-fill": {
+        "role": "neutral",
+        "displayName": "Hover Fill",
+        "canonical": "rgba(211, 199, 172, 0.1)",
+        "purpose": "Bone-tinted hover fill on ghost CTAs, speed buttons, and toggles."
+      },
+      "hover-fill-strong": {
+        "role": "neutral",
+        "displayName": "Hover Fill Strong",
+        "canonical": "rgba(211, 199, 172, 0.2)",
+        "purpose": "Bone-tinted hover border on speed buttons."
+      },
+      "ember-border": {
+        "role": "primary",
+        "displayName": "Ember Border",
+        "canonical": "rgba(201, 120, 68, 0.45)",
+        "purpose": "Ember-tinted border on active toggles and focused seed input."
+      },
+      "ember-border-soft": {
+        "role": "primary",
+        "displayName": "Ember Border Soft",
+        "canonical": "rgba(201, 120, 68, 0.35)",
+        "purpose": "Ember-tinted border on the brand tag."
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Cinzel 700, self-hosted — retired from the cover: the brand mark carries the title (The Brand Mark Rule). Available for future display moments."
+      },
+      "headline": { "displayName": "Headline", "purpose": "Cinzel caps — landing entry headings." },
+      "body": { "displayName": "Body", "purpose": "Alert text, inspector rows, brand title." },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Uppercase, letterspaced micro-labels on every instrument."
+      },
+      "data": {
+        "displayName": "Data",
+        "purpose": "Monospaced, tabular figures: readouts, hash, chips, speed buttons."
+      }
+    },
+    "shadows": [
+      {
+        "name": "shadow-md",
+        "value": "0 8px 28px rgba(0, 0, 0, 0.4)",
+        "cssVar": "--shadow-md",
+        "purpose": "Bottom bar, inspector, and world plates: separation from the map."
+      },
+      {
+        "name": "shadow-sm",
+        "value": "0 6px 20px rgba(0, 0, 0, 0.35)",
+        "cssVar": "--shadow-sm",
+        "purpose": "Alert banner, fatal panel, and smaller floating surfaces."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-state",
+        "value": "160ms ease",
+        "purpose": "Default transition for buttons and toggles."
+      },
+      {
+        "name": "alert-in",
+        "value": "220ms ease",
+        "purpose": "Alert banner entry (fade + 6px slide-down)."
+      },
+      {
+        "name": "pulse-status",
+        "value": "2s ease-in-out infinite",
+        "purpose": "Status dot pulse; muted until the worker is ready."
+      },
+      {
+        "name": "ash-fall",
+        "value": "10–24s linear infinite",
+        "purpose": "Grey ash motes falling through the landing field, swaying as they drop; hidden under reduced motion."
+      },
+      {
+        "name": "spark-rise",
+        "value": "4–9s ease-out infinite + 0.18s flicker alternate",
+        "purpose": "Live embers climbing from the fire: white-hot radial-gradient cores with a pulsing glow, on an erratic buoyant path; hidden under reduced motion."
+      }
+    ],
+    "brandAssets": [
+      {
+        "name": "Brand Mark",
+        "path": "public/logo.png",
+        "purpose": "The palette's source and the title: deep forest, bone, worn stone, burnt orange. Used as the nav mark, the cover itself (displayed at clamp(280px, 36vw, 440px) directly on the field, unframed and untagged), and the favicon. Never recolored; never re-typed beside or above."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Speed Button (active)",
+      "kind": "button",
+      "refersTo": "button-speed-active",
+      "description": "The active simulation-speed button: Ember fill, deep-forest text, ember-soft halo.",
+      "html": "<button class=\"ds-speed\" aria-pressed=\"true\">1×</button>",
+      "css": ".ds-speed { min-width: 44px; padding: 7px 10px; font: 600 13px ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace; color: #162218; background: #c97844; border: 1px solid #c97844; border-radius: 8px; cursor: pointer; box-shadow: 0 0 0 3px rgba(201, 120, 68, 0.16); transition: background 160ms ease, border-color 160ms ease, transform 120ms ease; } .ds-speed:hover { transform: translateY(-1px); } .ds-speed:active { transform: translateY(0); } .ds-speed:focus-visible { outline: 2px solid #c97844; outline-offset: 2px; }"
+    },
+    {
+      "name": "Toggle (active)",
+      "kind": "button",
+      "refersTo": "toggle-active",
+      "description": "Overlay toggle in its active state: ember text, ember-soft fill, ember-tinted border.",
+      "html": "<button class=\"ds-toggle\" aria-pressed=\"true\">ownership</button>",
+      "css": ".ds-toggle { padding: 8px 14px; font: 600 12px 'Inter', system-ui, sans-serif; letter-spacing: 0.06em; text-transform: uppercase; color: #c97844; background: rgba(201, 120, 68, 0.16); border: 1px solid rgba(201, 120, 68, 0.45); border-radius: 8px; cursor: pointer; transition: background 160ms ease, color 160ms ease, border-color 160ms ease; } .ds-toggle:hover { background: rgba(201, 120, 68, 0.24); } .ds-toggle:focus-visible { outline: 2px solid #c97844; outline-offset: 2px; }"
+    },
+    {
+      "name": "Status Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Seed / worker-status pill: mono 12px, worn-stone text, pulsing status dot.",
+      "html": "<div class=\"ds-chip\"><span class=\"ds-chip-dot\"></span><span class=\"ds-chip-text\">worker ready · 160×160</span></div>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(29, 42, 32, 0.9); border: 1px solid rgba(211, 199, 172, 0.14); border-radius: 999px; color: #9c8e76; font: 12px ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace; } .ds-chip-dot { width: 8px; height: 8px; border-radius: 50%; background: #9c8e76; animation: ds-pulse 2s ease-in-out infinite; } @keyframes ds-pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }"
+    },
+    {
+      "name": "Bottom Instrument Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "The centered bottom bar: speed group, readout cluster, toggles on a panel surface.",
+      "html": "<div class=\"ds-panel\"><div class=\"ds-panel-group\"><span class=\"ds-panel-label\">speed</span><button class=\"ds-speed\" aria-pressed=\"true\">1×</button></div><div class=\"ds-readout\"><span class=\"ds-readout-label\">day</span><b>1</b></div><div class=\"ds-readout\"><span class=\"ds-readout-label\">terrain hash</span><b class=\"ds-readout-gold\">a1b2c3d4</b></div></div>",
+      "css": ".ds-panel { display: flex; align-items: center; gap: 18px; padding: 10px 16px; background: rgba(29, 42, 32, 0.9); border: 1px solid rgba(211, 199, 172, 0.14); border-radius: 10px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4); } .ds-panel-group { display: flex; align-items: center; gap: 6px; } .ds-panel-label { font: 700 10px 'Inter', system-ui, sans-serif; letter-spacing: 0.14em; text-transform: uppercase; color: #9c8e76; margin-right: 4px; } .ds-readout { display: flex; flex-direction: column; gap: 1px; text-align: center; min-width: 42px; } .ds-readout-label { font: 700 9px 'Inter', system-ui, sans-serif; letter-spacing: 0.12em; text-transform: uppercase; color: #9c8e76; } .ds-readout b { font: 600 14px ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; color: #d3c7ac; } .ds-readout .ds-readout-gold { color: #c97844; }"
+    },
+    {
+      "name": "Alert (severity 2)",
+      "kind": "card",
+      "refersTo": "alert",
+      "description": "A danger alert: scorch-red border and code, causal text on a panel surface.",
+      "html": "<div class=\"ds-alert ds-alert-danger\"><span class=\"ds-alert-code\">FOOD_SHORTAGE</span><span class=\"ds-alert-text\">Food reserves are running low.</span></div>",
+      "css": ".ds-alert { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(29, 42, 32, 0.9); border: 1px solid rgba(211, 199, 172, 0.14); border-radius: 8px; font-size: 12px; } .ds-alert-code { font: 700 10px ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace; letter-spacing: 0.08em; text-transform: uppercase; color: #9c8e76; } .ds-alert-text { color: #d3c7ac; } .ds-alert-danger { border-color: rgba(224, 96, 90, 0.5); } .ds-alert-danger .ds-alert-code { color: #e0605a; }"
+    },
+    {
+      "name": "Inspector Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Tile/entity inspector: 650 title over muted-label / right-aligned-mono-value rows.",
+      "html": "<div class=\"ds-inspector\"><div class=\"ds-inspector-title\">Citizen #12 · Hearth Confederacy</div><div class=\"ds-inspector-row\"><span class=\"ds-inspector-label\">hunger</span><span class=\"ds-inspector-value\">41/100</span></div><div class=\"ds-inspector-row\"><span class=\"ds-inspector-label\">task</span><span class=\"ds-inspector-value\">hauling food</span></div></div>",
+      "css": ".ds-inspector { width: 250px; padding: 12px 14px; background: rgba(29, 42, 32, 0.9); border: 1px solid rgba(211, 199, 172, 0.14); border-radius: 10px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4); } .ds-inspector-title { font: 650 13px 'Inter', system-ui, sans-serif; color: #d3c7ac; margin-bottom: 8px; } .ds-inspector-row { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; font-size: 12px; } .ds-inspector-label { color: #9c8e76; } .ds-inspector-value { font-family: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace; color: #d3c7ac; text-align: right; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Ember Archive",
+    "overview": "The interface is a chronicler's ledger for a burning world. Deep-forest surfaces hold ember entries; every number is a witness, every panel a page of the chronicle. The living map below — green pasture, forest, slate water, amber and teal territories — is the world that burns and rebuilds; the HUD is the archive that records its causes and effects without ever shouting over it. The archive is night-bound and ledger-calm: a deep-forest field, body text in bone, secondary text in worn stone, and a single warm ember used with the discipline of a seal. The palette is derived from the brand mark (public/logo.png): its deep forest, bone, and burnt-orange accents define the field, the text, and the seal. Surfaces are being flattened: panels go solid and opaque, retiring translucent glass and backdrop blur; depth comes from tonal separation against the map rather than translucency. Components are refined and restrained — quiet, precise, instrumental — with small uppercase letterspaced labels, monospaced figures, hairline borders, and minimal motion.",
+    "keyCharacteristics": [
+      "Night-bound: deep-forest field, bone text, ember seal",
+      "Ledger-calm: uppercase micro-labels and tabular mono figures on every data surface",
+      "Restrained instrumentality: hairline borders, small radii, no decoration",
+      "The map leads: instruments sit at the edges and recede in hierarchy",
+      "Brand-derived: the logo's forest, bone, and burnt orange are the palette's source"
+    ],
+    "rules": [
+      {
+        "name": "The Ember Seal Rule",
+        "body": "Ember covers ≤10% of any surface. It appears where the player acts or where truth is stamped: the active speed, the hash, the carry. When ember appears twice, the screen is wrong.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two-People Rule",
+        "body": "Hearth Amber and Iron Tide appear only where faction meaning is at stake — ownership, control, allegiance. Never as decoration.",
+        "section": "colors"
+      },
+      {
+        "name": "The Brand Mark Rule",
+        "body": "The logo is the title. Where the brand mark appears, never re-type the name beside or above it — the mark carries the wordmark. On the landing page the cover is the mark itself, sitting directly on the field with no frame and no tag.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ledger Rule",
+        "body": "Every figure is monospaced with tabular numerals; a number never wraps, breaks, or loses alignment with its column label.",
+        "section": "typography"
+      },
+      {
+        "name": "The Label Voice Rule",
+        "body": "Micro-labels are always uppercase and letterspaced; sentence case is reserved for descriptive body text only.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Ledger Rule",
+        "body": "Surfaces are solid. No backdrop-filter, no translucent fills; separation comes from tone and the hairline, never from blur.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Ember Field Rule",
+        "body": "Atmosphere is background paint, never surface. The vignette, the ruled frame, the bottom fire glow, and the drifting ash sit behind the content, stay still under reduced motion, and never compete with the map or the instruments.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep Ember rare — active state, the hash, the carry; one ember moment per surface.",
+      "Do set every figure in mono with tabular numerals under its uppercase micro-label.",
+      "Do use Hearth Amber and Iron Tide only for faction meaning.",
+      "Do flatten surfaces: solid opaque panels, tone + hairline for separation.",
+      "Do preserve the map's readability — instruments at the edges, map centered and unobstructed.",
+      "Do keep the brand mark (public/logo.png) on the forest field — it is the palette's source and the title, never recolored and never re-typed (The Brand Mark Rule)."
+    ],
+    "donts": [
+      "Don't drift into a colorful cartoon strategy palette — no saturated multicolor UI.",
+      "Don't drift into a sterile SaaS dashboard — no blue links, dense tables, or empty-state illustrations.",
+      "Don't drift into a military-green tactical console — no olive/khaki, no angular HUD clutter.",
+      "Don't add translucency or backdrop blur; the glass look is being retired.",
+      "Don't add a second display face — Cinzel is the system's single engraved voice, and the HUD stays sans.",
+      "Don't add saturation beyond the three accents (ember, amber, teal) and the terrain gamut.",
+      "Don't recolor, tint, or distort the brand mark — it is the palette's source of truth.",
+      "Don't re-type the title where the brand mark carries it — no text wordmark beside the logo, and no cover title above it."
+    ]
+  }
+}

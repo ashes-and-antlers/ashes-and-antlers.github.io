@@ -1,0 +1,157 @@
+# Product
+
+<!-- impeccable:product-schema 1 -->
+
+## Platform
+
+web
+
+## Users
+
+A single-player strategy player acting as a distant planner-advisor — not a
+unit micromanager. They observe a living world through layered reports and
+alerts, set civilization-level policies (priorities, blueprints, military
+doctrine), and then watch autonomous citizens make bounded local decisions.
+The product is aimed at public release once complete; it is a browser-based
+simulation game, so the user plays in a desktop browser, at their own pace,
+with pause and 1×–8× time control.
+
+## Product Purpose
+
+A browser-native 2D grand colony/RTS in which two autonomous civilizations
+inhabit the same procedurally generated world, compete for finite resources,
+adapt to pressure, wage logistics-driven war, and ultimately achieve
+dominance. Success means the simulation is deep enough to produce emergent,
+causal stories (a settlement overextends mining and collapses before winter;
+a weak society survives through logistics and strategy) and readable enough
+that the player can always answer "what changed, why, and what can I do?"
+The player's civilization runs on the same rules as the enemy's.
+
+## Positioning
+
+One deterministic simulation shared by two autonomous civilizations. Same
+seed + config + version + ordered player commands = the same result, every
+time — reproducible, testable, and free of invisible outcomes. Every visible
+outcome has a causal chain in simulation state; the player plans, citizens
+decide, and logistics decides wars. This causal-deterministic core is the
+mechanism a neighboring game could not truthfully copy.
+
+## Operating Context
+
+- Runs entirely in the browser (no backend); the authoritative simulation
+  lives in a Web Worker and the main thread only renders snapshots and sends
+  validated commands.
+- Fixed-tick clock at 5 ticks/second; time advances only in whole ticks;
+  pause discards time and speed (1×, 2×, 4×, 8×) is a pure multiplier.
+- Calendar: 120-day years, 4 seasons of 30 days; a day is 300 ticks (60 s at
+  1×). World: 160×160 tiles (MVP), rendered at 16/24 px tiles; simulation
+  never depends on pixels.
+- Seeded worlds: `?seed=12345` in the URL varies the world; the default seed
+  keeps e2e deterministic.
+- The player inspects the world by clicking tiles, citizens, buildings, and
+  resource nodes; toggles for a debug grid and an ownership overlay; a
+  causal alert banner (rate-limited, severity-coded) surfaces problems like
+  food shortage before starvation.
+- Quality gates are contract: lint, strict typecheck, Prettier, deterministic
+  unit + scenario tests, production build, and Playwright e2e run in CI.
+
+## Capabilities and Constraints
+
+### Confirmed capability (implemented, Milestone 1a)
+
+- Seeded deterministic worldgen (PRNG streams, terrain hash, versioned).
+- bitECS entity layer: two faction command centers, citizens with movement
+  and needs (hunger, energy, morale), deterministic A* pathfinding.
+- A deterministic task market — demand, claim, execute, reservation cleanup —
+  driving gather → haul → eat; stockpiles and resource nodes (renewable +
+  finite).
+- Ownership overlay, tile/entity inspectors, causal rate-limited alerts,
+  speed controls, and a debug grid.
+
+### Designed but not yet implemented
+
+- Construction (Milestone 1b): player-placed blueprints — stockpile and hut —
+  with builder reservation/construction and a completion-exactly-once
+  acceptance test. After that: economy/settlement, strategic competition,
+  war and logistics, emergence, beta quality.
+- Two asymmetric factions: Hearth Confederacy (settled builders, strong
+  institutions) and Iron Swarm (mobile, caste-based expansionists);
+  asymmetry via policies, tech, templates, and starting conditions — not
+  forked simulation rules.
+- Scored dominance model with decisive, territorial, hegemonic, and sandbox
+  victory conditions.
+- Environmental feedback loops (forest harvest, soil fertility, fire,
+  contamination) and deeper strategic-evaluation systems.
+
+### Technical constraints (contract)
+
+- The Web Worker owns all authoritative simulation state; the main thread
+  never mutates sim objects.
+- No `Math.random()` in `sim/`; all randomness flows through named seeded
+  PRNG streams.
+- Fixed ticks only; systems never read wall-clock time.
+- Stable iteration order (ascending entity id) in authoritative systems.
+- Balance and content are data-driven (`SIM_CONFIG`, content.ts); tunable
+  numbers never live inline in systems.
+- `WORLD_VERSION` / `PROTOCOL_VERSION` gate every handshake; hard error on
+  mismatch.
+- Bounded concurrent entities (`MAX_ENTITIES = 512`); recycled entity ids
+  must have every field re-initialized on spawn.
+- Every new authoritative system needs a deterministic test for its primary
+  success path and at least one failure/edge path.
+
+### Explicit v1 non-goals
+
+Multiplayer, mod marketplace, mobile support, procedural 3D, real-time
+networking, voice acting, a campaign story, realistic individual psychology
+for thousands of citizens, full terrain deformation / fluid simulation /
+physically accurate combat, and perfect historical realism — this is a
+systems-first fictional world.
+
+### Explicitly undecided
+
+- The final title (see Brand Commitments).
+- Anything beyond the roadmap above (milestones 2–6 are planned in
+  DEVELOPMENT_PLAN.md but not yet designed in code).
+
+## Brand Commitments
+
+- The name **"Ashes and Antlers"** (and the plan's alternate "Civilizations
+  at War") is a **working title only** — explicitly a placeholder, not a
+  binding design constraint. Future naming decisions stay open.
+- The **brand mark** is `public/logo.png` (deep forest field, bone/cream
+  content, burnt-orange accents). It is the palette's source of truth: the
+  landing field, text, and accent are derived from it, and it must never be
+  recolored or distorted. The favicon is a square crop of it.
+- No other brand, voice, or identity commitments have been made; the product
+  has no published marketing presence.
+
+## Evidence on Hand
+
+- `DEVELOPMENT_PLAN.md` — the full design: brief, game shape, simulation
+  design, milestones, test and balance strategy.
+- `AGENTS.md` — architecture contract and non-negotiable determinism rules.
+- `docs/ADR-001-worker-ownership-and-determinism.md` — the worker-ownership
+  contract.
+- `tests/` — deterministic unit tests, sim determinism tests, and the M1
+  3-day survival scenario proving both factions gather → haul → eat without
+  commands.
+- The running Milestone 1a build (see README quickstart).
+- Absences future work must not fabricate: no testimonials, no press, no
+  published player research, no monetization decisions.
+
+## Product Principles
+
+1. **Simulation first.** Every visible outcome has a causal chain in
+   simulation state; no fake event outcomes.
+2. **Determinism is contract.** Same seed + config + version + ordered
+   commands reproduces the same result; reproducibility is tested, not
+   hoped for.
+3. **The player plans; citizens decide.** Local intelligence and bounded
+   decisions at the individual level, strategic direction at the
+   civilization level; the enemy runs under the same rules.
+4. **Readable complexity.** Anything that affects autonomous behavior must
+   be inspectable through layered UI, overlays, inspectors, and causal
+   alerts — never silent.
+5. **Depth by composition.** Add interacting rules and constraints rather
+   than more isolated resource bars; logistics and supply decide wars.

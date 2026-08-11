@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Ashes and Antlers — a deterministic colony simulation. Two civilizations share one world; every outcome is written down."
+    />
+    <link rel="icon" href="/favicon.png" />
+    <title>Ashes and Antlers — Two Civilizations, One Deterministic World</title>
+    <script>
+      document.documentElement.classList.add('js');
+    </script>
+  </head>
+  <body>
+    <!--
+      THESIS: This surface is the archive's cover: the brand mark is centered on the
+      field, the premise unfolds as a sequence of ledger entries, and the visit ends
+      with one primary action — Enter the world — placed beneath the mark. It refuses
+      the storefront hero of feature cards and demo screens.
+      OWN-WORLD: Deep-forest field derived from the brand mark (public/logo.png) with bone
+      text and an ember seal; the logo is the cover itself — centered in a full-viewport hero,
+      unframed and untagged, carrying the wordmark, with the primary Enter action directly
+      beneath it; no nav, no seed controls, no map previews; every entry shares the page's central axis
+      — centered headings and prose, cards and rules in centered columns; solid panel plates
+      with hairline borders for the faction cards only; faction amber/teal only on the two
+      peoples' plates; Cinzel engraved caps for entry titles; system sans at scale, mono for
+      every figure, uppercase      micro-labels; a fire breathes at the bottom edge — warm glow, rising sparks, drifting
+      ash falling back down — with the vignette and one ruled frame.
+      STORY: The visitor lands on the centered mark, reads the premise in order — one
+      world, two peoples, the rules of the archive — and enters the game with the default
+      seed (the game page owns worlds and seeds).
+      FIRST VIEWPORT: No nav; the brand mark at display scale, dead-center in a full-viewport
+      hero, carrying the title; the tagline and lede beneath; the ember Enter the world action
+      beneath them; a scroll cue anchored to the hero's bottom edge.
+      FORM: The Sequence — candidate 5 of 7 grounded structures, scroll-driven entry
+      reveal; seed key dc472b5a.
+      FINISH: unreviewed and undocumented is unfinished; this build ends with the finish
+      review, the verdict, and DESIGN.md
+    -->
+    <a class="skip-link" href="#premise">Skip to the premise</a>
+    <div id="ash-field" aria-hidden="true"></div>
+    <div class="archive">
+      <main>
+        <section class="entry cover" id="cover">
+          <div class="cover-text" data-reveal>
+            <h1 class="cover-logo" data-testid="landing-title">
+              <img
+                class="cover-crest"
+                src="/logo.png"
+                alt="Ashes and Antlers"
+                width="1264"
+                height="848"
+              />
+            </h1>
+            <p class="cover-tagline">Two civilizations. One world. Every outcome written down.</p>
+            <p class="cover-lede">
+              A browser-native colony simulation in which two autonomous peoples share a single
+              deterministic world. You advise one from a distance: setting priorities, placing
+              blueprints, reading the consequences. The other plays by the same rules, and the world
+              keeps the ledger.
+            </p>
+            <a class="cta cta-primary" data-testid="enter-link" href="/game.html?seed=1337">
+              Enter the world
+            </a>
+          </div>
+          <div class="scroll-cue" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path
+                d="M12 4v16m0 0-6-6m6 6 6-6"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span>open the archive</span>
+          </div>
+        </section>
+
+        <section class="entry" id="premise" data-reveal>
+          <h2>
+            <span class="entry-numeral">Entry 01</span>
+            <span class="entry-title">One world, two peoples</span>
+          </h2>
+          <p>
+            Both peoples are born into the same procedurally generated world; every hill, river, and
+            berry patch drawn from a single seed. They gather the same finite resources, compete for
+            the same land, and feel the same pressures: hunger, supply, season, war.
+          </p>
+          <p>
+            No outcome is scripted. Both civilizations run under identical rules, and every result
+            traces back to a cause you can find in the world's own record.
+          </p>
+        </section>
+
+        <section class="entry" id="peoples" data-reveal>
+          <h2>
+            <span class="entry-numeral">Entry 02</span>
+            <span class="entry-title">The two peoples</span>
+          </h2>
+          <div class="faction-grid">
+            <article class="faction-card hearth" data-reveal>
+              <div class="faction-swatch swatch-hearth" aria-hidden="true"></div>
+              <div class="faction-head">
+                <svg class="faction-sigil" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+                  <rect
+                    x="6"
+                    y="6"
+                    width="14"
+                    height="14"
+                    rx="2"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                  />
+                  <rect
+                    x="28"
+                    y="6"
+                    width="14"
+                    height="14"
+                    rx="2"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                  />
+                  <rect
+                    x="6"
+                    y="28"
+                    width="14"
+                    height="14"
+                    rx="2"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                  />
+                  <rect
+                    x="28"
+                    y="28"
+                    width="14"
+                    height="14"
+                    rx="2"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                  />
+                  <path
+                    d="M20 13h8M13 20v8M35 20v8M20 35h8"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                    stroke-linecap="round"
+                  />
+                </svg>
+                <h3>The Hearth Confederacy</h3>
+              </div>
+              <p>
+                Settled builders with strong institutions. Construction, agriculture, and defensive
+                cohesion come naturally, but a disrupted supply line is a slow, quiet wound.
+              </p>
+            </article>
+            <article class="faction-card iron" data-reveal>
+              <div class="faction-swatch swatch-iron" aria-hidden="true"></div>
+              <div class="faction-head">
+                <svg class="faction-sigil" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+                  <path
+                    d="M7 13l9 9-9 9"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M21 11l11 11-11 11"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M35 13l9 9-9 9"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+                <h3>The Iron Swarm</h3>
+              </div>
+              <p>
+                Mobile, caste-based expansionists. Fast gathering, raiding, and distributed command
+                but concentrated losses cut deep, and the soil is never tended.
+              </p>
+            </article>
+          </div>
+          <p class="entry-close">You advise one people. The other answers in kind.</p>
+        </section>
+
+        <section class="entry" id="rules" data-reveal>
+          <h2>
+            <span class="entry-numeral">Entry 03</span>
+            <span class="entry-title">The rules of the archive</span>
+          </h2>
+          <ol class="rules">
+            <li class="rule-row" data-reveal>
+              <span class="rule-num" aria-hidden="true">01</span>
+              <div>
+                <h3>A deterministic core</h3>
+                <p>
+                  Same seed, same commands, same world — every time. Reproducibility is tested, not
+                  hoped for.
+                </p>
+              </div>
+            </li>
+            <li class="rule-row" data-reveal>
+              <span class="rule-num" aria-hidden="true">02</span>
+              <div>
+                <h3>Simulation first</h3>
+                <p>
+                  Every visible outcome has a causal chain in simulation state. Nothing is faked to
+                  make a story.
+                </p>
+              </div>
+            </li>
+            <li class="rule-row" data-reveal>
+              <span class="rule-num" aria-hidden="true">03</span>
+              <div>
+                <h3>Readable complexity</h3>
+                <p>
+                  Alerts, inspectors, and overlays answer three questions: what changed, why, and
+                  what you can do.
+                </p>
+              </div>
+            </li>
+            <li class="rule-row" data-reveal>
+              <span class="rule-num" aria-hidden="true">04</span>
+              <div>
+                <h3>Logistics decides wars</h3>
+                <p>
+                  Armies need food, tools, medicine, transport, rest, and command. So do
+                  settlements.
+                </p>
+              </div>
+            </li>
+          </ol>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <span>Milestone 1 · the survival loop</span>
+        <span>deterministic core · versioned protocol</span>
+      </footer>
+    </div>
+    <script type="module" src="/src/app/landing.ts"></script>
+  </body>
+</html>
