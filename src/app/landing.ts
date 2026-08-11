@@ -1,5 +1,3 @@
-import '@fontsource/cinzel/600.css';
-import '@fontsource/cinzel/700.css';
 import './style.css';
 import './landing.css';
 import React from 'react';

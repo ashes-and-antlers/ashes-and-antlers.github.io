@@ -185,7 +185,7 @@ The palette is a deep-forest neutral field, one ember seal, two faction hues, an
 **Label Font:** the same sans stack, uppercase, letterspaced.
 **Data Font:** ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace.
 
-**Character:** A quiet sans with an uppercase, letterspaced micro-label voice and monospaced figures for every number — an instrument panel, not an editorial layout. The system's one display voice is **Cinzel** (self-hosted via `@fontsource/cinzel`): carved-inscription caps used for the landing entry headings. The HUD stays sans — the archive engraves its pages, not its instruments. The cover needs no display type at all: the brand mark itself is the cover.
+**Character:** A quiet sans with an uppercase, letterspaced micro-label voice and monospaced figures for every number — an instrument panel, not an editorial layout. The system's one display voice is **Cinzel** (self-hosted via `@fontsource/cinzel`, inlined into the landing CSS as base64 data URIs so no font file requests reach the hosting pipeline): carved-inscription caps used for the landing entry headings. The HUD stays sans — the archive engraves its pages, not its instruments. The cover needs no display type at all: the brand mark itself is the cover.
 
 ### Hierarchy
 
