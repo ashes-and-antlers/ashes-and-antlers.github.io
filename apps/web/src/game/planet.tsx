@@ -375,7 +375,7 @@ function PlanetLedger({ view, imageUrl }: { view: PlanetView; imageUrl: string |
                     </tr>
                   );
                 })}
-              </tbody>{' '}
+              </tbody>
             </table>
           </details>
         </div>
