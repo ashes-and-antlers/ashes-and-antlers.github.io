@@ -13,7 +13,12 @@ export const STARTING_PACKAGE = {
   startingBuildings: { settlement: 1 } as const,
 } as const;
 
-/** Deterministic planet-name parts (worldgen draws from these via its PRNG). */
+/**
+ * Deterministic planet-name parts (worldgen draws from these via its PRNG).
+ * The bank yields 26 × 22 = 572 base names; worldgen guarantees uniqueness
+ * across all 3,072 planets by appending deterministic Roman suffixes to
+ * duplicates (stable coordinate order), so every planet has a distinct name.
+ */
 export const PLANET_NAME_PARTS = {
   prefixes: [
     'Ember',
@@ -32,6 +37,16 @@ export const PLANET_NAME_PARTS = {
     'Rift',
     'Star',
     'Grey',
+    'Aether',
+    'Void',
+    'Nova',
+    'Halo',
+    'Drift',
+    'Quarry',
+    'Forge',
+    'Bloom',
+    'Fallow',
+    'Signal',
   ] as const,
   suffixes: [
     'reach',
@@ -46,5 +61,15 @@ export const PLANET_NAME_PARTS = {
     'field',
     'nest',
     'den',
+    'rift',
+    'ward',
+    'forge',
+    'span',
+    'rise',
+    'shore',
+    'ring',
+    'vault',
+    'fen',
+    'heath',
   ] as const,
 };

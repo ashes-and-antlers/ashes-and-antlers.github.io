@@ -53,7 +53,8 @@ describe('health and dev world creation', () => {
     expect(body.worldId).toBe('world:42');
     expect(body.worldHash).toBeTruthy();
     expect(body.player.homePlanet.coordinate).toMatchObject({
-      galaxy: 1,
+      // The home planet is a seeded pick anywhere in the 8-galaxy space.
+      galaxy: expect.any(Number),
       sector: expect.any(Number),
       system: expect.any(Number),
       planet: expect.any(Number),

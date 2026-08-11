@@ -100,28 +100,33 @@ export function OverviewApp() {
           <span className="brand-dot" aria-hidden="true" />
           <h1 className="brand-word">Command Overview</h1>
         </div>
-        <dl className="header-meta">
-          {readyView && (
-            <>
-              <div className="meta-item">
-                <dt title="Your name in the archive.">Commander</dt>
-                <dd data-testid="commander-name">{readyView.player.name}</dd>
-              </div>
-              <div className="meta-item meta-divider">
-                <dt title="The latest tick the archive has resolved.">Current tick</dt>
-                <dd className="tick-value" data-testid="overview-tick">
-                  {readyView.tick}
-                </dd>
-              </div>
-              <div className="meta-item">
-                <dt title="Countdown to the next beat of the simulation.">Next tick</dt>
-                <dd className="tick-value" data-testid="next-tick-countdown">
-                  {formatCountdown(readyView.nextTickAt, now)}
-                </dd>
-              </div>
-            </>
-          )}
-        </dl>
+        <div className="header-right">
+          <dl className="header-meta">
+            {readyView && (
+              <>
+                <div className="meta-item">
+                  <dt title="Your name in the archive.">Commander</dt>
+                  <dd data-testid="commander-name">{readyView.player.name}</dd>
+                </div>
+                <div className="meta-item meta-divider">
+                  <dt title="The latest tick the archive has resolved.">Current tick</dt>
+                  <dd className="tick-value" data-testid="overview-tick">
+                    {readyView.tick}
+                  </dd>
+                </div>
+                <div className="meta-item">
+                  <dt title="Countdown to the next beat of the simulation.">Next tick</dt>
+                  <dd className="tick-value" data-testid="next-tick-countdown">
+                    {formatCountdown(readyView.nextTickAt, now)}
+                  </dd>
+                </div>
+              </>
+            )}
+          </dl>
+          <a className="header-action" data-testid="map-link" href={`map.html?seed=${seed}`}>
+            Galaxy map
+          </a>
+        </div>
       </header>
 
       {state.status === 'loading' && <p className="status-line">Opening the archive…</p>}

@@ -1,4 +1,5 @@
 import type {
+  GalaxyView,
   PlanetId,
   PlanetView,
   TickResolution,
@@ -14,8 +15,16 @@ import {
   type ApiError,
   type WorldState,
 } from '@ashes/contracts';
-import { CONTENT_VERSION } from '@ashes/content';
-import { generateWorld, planetView, resolveEconomyTick } from '@ashes/domain';
+import { CONTENT_VERSION, WORLD_CONFIG } from '@ashes/content';
+import {
+  galaxyBounds,
+  galaxyOrigin,
+  generateWorld,
+  planetPosition,
+  planetView,
+  resolveEconomyTick,
+  systemPosition,
+} from '@ashes/domain';
 import type { WorldRepository } from './repository';
 import { WorldLock } from './lock';
 
@@ -180,6 +189,66 @@ export class TickEngine {
       planets: myPlanets,
       pendingOrders: [],
       lastResolution: lastResolutionView,
+    };
+  }
+
+  /**
+   * Galaxy map projection: every galaxy, system, and planet in map space,
+   * in stable coordinate order. `known` marks the player's owned planets so
+   * the map can label them and leave the rest anonymous. Positions are
+   * derived deterministically from the seed — never stored.
+   */
+  async getGalaxyView(worldId: WorldId): Promise<GalaxyView> {
+    const world = await this.requireWorld(worldId);
+    const player = world.players[0];
+    if (!player) {
+      throw new WorldNotFoundError(worldId);
+    }
+    const knownIds = new Set(world.planets.filter((p) => p.ownerId === player.id).map((p) => p.id));
+
+    const galaxies: GalaxyView['galaxies'] = [];
+    for (let galaxy = 1; galaxy <= WORLD_CONFIG.galaxies; galaxy++) {
+      galaxies.push({ galaxy, position: galaxyOrigin(world.seed, galaxy) });
+    }
+
+    const systems: GalaxyView['systems'] = [];
+    for (let galaxy = 1; galaxy <= WORLD_CONFIG.galaxies; galaxy++) {
+      for (let sector = 1; sector <= WORLD_CONFIG.sectorsPerGalaxy; sector++) {
+        for (let system = 1; system <= WORLD_CONFIG.systemsPerSector; system++) {
+          systems.push({
+            galaxy,
+            sector,
+            system,
+            position: systemPosition(world.seed, galaxy, sector, system),
+          });
+        }
+      }
+    }
+
+    const planets: GalaxyView['planets'] = world.planets.map((p) => ({
+      id: p.id,
+      coordinate: p.coordinate,
+      position: planetPosition(world.seed, p.coordinate),
+      name: p.name,
+      factionId: p.factionId,
+      known: knownIds.has(p.id),
+    }));
+
+    return {
+      worldId: world.id,
+      seed: world.seed,
+      protocolVersion: PROTOCOL_VERSION,
+      config: {
+        galaxies: WORLD_CONFIG.galaxies,
+        sectorsPerGalaxy: WORLD_CONFIG.sectorsPerGalaxy,
+        systemsPerSector: WORLD_CONFIG.systemsPerSector,
+        planetsPerSystem: WORLD_CONFIG.planetsPerSystem,
+      },
+      homePlanetId: player.homePlanetId,
+      bounds: galaxyBounds(world.seed),
+      galaxies,
+      systems,
+      planets,
     };
   }
 

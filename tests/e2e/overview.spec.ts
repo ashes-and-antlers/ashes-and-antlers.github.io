@@ -40,6 +40,17 @@ test('command overview boots and shows the authoritative tick', async ({ page })
 });
 
 /**
+ * The header action opens the navigable galaxy map, seed preserved.
+ */
+test('navigates to the galaxy map from the header', async ({ page }) => {
+  await page.goto('/game.html?seed=424242');
+  await expect(page.getByTestId('map-link')).toBeVisible();
+  await page.getByTestId('map-link').click();
+  await expect(page).toHaveURL(/map\.html\?seed=424242/);
+  await expect(page.getByTestId('galaxy-map')).toBeVisible({ timeout: 15_000 });
+});
+
+/**
  * The footer links to a standalone glossary — the archive's vocabulary in
  * one place — and the back link returns to the overview, seed preserved.
  */

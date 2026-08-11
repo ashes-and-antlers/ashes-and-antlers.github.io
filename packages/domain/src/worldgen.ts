@@ -81,6 +81,7 @@ export function generateWorld(input: WorldgenInput): WorldState {
     }
   }
   planets.sort((a, b) => compareCoordinates(a.coordinate, b.coordinate));
+  ensureUniquePlanetNames(planets);
 
   // Seeded home planet: a deterministic pick from the stable planet list.
   // M1 genesis: the home planet carries the starting economy (settlement,
@@ -133,6 +134,32 @@ function randomPlanetName(rng: () => number): string {
   const prefix = prefixes[intBelow(rng, prefixes.length)];
   const suffix = suffixes[intBelow(rng, suffixes.length)];
   return `${prefix} ${suffix}`;
+}
+
+/** Roman numerals for name suffixes (up to 'X'; beyond that the number). */
+const ROMAN = ['', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'] as const;
+
+/**
+ * With 3,072 planets and a finite name bank, random draws collide. This pass
+ * runs over the stable coordinate order and appends a deterministic Roman
+ * suffix to every duplicate (first occurrence keeps the bare name), so each
+ * planet in the galaxy has a unique, stable name.
+ */
+function ensureUniquePlanetNames(planets: Planet[]): void {
+  const totalByName = new Map<string, number>();
+  for (const p of planets) {
+    totalByName.set(p.name, (totalByName.get(p.name) ?? 0) + 1);
+  }
+  const used = new Map<string, number>();
+  for (const p of planets) {
+    const total = totalByName.get(p.name) ?? 1;
+    if (total <= 1) continue;
+    const n = (used.get(p.name) ?? 0) + 1;
+    used.set(p.name, n);
+    if (n > 1) {
+      p.name = `${p.name} ${ROMAN[n] ?? n}`;
+    }
+  }
 }
 
 /**

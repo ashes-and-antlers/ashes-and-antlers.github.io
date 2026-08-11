@@ -618,6 +618,12 @@ details[open] > summary .fold-chevron {
   color: var(--accent);
 }
 
+.footer-links {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
 /* ---------- glossary page ---------- */
 
 .glossary-grid {
@@ -665,6 +671,12 @@ details[open] > summary .fold-chevron {
   .glossary-entry {
     grid-template-columns: 1fr;
     gap: 4px;
+  }
+  .map-frame {
+    height: 440px;
+  }
+  .header-right {
+    flex-wrap: wrap;
   }
 }
 
@@ -801,6 +813,172 @@ details[open] > summary .fold-chevron {
   margin: 0;
   padding-left: 18px;
   font-size: 13px;
+}
+
+/* ---------- galaxy map page ---------- */
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.header-action {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text);
+  text-decoration: none;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  padding: 6px 14px;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease;
+}
+
+.header-action:hover {
+  color: var(--accent);
+  border-color: rgba(168, 201, 240, 0.5);
+}
+
+.map-frame {
+  position: relative;
+  height: 600px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(205, 219, 238, 0.05), transparent 70%), var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+
+.map-frame:active {
+  cursor: grabbing;
+}
+
+.map-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.map-galaxy-label {
+  fill: rgba(205, 219, 238, 0.4);
+  font-family: var(--mono);
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  pointer-events: none;
+  user-select: none;
+}
+
+.map-star {
+  fill: rgba(205, 219, 238, 0.35);
+  pointer-events: none;
+}
+
+.map-planet-link {
+  cursor: pointer;
+}
+
+.map-planet {
+  fill: rgba(205, 219, 238, 0.45);
+  transition: fill 120ms ease;
+}
+
+.map-planet.known {
+  fill: var(--accent);
+}
+
+.map-planet-link:hover .map-planet {
+  fill: #fff;
+}
+
+.map-home-ring {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.2;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.map-label {
+  fill: var(--text);
+  font-family: var(--font);
+  font-weight: 600;
+  pointer-events: none;
+  user-select: none;
+}
+
+.map-controls {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.map-controls button {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+  min-width: 34px;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease;
+}
+
+.map-controls button:hover {
+  color: var(--accent);
+  border-color: rgba(168, 201, 240, 0.5);
+  background: #171f31;
+}
+
+.map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 10px 0 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.map-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.map-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(205, 219, 238, 0.45);
+  flex-shrink: 0;
+}
+
+.map-legend-dot.known {
+  background: var(--accent);
+}
+
+.map-legend-dot.home {
+  background: transparent;
+  border: 1.5px solid var(--accent);
 }
 
 /* ---------- states ---------- */

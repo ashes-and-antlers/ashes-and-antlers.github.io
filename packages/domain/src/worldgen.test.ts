@@ -61,6 +61,15 @@ describe('generateWorld', () => {
     expect(c.worldHash).not.toBe(a.worldHash);
   });
 
+  it('live content world: 8 galaxies, 3,072 planets, every name unique', () => {
+    const world = generateWorld({ seed: 1337 });
+    expect(world.planets).toHaveLength(8 * 8 * 8 * 6);
+    const names = world.planets.map((p) => p.name);
+    expect(new Set(names).size).toBe(names.length);
+    const owned = world.planets.filter((p) => p.ownerId === world.players[0].id);
+    expect(owned).toHaveLength(1);
+  });
+
   it('iterates planets in stable coordinate order', () => {
     const world = make(1337);
     const coords = world.planets.map(

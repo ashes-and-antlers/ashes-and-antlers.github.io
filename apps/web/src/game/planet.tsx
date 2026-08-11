@@ -127,16 +127,13 @@ export function PlanetApp() {
           </a>
         </div>
       </header>
-
       {state.status === 'loading' && <p className="status-line">Opening the ledger…</p>}
-
       {state.status === 'error' && !state.offline && (
         <p className="retrying-line" role="status">
           <span className="pulse-dot" aria-hidden="true" />
           Engine not responding — retrying…
         </p>
       )}
-
       {state.status === 'notFound' && (
         <section
           className="offline-card"
@@ -153,7 +150,6 @@ export function PlanetApp() {
           </a>
         </section>
       )}
-
       {state.status === 'error' && state.offline && (
         <section
           className="offline-card"
@@ -174,14 +170,22 @@ export function PlanetApp() {
           </button>
         </section>
       )}
-
-      {state.status === 'ready' && <PlanetLedger view={state.view} imageUrl={imageUrl} />}
-
+      {state.status === 'ready' && <PlanetLedger view={state.view} imageUrl={imageUrl} />}{' '}
       <footer className="game-footer">
         <span>deterministic core · versioned protocol</span>
-        <a className="footer-link" data-testid="glossary-link" href={`glossary.html?seed=${seed}`}>
-          Glossary
-        </a>
+        <span className="footer-links">
+          <a className="footer-link" data-testid="map-link" href={`map.html?seed=${seed}`}>
+            Galaxy map
+          </a>
+          <span aria-hidden="true">·</span>
+          <a
+            className="footer-link"
+            data-testid="glossary-link"
+            href={`glossary.html?seed=${seed}`}
+          >
+            Glossary
+          </a>
+        </span>
         <span>planetary ledger · ashfield command archive</span>
       </footer>
     </div>

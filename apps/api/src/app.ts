@@ -98,6 +98,14 @@ export function createApi(engine: TickEngine, auth: AuthConfig): Hono {
     return c.json({ planets: view.planets }, 200);
   });
 
+  app.get('/api/v1/worlds/:worldId/galaxy', bearer(auth.playerToken), async (c) => {
+    const worldId = c.req.param('worldId') as WorldId;
+    if (!(await engine.getWorld(worldId))) {
+      return c.json(apiError('NOT_FOUND', `world ${worldId} not found`), 404);
+    }
+    return c.json(await engine.getGalaxyView(worldId), 200);
+  });
+
   app.get('/api/v1/worlds/:worldId/planets/:planetId', bearer(auth.playerToken), async (c) => {
     const worldId = c.req.param('worldId') as WorldId;
     const planetId = c.req.param('planetId') as PlanetId;

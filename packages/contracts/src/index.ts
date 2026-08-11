@@ -5,4 +5,5 @@ export * from './player';
 export * from './tick';
 export * from './command';
 export * from './errors';
+export * from './galaxy';
 export * from './world';

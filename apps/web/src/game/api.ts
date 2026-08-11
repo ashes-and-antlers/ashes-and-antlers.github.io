@@ -1,4 +1,9 @@
-import { PROTOCOL_VERSION, type PlanetView, type WorldView } from '@ashes/contracts';
+import {
+  PROTOCOL_VERSION,
+  type GalaxyView,
+  type PlanetView,
+  type WorldView,
+} from '@ashes/contracts';
 import { ART_VERSION } from '@ashes/content';
 
 /**
@@ -24,6 +29,11 @@ export class ApiError extends Error {
 
 export async function fetchOverview(worldId: string): Promise<WorldView> {
   return (await fetchJson(`/api/v1/worlds/${encodeURIComponent(worldId)}/overview`)) as WorldView;
+}
+
+/** Galaxy map projection: every planet's position in map space. */
+export async function fetchGalaxy(worldId: string): Promise<GalaxyView> {
+  return (await fetchJson(`/api/v1/worlds/${encodeURIComponent(worldId)}/galaxy`)) as GalaxyView;
 }
 
 /** Single-planet projection for the planet detail page. */
