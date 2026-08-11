@@ -88,18 +88,67 @@ describe('renderPlanetArt', () => {
   it('places stars in the space region (bright pixels off the disc)', () => {
     const image = renderPlanetArt(makePlanet(), 96);
     const [bgR, bgG, bgB] = hexToRgb(PLANET_ART.starfield.backgroundColor);
+    const radius = PLANET_ART.disc.radius;
     let starPixels = 0;
-    for (let i = 0; i < image.data.length; i += 4) {
-      // A star is markedly brighter than the background in some channel.
-      if (
-        image.data[i] > bgR + 60 ||
-        image.data[i + 1] > bgG + 60 ||
-        image.data[i + 2] > bgB + 60
-      ) {
-        starPixels += 1;
+    for (let y = 0; y < image.width; y++) {
+      for (let x = 0; x < image.width; x++) {
+        // Only space pixels can be stars — the disc carries bright terrain.
+        const sx = ((x + 0.5) / image.width) * 2 - 1;
+        const sy = ((y + 0.5) / image.width) * 2 - 1;
+        if ((sx / radius) ** 2 + (sy / radius) ** 2 <= 1) continue;
+        const i = (y * image.width + x) * 4;
+        // A star is markedly brighter than the background in some channel.
+        if (
+          image.data[i] > bgR + 60 ||
+          image.data[i + 1] > bgG + 60 ||
+          image.data[i + 2] > bgB + 60
+        ) {
+          starPixels += 1;
+        }
       }
     }
     expect(starPixels).toBeGreaterThan(0);
+  });
+
+  it('renders a soft nebula tint for some planet ids (dust clouds off the disc)', () => {
+    const [bgR, bgG, bgB] = hexToRgb(PLANET_ART.starfield.backgroundColor);
+    // Planet ids are coordinates; sweep a handful so the test does not depend
+    // on one planet's seeded nebula draw (some planets have none).
+    let nebulaPlanets = 0;
+    for (let n = 1; n <= 8; n++) {
+      const image = renderPlanetArt({ ...makePlanet(), id: planetId(`planet:1:1:1:${n}`) }, 96, {
+        supersample: 1,
+      });
+      let softTint = 0;
+      for (let y = 0; y < image.width; y++) {
+        for (let x = 0; x < image.width; x++) {
+          // Skip the disc itself: ocean pixels (#17243a) also fall in the
+          // soft-tint band, so only count pixels in the space region.
+          const sx = ((x + 0.5) / image.width) * 2 - 1;
+          const sy = ((y + 0.5) / image.width) * 2 - 1;
+          const radius = PLANET_ART.disc.radius; // same disc as the renderer
+          if ((sx / radius) ** 2 + (sy / radius) ** 2 <= 1) continue;
+          const i = (y * image.width + x) * 4;
+          const dr = image.data[i] - bgR;
+          const dg = image.data[i + 1] - bgG;
+          const db = image.data[i + 2] - bgB;
+          // Soft tint: noticeably shifted but below star brightness — a dust
+          // cloud, not a star point.
+          if (
+            Math.abs(dr) + Math.abs(dg) + Math.abs(db) > 12 &&
+            Math.abs(dr) + Math.abs(dg) + Math.abs(db) < 100
+          ) {
+            softTint += 1;
+          }
+        }
+      }
+      // A nebula covers a large soft area (hundreds of px at 96px); stars
+      // alone only add a handful of pixels in this band.
+      if (softTint > 400) nebulaPlanets += 1;
+    }
+    // presenceChance is 0.65, so with 8 planets at least one should carry a
+    // nebula. (Deterministic per id — this asserts the feature exists.)
+    expect(nebulaPlanets).toBeGreaterThan(0);
   });
 
   it('varies with abundance: metal/mineral (mountains) change the pixels', () => {

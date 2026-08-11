@@ -11,9 +11,16 @@
  * marsh → grass → forest → hill → mountain); the renderer shades each band by
  * elevation (×0.78–1.10) exactly as the design doc specifies.
  */
-export const ART_VERSION = 'art-2';
+export const ART_VERSION = 'art-3';
 
 export const PLANET_ART = {
+  /**
+   * Disc geometry: fraction of the half-frame the planet disc fills. < 1
+   * leaves room around the limb for the atmosphere rim and the starfield.
+   */
+  disc: {
+    radius: 0.8,
+  },
   /** Elevation bands: lowest first. `elevation` is the top of the band. */
   terrain: [
     { elevation: -0.14, color: '#17243a' }, // deep water
@@ -53,6 +60,28 @@ export const PLANET_ART = {
     brightStarRadius: 1.9,
     /** Base star brightness multiplier (restrained: bone-tinted, not white-hot). */
     starBrightness: 0.75,
+  },
+  /**
+   * Nebula / dust-cloud backdrop (art-3): a seeded set of soft-tinted blobs
+   * so each planet's sky varies beyond star positions. Subtle and
+   * in-palette — the field stays night-bound, and ember stays rare.
+   */
+  nebula: {
+    /** Probability a planet carries any nebula at all. */
+    presenceChance: 0.65,
+    /** Number of dust blobs when present. */
+    blobCount: { min: 1, max: 3 },
+    /** Blob radius as a fraction of the canvas size. */
+    blobRadius: { min: 0.22, max: 0.45 },
+    /** Peak tint strength — kept low so stars and the planet stay dominant. */
+    maxStrength: 0.38,
+    /** Per-blob strength jitter (0..1 of maxStrength). */
+    strengthJitter: 0.5,
+    /** Probability the blob takes the ember tint (The Ember Seal Rule). */
+    emberChance: 0.12,
+    /** Palette tints, in-palette and restrained (design system gamut). */
+    tints: ['#4e5f35', '#8a7a52', '#9ca2aa'],
+    emberTint: '#c97844',
   },
   lighting: {
     ambient: 0.45,

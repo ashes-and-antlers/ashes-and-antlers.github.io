@@ -42,6 +42,12 @@ ramp, a cloud layer, and an atmosphere rim.
   mark is stamped at the portrait's bottom-right as a CSS overlay (real
   `logo.png` on a plate) — never baked into the PNG, so The Brand Mark Rule
   (no recolor/tint/distort) holds.
+- **art-3 added a per-planet nebula.** Some planets (seeded, `presenceChance`
+  0.65) carry 1–3 soft dust-cloud blobs behind the disc — in-palette tints
+  from the design gamut, ember rare (The Ember Seal Rule) — blended under the
+  star layer so stars stay crisp. Space therefore varies per planet, not just
+  star positions. The disc radius also moved into `PLANET_ART` config
+  (data-driven, per the content rule) instead of a renderer constant.
 
 ## Consequences
 

@@ -1,6 +1,6 @@
 import type { PlanetView } from '@ashes/contracts';
 import { PLANET_ART } from '@ashes/content';
-import { fnv1a } from './prng';
+import { fnv1a, mulberry32 } from './prng';
 
 /**
  * Deterministic planet portrait renderer (M1 "planets without hand-drawn
@@ -35,8 +35,8 @@ export type PlanetArtOptions = {
 /** Fixed light direction in world space (view is +Z). Deterministic on purpose. */
 const LIGHT = normalize3(-0.45, -0.62, 0.64);
 
-/** Fraction of the half-frame the planet disc fills; leaves room for the rim. */
-const DISC = 0.8;
+/** Fraction of the half-frame the planet disc fills (content-defined). */
+const DISC = PLANET_ART.disc.radius;
 
 /** One star on the hash lattice, in pixel space. */
 type Star = {
@@ -47,6 +47,17 @@ type Star = {
   brightness: number;
   /** 0..1 → mostly bone; small chances of ember or cool-white. */
   tint: number;
+};
+
+/** One soft dust-cloud blob behind the planet, in pixel space. */
+type Nebula = {
+  cx: number;
+  cy: number;
+  radius: number;
+  /** 0..1 peak strength of the tint. */
+  strength: number;
+  /** Tint color (in-palette; ember is rare). */
+  tint: [number, number, number];
 };
 
 export function renderPlanetArt(
@@ -64,6 +75,7 @@ export function renderPlanetArt(
   const cloudSeed = fnv1a(`${planet.id}:clouds`);
   const starSeed = fnv1a(`${planet.id}:stars`);
   const stars = buildStars(sizeClamped, starSeed);
+  const nebulae = buildNebulae(sizeClamped, fnv1a(`${planet.id}:nebula`));
   // Hoisted per-render constants for the starfield (avoid per-pixel work).
   const spaceBg = hexRgb(PLANET_ART.starfield.backgroundColor);
   const spaceCells = Math.ceil(sizeClamped / PLANET_ART.starfield.cellSize);
@@ -102,8 +114,16 @@ export function renderPlanetArt(
         const v = sy / DISC;
         const d2 = u * u + v * v;
         if (d2 > 1) {
-          // Deep space: the starfield fills the frame behind the planet.
-          const [sr, sg, sb] = spaceColor(x + 0.5 + ox, y + 0.5 + oy, spaceCells, spaceBg, stars);
+          // Deep space: nebula dust + starfield fill the frame behind the
+          // planet.
+          const [sr, sg, sb] = spaceColor(
+            x + 0.5 + ox,
+            y + 0.5 + oy,
+            spaceCells,
+            spaceBg,
+            nebulae,
+            stars,
+          );
           r += sr;
           g += sg;
           b += sb;
@@ -251,15 +271,47 @@ function buildStars(size: number, seed: number): Map<number, Star> {
 }
 
 /**
- * Color of one deep-space pixel: the space fill plus any star whose disc
- * covers it. Checks the 3×3 cell neighborhood so stars at cell borders stay
- * complete. Deterministic — driven entirely by the prebuilt star set.
+ * Build the deterministic nebula blobs for an image: 0–3 soft dust clouds,
+ * each with a seeded center, radius, strength, and tint (in-palette; ember
+ * is rare). Some planets get no nebula at all — the sky varies by planet id.
+ */
+function buildNebulae(size: number, seed: number): Nebula[] {
+  const cfg = PLANET_ART.nebula;
+  const rng = mulberry32(seed);
+  if (rng() > cfg.presenceChance) return [];
+  const count = cfg.blobCount.min + Math.floor(rng() * (cfg.blobCount.max - cfg.blobCount.min + 1));
+  const blobs: Nebula[] = [];
+  for (let i = 0; i < count; i++) {
+    const radius = (cfg.blobRadius.min + rng() * (cfg.blobRadius.max - cfg.blobRadius.min)) * size;
+    const strength = cfg.maxStrength * (1 - cfg.strengthJitter + cfg.strengthJitter * rng());
+    const ember = rng() < cfg.emberChance;
+    const tint = ember
+      ? hexRgb(cfg.emberTint)
+      : hexRgb(cfg.tints[Math.floor(rng() * cfg.tints.length)]);
+    blobs.push({
+      cx: rng() * size,
+      cy: rng() * size,
+      radius,
+      strength,
+      tint,
+    });
+  }
+  return blobs;
+}
+
+/**
+ * Color of one deep-space pixel: the space fill, plus any nebula dust
+ * covering it, plus any star whose disc covers it. Nebula is blended first
+ * (low-frequency, soft), stars on top (crisp points). Checks the 3×3 cell
+ * neighborhood for stars so stars at cell borders stay complete.
+ * Deterministic — driven entirely by the prebuilt blob/star sets.
  */
 function spaceColor(
   px: number,
   py: number,
   cells: number,
   bg: [number, number, number],
+  nebulae: Nebula[],
   stars: Map<number, Star>,
 ): [number, number, number] {
   const cfg = PLANET_ART.starfield;
@@ -270,6 +322,22 @@ function spaceColor(
   let r = bgR;
   let g = bgG;
   let b = bgB;
+
+  // Nebula: soft radial falloff toward the tint. Stars later stay crisp.
+  for (const neb of nebulae) {
+    // AABB early-out before the sqrt: most pixels are far from a blob.
+    const dx = px - neb.cx;
+    if (dx > neb.radius || dx < -neb.radius) continue;
+    const dy = py - neb.cy;
+    if (dy > neb.radius || dy < -neb.radius) continue;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > neb.radius) continue;
+    const strength = smoothstep(neb.radius, neb.radius * 0.35, dist) * neb.strength;
+    r += (neb.tint[0] - bgR) * strength;
+    g += (neb.tint[1] - bgG) * strength;
+    b += (neb.tint[2] - bgB) * strength;
+  }
+
   for (let dy = -1; dy <= 1; dy++) {
     for (let dx = -1; dx <= 1; dx++) {
       const cx = cellX + dx;
