@@ -1,7 +1,6 @@
 /// <reference types="vitest/config" />
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
@@ -12,19 +11,21 @@ export default defineConfig({
   // "/logo.png" or "/game.html" would 404. './' rewrites every emitted URL
   // to be relative and works at any mount point.
   base: './',
-  plugins: [react()],
   build: {
     target: 'es2022',
     sourcemap: true,
     rollupOptions: {
       input: {
         index: resolve(root, 'index.html'),
-        game: resolve(root, 'game.html'),
       },
     },
   },
   test: {
+    // The simulation test suites were scrapped with the game (2026-08-11);
+    // they will return when the game is rebuilt. Until then there are no
+    // Vitest files, so allow the run to pass instead of failing.
     include: ['tests/unit/**/*.test.ts', 'tests/sim/**/*.test.ts'],
     environment: 'node',
+    passWithNoTests: true,
   },
 });

@@ -1,132 +1,55 @@
 # AGENTS.md — Ashes and Antlers (Civilizations at War)
 
 Guidance for AI coding agents and human contributors working in this repository.
-Read this before editing anything. It encodes the project's non-negotiable
-architecture and determinism rules, plus practical gotchas learned so far.
+Read this before editing anything.
 
 **If you only read two documents, read:** this file and
-[`DEVELOPMENT_PLAN.md`](DEVELOPMENT_PLAN.md) (the full design). The plan's §7
-(Agent Execution Rules) and §8 (Test and Balance Strategy) are contract, not
-suggestion.
+[`DEVELOPMENT_PLAN.md`](DEVELOPMENT_PLAN.md) (the full design, which is the
+source of truth for what the game will become).
 
 ---
 
-## 1. Project overview
+## 1. Current state (2026-08-11)
 
-A single-player, browser-native 2D grand colony/RTS in which **two autonomous
-civilizations** share one deterministic simulation — same seed + config +
-ordered commands = same result, every time. Working title: _Ashes and Antlers_.
+**The game has been scrapped. Only the landing page remains.**
 
-Current state: **Milestone 2 iteration 2 (work buildings) is complete**, on
-top of M1a (survival loop), M1b (construction), and M2-1 (the materials
-chain). The M0 foundation (seeded deterministic worldgen in a Web Worker,
-fixed-tick clock, snapshot protocol, PixiJS renderer, CI) is extended with a
-bitECS entity layer: two faction command centers, ownership overlays,
-citizens with movement and needs, a deterministic task market (gather → haul
-→ eat), stockpiles, resource nodes, inspectors, causal alerts, and
-player-placed blueprints → builder construction (stockpile + hut + sawpit,
-completed exactly once). The M2 slices add the **materials economy**:
-harvestable wood/stone tree nodes, multi-item stockpiles (per-item `Stock`
-stores), a **sawpit work building** with real logistics (haulers supply wood
-into its buffer and carry planks out — the planks recipe is worked there,
-not at the command center), construction sites that consume material costs
-from faction stockpiles (refunded on build failure), and a haul task that
-rescues stranded carries. Protocol v3.
+The player-facing M1/M2 implementation (worldgen, simulation worker, ECS,
+task market, construction, economy, seasons) was deleted in one go on
+2026-08-11 so the project could restart from a clean slate. The scrapped code
+is recoverable from git history (it was fully committed at `86e838f` and
+earlier); do not treat those files as authoritative, but they are a useful
+reference for the rebuild.
 
-Design pillars that constrain every change:
+What remains is the public entry only:
 
-1. **Simulation first** — every visible outcome has a causal chain in state.
-2. **Deterministic core** — reproducible from seed + command stream.
-3. **Cheap visuals, rich state** — simple tiles/markers over expensive art.
-4. **Readable complexity** — inspectors, overlays, and alerts for everything.
+- `index.html` + `src/app/landing.ts` + `src/app/landing.css` + the shared
+  base stylesheet `src/app/style.css` — the landing page: brand mark cover,
+  premise entries, the two peoples, the rules of the archive, and the single
+  "Enter the world" action.
+- `public/` — the brand mark (`logo.png`), favicon, `.nojekyll`.
+- `tests/e2e/landing.spec.ts` — the one surviving Playwright smoke test.
+- Infra: Vite, strict TypeScript, ESLint 9 flat, Prettier, Vitest,
+  Playwright, the CI/deploy workflows, and the design docs (`DESIGN.md`,
+  `PRODUCT.md`, `DEVELOPMENT_PLAN.md`, `docs/ADR-001`).
 
-## 2. Non-negotiable architecture rules
+There is **no `game.html`** and **no simulation code** right now. The landing
+page's "Enter the world" action still links to `game.html?seed=1337`, which
+currently 404s until the game is rebuilt. Do not rebuild the game without
+explicit direction.
 
-These are enforced in review. Breaking them is a blocking defect.
+## 2. Landing page facts
 
-1. **The Web Worker owns all authoritative simulation state.** The main thread
-   (DOM, input, PixiJS) only reads snapshots and sends validated commands. It
-   must never import from `sim/` and mutate simulation objects.
-2. **No `Math.random()` anywhere in `sim/`.** All randomness flows through
-   seeded PRNG streams (`src/sim/core/prng.ts`, mulberry32 + FNV-1a, named
-   streams per concern).
-3. **Fixed ticks only.** `FixedClock` runs 5 ticks/second at 1×. `Simulation.step`
-   takes an integer tick count; systems never read wall-clock time or
-   `deltaTime`. (`performance.now()` lives only in the worker's tick loop.)
-4. **Stable iteration order.** Authoritative systems iterate entities with
-   `sortedQuery` (ascending entity id) and break ties with explicit stable
-   keys. Never iterate a raw bitECS query in authoritative logic.
-5. **Content is data-driven.** Balance lives in `src/sim/data/config.ts`
-   (`SIM_CONFIG`); entity/building/faction definitions in
-   `src/sim/data/content.ts`. Never hard-code tunable numbers in systems.
-6. **Version everything.** `WORLD_VERSION` (worldgen semantics) and
-   `PROTOCOL_VERSION` (worker protocol) gate every handshake; mismatch is a
-   hard error. Bump `WORLD_VERSION` when worldgen output changes.
-7. **Renderer/UI state is derived.** Never store authoritative sim data on the
-   main thread; rebuild render layers from each snapshot.
+- The brand mark (`public/logo.png`) is the cover and carries the wordmark;
+  it must never be recolored, tinted, or distorted, and the name is never
+  re-typed beside it (see DESIGN.md "The Brand Mark Rule").
+- The landing page holds **no simulation state at all**; it links to the game
+  page (which owns the worker) with the default seed `1337`.
+- `data-testid` hooks for e2e: `landing-title`, `enter-link`.
+- `prefers-reduced-motion` is honored; keyboard focus is visible.
+- Surfaces are solid and opaque per the "Flat Ledger Rule" — no translucency
+  or backdrop blur on new surfaces.
 
-See `docs/ADR-001-worker-ownership-and-determinism.md` for the full contract.
-
-## 3. Tech stack
-
-| Concern            | Choice                               | Notes                                                                                                                                                                  |
-| ------------------ | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Language           | TypeScript 5.7, **strict**           | `exactOptionalPropertyTypes`, `verbatimModuleSyntax`, `isolatedModules`, `noUnusedLocals/Parameters`; `noUncheckedIndexedAccess` deliberately off (dense typed arrays) |
-| Build/dev server   | Vite 6                               | `target: es2022`, sourcemaps on                                                                                                                                        |
-| Renderer           | PixiJS 8 (`pixi.js` ^8.6)            | WebGL; v8 API (`Graphics` chained `.fill()/.stroke()`, `Texture.from`)                                                                                                 |
-| Simulation storage | bitECS 0.4                           | SoA typed-array component stores (`createWorld({ components })`)                                                                                                       |
-| Worker transport   | `postMessage` + transferable buffers | No SharedArrayBuffer                                                                                                                                                   |
-| UI                 | Lightweight DOM (no React)           | `data-testid` hooks for e2e                                                                                                                                            |
-| Tests              | Vitest 3 + Playwright 1.49           | Unit/sim tests in Node env; e2e in Chromium                                                                                                                            |
-| Lint/format        | ESLint 9 (flat) + Prettier 3.4       | Enforced in CI                                                                                                                                                         |
-
-## 4. Repo map
-
-Two HTML entry points (Vite multi-page): `index.html` (landing page — centered
-brand mark, premise, single enter action) and `game.html` (the simulation). The
-game page is marked `noindex`; the landing page is the public entry.
-
-```
-src/
-  app/            landing page (landing.ts, landing.css) + game boot (main.ts, style.css)
-  shared/         protocol types, constants (TICKS_PER_DAY, SNAPSHOT_EVERY_TICKS,
-                  PROTOCOL_VERSION, WORLD_VERSION, TILE_PX), branded IDs (TileId),
-                  labels, FNV-1a/utils
-  sim/
-    core/         prng (seeded streams), clock (fixed-tick), calendar (pure fn),
-                  hash (terrain hash), Simulation (owns world + step())
-    data/         content.ts (enums/kinds/factions) + config.ts (SIM_CONFIG balance)
-    ecs/          components.ts (SoA stores, MAX_ENTITIES=512), world.ts
-                  (createSimWorld, sortedQuery, stats, alertLog), entities.ts
-                  (factories: citizens, command centers, nodes)
-    path/         astar.ts (deterministic A*, movement costs, tie-breaks)
-    systems/      needs, resources, tasks (demand/claim/execution), taskops,
-                  movement, ownership, alerts, run.ts (the fixed schedule)
-    world/        tiles.ts, world.ts (TileWorld typed-array stores), generation.ts
-    inspect.ts    worker-side inspector detail builder (tile/entity rows)
-  worker/         index.ts — owns Simulation, tick loop, snapshot publishing,
-                  init/command/inspect request handling
-  render/         pixi.ts, mapview.ts (tiles + ownership + entities + grid),
-                  entitylayer.ts (single-Graphics clear+redraw), ownershiplayer.ts
-  ui/             hud.ts — DOM HUD: speed, readouts, alerts, inspector, toggles
-tests/
-  unit/           prng, clock, worldgen, astar, needs, ownership
-  sim/            sim.test.ts (determinism/calendar), scenario-m1.test.ts (3-day
-                  survival scenario), helpers.ts
-  e2e/            boot.spec.ts (Playwright smoke: boot, hash, pause/speed,
-                  toggles, inspector)
-docs/             ADR-001 (worker ownership + determinism contract)
-```
-
-Notable root files: `DEVELOPMENT_PLAN.md` (design + roadmap), `AGENTS.md`,
-`vite.config.ts` (also holds the Vitest config), `playwright.config.ts`,
-`eslint.config.js`, `tsconfig.json` + `tsconfig.node.json` (config-file
-projects), `.prettierignore` (excludes `.freebuff/` and build artifacts).
-
-> `.freebuff/` contains Freebuff tooling internals (a local DB). Never edit,
-> format, or commit it.
-
-## 5. Commands and quality gates
+## 3. Commands and quality gates
 
 ```bash
 npm install                 # install dependencies
@@ -138,296 +61,70 @@ npm run typecheck           # tsc -p tsconfig.json && tsc -p tsconfig.node.json
 npm run lint                # eslint .
 npm run format              # prettier --write .
 npm run format:check        # prettier --check .
-npm run test                # vitest run (unit + sim tests)
-npm run test:unit           # vitest run tests/unit tests/sim (faster)
+npm run test                # vitest run (currently passes with no test files)
 npm run test:e2e            # Playwright (requires a build; webServer auto-starts preview)
 ```
 
-**CI (`.github/workflows/ci.yml`) runs all of these in order on every push/PR:**
-`npm ci` → lint → typecheck → format:check → `npm run test` → build →
-`npx playwright install --with-deps chromium` → `npm run test:e2e`. **Anything
-that passes locally must pass this pipeline.** The standard pre-ship loop for
-any change is:
+CI (`.github/workflows/ci.yml`) runs lint → typecheck → format:check → test →
+build → `npx playwright install --with-deps chromium` → e2e on every push/PR.
+Anything that passes locally must pass that pipeline.
 
-```bash
-npm run lint && npm run typecheck && npm run format:check && npm run test
-npm run build && npm run test:e2e
-```
+## 4. Engineering constraints that carry into the rebuild
 
-### Quality gate details
+These commitments come from `DEVELOPMENT_PLAN.md` §5 and
+`docs/ADR-001-worker-ownership-and-determinism.md`. They will be enforced
+again when the game is rebuilt:
 
-- **Typecheck:** strict, `verbatimModuleSyntax` → type-only imports must use
-  `import type { … }` (also an ESLint error via `consistent-type-imports`).
-- **Lint:** flat config, `typescript-eslint` recommended + `no-unused-vars`
-  with `^_` ignore patterns (prefix throwaway params/vars with `_`).
-- **e2e:** cold-boot timing has been flaky before — every spec must call the
-  `workerReady(page)` helper (waits for `status` = "worker ready", 15 s)
-  before interacting with the HUD. CI has `retries: 2`. Playwright's
-  `webServer` reuses a running preview locally, so kill `fuser -k 4173/tcp`
-  to force a true cold-boot check.
+1. **The Web Worker owns all authoritative simulation state.** The main
+   thread (DOM, input, rendering) only reads snapshots and sends validated
+   commands; it must never import from `sim/` and mutate simulation objects.
+2. **No `Math.random()` anywhere in `sim/`.** All randomness flows through
+   seeded PRNG streams (mulberry32 + FNV-1a, named streams per concern).
+3. **Fixed ticks only.** `FixedClock` runs 5 ticks/second at 1×; systems
+   never read wall-clock time or `deltaTime`. Pause discards time; speed is a
+   pure multiplier; catch-up is capped per frame.
+4. **Stable iteration order.** Authoritative systems iterate entities in
+   ascending entity id and break ties with explicit stable keys.
+5. **Content is data-driven.** Balance lives in config/definitions files;
+   never hard-code tunable numbers in systems.
+6. **Version everything.** `WORLD_VERSION` (worldgen semantics) and
+   `PROTOCOL_VERSION` (worker protocol) gate every handshake; mismatch is a
+   hard error.
+7. **Renderer/UI state is derived.** Never store authoritative sim data on
+   the main thread; rebuild render layers from each snapshot.
 
-## 6. Simulation architecture
+## 5. Common pitfalls (learned the hard way)
 
-### 6.1 The worker boundary (`src/worker/index.ts`)
-
-- The worker constructs the `Simulation`, runs a 50 ms `setInterval` tick
-  loop, converts elapsed time to whole ticks via `FixedClock`, and calls
-  `sim.step(ticks)`.
-- It publishes snapshots every `SNAPSHOT_EVERY_TICKS` (5) ticks, or once after
-  a state change while paused. **Tiles transfer only on world change** (first
-  publish); routine snapshots carry tick, calendar, terrain hash, signal,
-  alerts, and the entity buffer.
-- **Entity buffer:** fresh `Int32Array` of 7 ints per row —
-  `[eid, kind, faction, x, y, state, extra]` (citizens first — `extra` is the
-  carried amount — then buildings, then nodes, then blueprints, whose
-  `extra` is build progress %) — transferred each publish. Snapshots also
-  carry per-faction `stocks` (itemType → amount) for the HUD readouts and
-  per-faction `policy` (itemType → desired reserve) for the reserve panel.
-- **Ownership buffer:** `world.owner.slice().buffer` sent only when
-  `ownerVersion` changes. The `slice()` copy is deliberate — **transferring
-  the live buffer would detach it in the worker and corrupt future writes.**
-- Commands (`SetSpeed`) and `inspect` requests arrive via `onmessage`; the
-  worker never receives sim-mutating state from the main thread.
-
-### 6.2 The ECS (`src/sim/ecs/`)
-
-- bitECS 0.4 style: `createWorld({ components: createSimComponents(), … })`
-  where components are SoA typed arrays indexed by entity id
-  (`components.Position.x[eid]`). Tags (`Citizen`, `Task`, …) are empty objects
-  used only for queries.
-- `MAX_ENTITIES = 512` bounds **concurrent** entities. bitECS **recycles freed
-  entity ids** (verified empirically), so task create/complete churn does not
-  grow the eid space — but recycled eids can carry stale component data.
-  **Always initialize every field your component reads** (factories do this).
-- Writing a typed array past its length **silently drops the write** (no
-  error). Guard entity creation with `MAX_ENTITIES`.
-- The world object also carries plain fields: `tiles`, `config`, `owner`,
-  `blockedTiles`, `tick`, `stats`, `alertLog` (capped at
-  `alertLogCapacity: 20` inside `pushAlert`), `commandCenters`, `nodes`,
-  `paths` (per-eid derived A* cache), and alert rate-limit arrays.
-
-### 6.3 The system schedule (`src/sim/systems/run.ts`)
-
-Fixed order every tick — **do not reorder without updating tests and the ADR:**
-
-1. `runNeeds` — hunger/energy/morale, eating, starvation (+ alerts)
-2. `runResources` — renewable node regrowth
-3. `runTaskDemand` — create work orders from needs and stock levels
-4. `runTaskClaim` — assign orders to citizens (ascending id order)
-5. `runTaskExecution` — advance task phases (arrival, harvest, deposit)
-6. `runMovement` — walk citizens along cached A* paths
-7. `runOwnership` — recompute faction control every `ownershipEveryTicks`
-8. `runAlerts` — food-shortage detection etc.
-
-Task lifecycle: `Created → Claimable → Reserved → InProgress → Completed |
-Failed | Cancelled`, with reservation cleanup in `taskops.ts`
-(`NodeReservedBy`, `TaskClaimedBy`, citizen `TaskId`) on every completion and
-failure — duplicate claims and leaked reservations are defects.
-
-### 6.4 Determinism specifics
-
-- **PRNG streams:** `rng.stream('worldgen.elevation')` etc. — adding a consumer
-  to one stream never perturbs another's sequence.
-- **Pathfinding:** A* in `src/sim/path/astar.ts` is _derived state_ — never
-  serialized or authoritative; recomputed from (position, goal, blocked
-  tiles). Ties break on lower f-score → lower g-score → lower tile id.
-- **Spawns:** homes, citizens, and nodes use seeded noise + fixed scan orders.
-  Citizen spawn tiles are clamped to walkable non-building tiles via a
-  deterministic expanding-square scan.
-- **`stateHash()`** (`Simulation.stateHash`) produces a deterministic content
-  hash over entity state — scenario tests assert it to prove reproducibility.
-- **Calendar:** pure function `calendarAt(tick)`; 120-day years, 4 seasons of
-  30 days, day = 300 ticks.
-
-## 7. Rendering and UI (derived state only)
-
-- `src/render/mapview.ts` composes: terrain texture (canvas →
-  `Texture.from`, nearest-neighbor scaling), ownership overlay (rebuilt when
-  `ownerVersion` changes, toggleable), entity layer, debug grid.
-- `EntityLayer` is a **single `Graphics` cleared and redrawn** each snapshot —
-  no per-entity sprites, so entity death/recycled eids cannot leak or stale.
-- Camera: drag-pan, cursor-centered wheel zoom (PixiJS 8 event/pointer APIs).
-- HUD (`src/ui/hud.ts`): pause/1×/2×/4×/8× buttons, seed/tick/day/season/year/
-  terrain-hash readouts, per-faction stock readouts (wood/stone/planks/food),
-  alerts banner, ownership/grid toggles, inspector panel. Keyboard: `Space`
-  pause, `1/2/4/8` speed, `G` grid, `O` ownership.
-- All interactive elements carry `data-testid` hooks consumed by e2e tests
-  (`hash`, `seed`, `status`, `tick`, `speed-0…8`, `grid-toggle`,
-  `ownership-toggle`, `inspector`, `inspector-title`, `inspector-content`).
-  Preserve them when refactoring.
-
-## 8. Testing strategy
-
-- **Unit tests** (`tests/unit/`): pure rules — PRNG determinism, clock
-  fixed-tick semantics, worldgen hash stability, A* (incl. wall detours),
-  needs, ownership. All seeded; no timers.
-- **Sim tests** (`tests/sim/`): `Simulation` determinism, calendar math, and
-  the M1 scenario (`scenario-m1.test.ts`) — a 3-day survival run asserting
-  both factions gather → haul → eat, survive without commands, the food
-  shortage alert fires, and `stateHash` matches across two identical runs.
-- **Helpers** (`tests/helpers.ts`): `makeSim`, `landTiles`, `connectedLand`,
-  `passable`, etc. Reuse them; don't reinvent fixture logic.
-- **e2e** (`tests/e2e/`): browser smoke — landing (logo title, centered mark,
-  enter-CTA), boot/render, hash stability across reloads, pause/speed,
-  grid + ownership toggles, inspector. Game-page tests start with
-  `workerReady(page)` (boots `/game.html?seed=1337`).
-
-Rule: **every new authoritative system needs a deterministic test covering its
-primary success path and at least one failure/edge path** (plan §7 Definition
-of Done).
-
-## 9. Common pitfalls (learned the hard way)
-
-- **Cold-boot e2e flake:** tests that click HUD controls right after `goto`
-  race worker boot. Always use `workerReady(page)` first.
+- **Cold-boot e2e flake:** tests that interact with the game right after
+  `goto` race worker boot. Use a `workerReady(page)` helper first.
 - **Transferable detach:** never `postMessage(transfer: [buffer])` a buffer
-  the worker still needs. Copy with `.slice()` first (the `ownerTiles`
-  pattern).
-- **Silent typed-array clamping:** out-of-bounds writes don't throw — they're
-  dropped. Guard with `MAX_ENTITIES`; init every component field on spawn
-  (eids are recycled).
-- **Raw query iteration is order-unsafe:** use `sortedQuery` in any system
-  whose output affects state.
-- **System order is contract:** adding a system means inserting it in
-  `run.ts` deliberately and re-verifying determinism tests.
+  the worker still needs; copy with `.slice()` first.
+- **Silent typed-array clamping:** out-of-bounds writes don't throw; guard
+  entity creation with `MAX_ENTITIES` and initialize every field on spawn.
 - **`import type` is mandatory** for type-only imports (`verbatimModuleSyntax`).
-- **No `Math.random()` in `sim/`** — grep before committing.
-- **Content vs. code:** tuning a number goes in `SIM_CONFIG` (and the test
-  expectations if it changes behavior), never inline in a system.
-- **`??` on typed arrays is defensive only:** prefer explicit bounds checks
-  over masking real index bugs with `?? 0` in new code.
-- **Repo is not yet `git init`-ed.** CI expects a git repo eventually; until
-  then, keep changes reviewable in place.
-- **Stray screenshot PNGs** at the repo root are transient verification
-  artifacts — don't treat them as part of the product.
+- **Content vs. code:** tuning a number goes in the config, never inline.
 
-## 10. Working agreement for agents
-
-From DEVELOPMENT_PLAN §7 (contract):
+## 6. Working agreement for agents
 
 - Work in **small, vertically integrated changes**: inspect existing code →
   state the plan → modify the smallest coherent surface → run targeted tests
   plus full gates → report changed files, behavior, tests, risks.
-- **Never begin broad work by generating dozens of empty abstractions.** Prefer
-  a thin end-to-end slice with real tests; generalize only when a second use
-  case demands it.
-- Every new system declares its **read/write components and scheduling
-  position** in its doc comment.
-- Every entity reference is validated; destroyed entities cannot be reused
-  silently.
-- Never change a balancing constant without placing it in content/config and
-  documenting the intended effect.
+- Never begin broad work by generating dozens of empty abstractions; prefer a
+  thin end-to-end slice with real tests, then generalize on second use.
 - Keep commits narrow and conventional: `feat(sim):`, `fix(logistics):`,
   `test(ai):`, `refactor(render):`, `docs:`.
 
-**Definition of done** (all six):
+**Definition of done** (all six): accessible in the running browser build;
+has a deterministic test or reproducible scenario for its primary success
+path; handles at least one failure/edge path visibly; is inspectable through
+debug UI/logs if it affects autonomous behavior; does not regress lint,
+typecheck, unit, scenario, or browser smoke tests; documentation updated for
+public data schemas or architectural changes.
 
-1. Accessible in the running browser build.
-2. Has a deterministic test or reproducible scenario covering its primary
-   success path.
-3. Handles at least one failure/edge path visibly.
-4. Inspectable through debug UI/logs if it affects autonomous behavior.
-5. Does not regress lint, typecheck, unit, scenario, or browser smoke tests.
-6. Documentation updated for public data schemas or architectural changes
-   (this file, README, ADR, DEVELOPMENT_PLAN progress notes as appropriate).
+## 7. Next steps
 
-## 11. Milestone status and next steps
-
-- **Done:** M0 foundation; M1a survival loop (citizens, needs, A*, task
-  market, gather→haul→eat, ownership, inspectors, alerts); **M1b
-  construction** — player-placed blueprints (stockpile + hut via the HUD
-  build palette), deterministic placement validation (walkable land, no
-  overlap, claim radius, per-faction cap), build-task reservation/cooldown,
-  and completion-exactly-once with a causal `construction.complete` alert
-  (`tests/sim/scenario-construction.test.ts` + e2e). Protocol v2 adds the
-  `PlaceBlueprint` command and `commandRejected` events.
-- **M2 iteration 1 (materials economy):** harvestable wood/stone nodes spawn
-  on forest/hill terrain; stockpiles store all four items (`Stock` map,
-  shared capacity); construction sites are funded once from faction
-  stockpiles (unfunded sites wait, materials are refunded on build failure);
-  a haul task rescues stranded material carries. Protocol v3 adds snapshot
-  `stocks` + richer inspect details (`tests/sim/scenario-economy.test.ts` +
-  e2e).
-- **M2 iteration 2 (work buildings):** the sawpit replaces the command-center
-  crafting placeholder — haulers run a `Supply` task to keep its wood buffer
-  topped up and to carry crafted planks back to stockpiles; a worker crafts
-  one planks batch at a time (2 wood → 1 plank, consumed atomically from the
-  sawpit's own buffer); a hut without a sawpit waits instead of stalling
-  gathering. `adjacentGoal` now skips tiles inside any building/blueprint
-  footprint (a site hugging the sawpit can no longer block its delivery
-  tile). `tests/sim/scenario-economy.test.ts` covers the full chain
-  wood → supply → planks → hut + e2e.
-- **M2 iteration 3 (construction priorities):** blueprints carry a priority
-  (1 low / 2 normal / 3 high, default 2) set from the HUD build palette and
-  carried in the `PlaceBlueprint` command (protocol v5). Out-of-range
-  priorities are rejected deterministically (`bad-priority`). Demand funds
-  and builds sites in priority order (highest first, eid tie-break) and the
-  build task priority is derived from the blueprint's (`buildTaskPriority ±
-buildPriorityStep` per level), so scarce materials and scarce builders
-  serve urgent sites first. The blueprint inspector shows the priority.
-  (Known scope cut: material gather demand still pulls toward the aggregate
-  cost of all unfunded sites; funding order — not gather demand — is what
-  favors high-priority sites.) `tests/sim/scenario-priority.test.ts`
-  covers funding/completion order,
-  task-priority derivation, the default, rejection, and determinism + e2e.
-- **M2 iteration 4 (stockpile policy):** each faction now has a stockpile
-  policy — a desired reserve target per item (food defaults from
-  `FACTION_META`, materials start at 0 so nothing is gathered without a
-  blueprint or a set reserve). The HUD policy panel sets them via the
-  `SetStockpileReserve` command (protocol v6); out-of-range amounts,
-  unknown factions, and unknown items are rejected deterministically
-  (`bad-amount`/`bad-faction`/`bad-item`) with no side effects. Demand is
-  policy-aware: food gather tops up the food reserve, wood/stone gather and
-  sawpit supply/craft target the greater of the construction need and the
-  material reserve. At demand time the effective reserve is clamped to the
-  faction's total stockpile capacity, so an unreachable target (e.g. food
-  200 with a 100-capacity command center) cannot churn gather→full→fail
-  loops; and since material nodes are finite, a reserve beyond what trees or
-  stone can ever supply simply stops gathering once they are exhausted.
-  Snapshots carry `policy` so the panel reflects authoritative state;
-  `stateHash` covers reserves.
-  `tests/sim/scenario-policy.test.ts` covers defaults, reserve-driven
-  gather + craft, rejection, and determinism + e2e `policy.spec.ts`.
-- **M2 iteration 5 (seasons and weather):** the calendar's four seasons now
-  have real consequences. `src/sim/core/seasons.ts` derives every seasonal
-  factor from the tick alone (pure function of `calendarAt`) — no new
-  simulation state, no PRNG stream, no protocol change (the calendar was
-  already in every snapshot). Four SIM_CONFIG arrays (index = season − 1:
-  spring/summer/autumn/winter) drive: food gather yield per tick
-  (`seasonGatherFactor` [1, 1.2, 1.1, 0.4] — the gather Work phase now
-  accumulates fractional `TaskProgress` and harvests a unit each time it
-  crosses an integer, so winter's 0.4 yields ~one berry every 2–3 ticks,
-  spring's 1.0 is byte-for-byte the old behavior); hunger growth
-  (`seasonHungerFactor` [1, 1, 1.05, 1.3] — winter cold raises food needs);
-  berry regrowth (`seasonRegenFactor` [1, 1, 1, 0] — winter plants lie
-  dormant); and the autumn **winter buffer** (`seasonReserveMultiplier`
-  [1, 1, 1.5, 1]): at demand time the food reserve target is scaled by the
-  season and re-clamped to stockpile capacity, so an autumn 50-reserve
-  faction stockpiles toward 75 before winter hits — the "AI changes
-  priorities ahead of winter" behavior from the M2 acceptance scenario.
-  Every season transition fires exactly one causal `weather.season` alert
-  (winter is severity 1, the rest informational). The HUD shows the season
-  name + weather descriptor and the map gets a subtle per-season tint.
-  `tests/unit/seasons.test.ts` (calendar boundaries + factors) and
-  `tests/sim/scenario-seasons.test.ts` (autumn buffer, winter slowdown vs
-  autumn rate, winter starvation timing vs spring, weather alerts, and a
-  100-day determinism run) cover it. Balance note: the seasonal tests use
-  seed 1337 (the default game seed) because it keeps both factions viable
-  for a full year; a longer winter is survival-tight by design — the autumn
-  buffer exists to absorb it.
-
-  **Known worldgen issue (pre-existing, surfaced by the long seasonal runs):**
-  `spawnNodes` places resource nodes by terrain scan only and never checks
-  whether a node is reachable from its faction's command center. On some
-  seeds (e.g. 8012 = "vertical-slice-01") a faction's berry patches sit
-  behind water: every gather task fails `Unreachable` each tick (no retry
-  cooldown for gather), the faction starves within a week, and the
-  `food.shortage` alert never fires because the berries still "have stock".
-  Nothing before M2-5 ran past 9,000 ticks, so this was invisible. Fix
-  belongs in worldgen (skip unreachable node candidates) or demand
-  (reachability check + fail cooldown); both would bump `WORLD_VERSION`.
-
-- **Next:** M2 continued — accepted-item stockpile rules/faction access,
-  spoilage; fix unreachable-node placement (above); then M3 strategic
-  competition, M4 war and logistics, M5 emergence, M6 beta quality (per the
-  plan's roadmap).
+The full design and roadmap (milestones 0–6) live in
+`DEVELOPMENT_PLAN.md` §6. The rebuild direction (per the 2026-08-11 plan
+update) centers on strategic competition and war: dominance scoring, victory
+conditions, and the hierarchical enemy AI. Do not start rebuilding without
+explicit direction on the first slice.

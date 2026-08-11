@@ -2,7 +2,7 @@
   "name": "ashes-and-antlers",
   "private": true,
   "version": "0.1.0",
-  "description": "Ashes and Antlers (working title) — browser-native 2D grand colony/RTS. Milestone 2: the materials economy.",
+  "description": "Ashes and Antlers (working title) — browser-native 2D grand colony/RTS. The game was scrapped 2026-08-11; only the landing page remains until the game is rebuilt per DEVELOPMENT_PLAN.md.",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -18,20 +18,11 @@
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium"
   },
-  "dependencies": {
-    "@fontsource/cinzel": "^5.3.0",
-    "bitecs": "^0.4.0",
-    "pixi.js": "^8.6.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@eslint/js": "^9.17.0",
     "@playwright/test": "^1.49.0",
     "@types/node": "^22.10.0",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.3",
     "eslint": "^9.17.0",
     "prettier": "^3.4.0",
     "typescript": "^5.7.0",

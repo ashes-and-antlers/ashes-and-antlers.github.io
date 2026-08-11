@@ -48,42 +48,34 @@ mechanism a neighboring game could not truthfully copy.
   never depends on pixels.
 - Seeded worlds: `?seed=12345` in the URL varies the world; the default seed
   keeps e2e deterministic.
-- The player inspects the world by clicking tiles, citizens, buildings, and
-  resource nodes; toggles for a debug grid and an ownership overlay; a
-  causal alert banner (rate-limited, severity-coded) surfaces problems like
-  food shortage before starvation.
 - Quality gates are contract: lint, strict typecheck, Prettier, deterministic
   unit + scenario tests, production build, and Playwright e2e run in CI.
 
 ## Capabilities and Constraints
 
-### Confirmed capability (implemented, Milestone 1a + 1b + M2)
+### Confirmed capability (current build)
 
-- Seeded deterministic worldgen (PRNG streams, terrain hash, versioned).
-- bitECS entity layer: two faction command centers, citizens with movement
-  and needs (hunger, energy, morale), deterministic A* pathfinding.
-- A deterministic task market — demand, claim, execute, reservation cleanup —
-  driving gather → haul → eat; stockpiles and resource nodes (renewable +
-  finite).
-- Construction: player-placed blueprints — stockpile and hut — with builder
-  reservation/construction and completion-exactly-once.
-- Materials economy (M2): harvestable wood/stone, multi-item stockpiles
-  (food/wood/stone/planks), a sawpit work building with real logistics
-  (haulers supply its wood buffer, carry planks out; a worker crafts one
-  batch at a time), construction sites that consume material costs
-  (refunded on failure), and a haul task that rescues stranded carries.
-- Ownership overlay, tile/entity inspectors, causal rate-limited alerts,
-  speed controls, per-faction stock readouts, and a debug grid.
+- **The landing page only.** On 2026-08-11 the player-facing game
+  implementation (worldgen, simulation worker, ECS, task market,
+  construction, economy, seasons) was **scrapped** so the project could
+  restart from a clean slate. The shipped product right now is the landing
+  page: the brand mark cover, the premise entries, the two peoples, and the
+  rules of the archive, with a single Enter the world action. There is no
+  game page yet; the enter action currently links to `game.html`, which
+  does not exist until the game is rebuilt.
+- The scrapped implementation is recoverable from git history (committed at
+  `86e838f` and earlier) and remains a reference for the rebuild.
 
 ### Designed but not yet implemented
 
-- Economy/settlement depth: work buildings, construction priorities,
-  stockpile rules/policy, spoilage, food forecast, seasons. After that:
-  strategic competition, war and logistics, emergence, beta quality.
+- The full roadmap (milestones 0–6) as planned in DEVELOPMENT_PLAN.md §6,
+  rebuilt from a fresh start. The 2026-08-11 direction change centers the
+  game on strategic competition and war: dominance scoring, victory
+  conditions, and the hierarchical enemy AI.
 - Two asymmetric factions: Hearth Confederacy (settled builders, strong
-  institutions) and Iron Swarm (mobile, caste-based expansionists);
-  asymmetry via policies, tech, templates, and starting conditions — not
-  forked simulation rules.
+  institutions) and Iron Swarm (mobile, caste-based expansionists); asymmetry
+  via policies, tech, templates, and starting conditions — not forked
+  simulation rules.
 - Scored dominance model with decisive, territorial, hegemonic, and sandbox
   victory conditions.
 - Environmental feedback loops (forest harvest, soil fertility, fire,
@@ -97,12 +89,10 @@ mechanism a neighboring game could not truthfully copy.
   PRNG streams.
 - Fixed ticks only; systems never read wall-clock time.
 - Stable iteration order (ascending entity id) in authoritative systems.
-- Balance and content are data-driven (`SIM_CONFIG`, content.ts); tunable
-  numbers never live inline in systems.
+- Balance and content are data-driven; tunable numbers never live inline in
+  systems.
 - `WORLD_VERSION` / `PROTOCOL_VERSION` gate every handshake; hard error on
   mismatch.
-- Bounded concurrent entities (`MAX_ENTITIES = 512`); recycled entity ids
-  must have every field re-initialized on spawn.
 - Every new authoritative system needs a deterministic test for its primary
   success path and at least one failure/edge path.
 
@@ -117,8 +107,7 @@ systems-first fictional world.
 ### Explicitly undecided
 
 - The final title (see Brand Commitments).
-- Anything beyond the roadmap above (milestones 2–6 are planned in
-  DEVELOPMENT_PLAN.md but not yet designed in code).
+- The shape of the rebuild beyond the roadmap in DEVELOPMENT_PLAN.md.
 
 ## Brand Commitments
 
@@ -136,13 +125,11 @@ systems-first fictional world.
 
 - `DEVELOPMENT_PLAN.md` — the full design: brief, game shape, simulation
   design, milestones, test and balance strategy.
-- `AGENTS.md` — architecture contract and non-negotiable determinism rules.
+- `AGENTS.md` — the architecture contract and current repo state.
 - `docs/ADR-001-worker-ownership-and-determinism.md` — the worker-ownership
-  contract.
-- `tests/` — deterministic unit tests, sim determinism tests, and the M1
-  3-day survival scenario proving both factions gather → haul → eat without
-  commands.
-- The running Milestone 1a build (see README quickstart).
+  and determinism contract for the rebuild.
+- `tests/e2e/landing.spec.ts` — the surviving Playwright smoke test for the
+  landing page.
 - Absences future work must not fabricate: no testimonials, no press, no
   published player research, no monetization decisions.
 

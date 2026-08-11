@@ -27,13 +27,3 @@ test('landing page centers the logo as the title and offers the enter action', a
   await expect(page.locator('canvas')).toHaveCount(0);
   await expect(page.getByTestId('enter-link')).toBeVisible();
 });
-
-test('entering the world boots the game', async ({ page }) => {
-  await page.goto('/');
-
-  await page.getByTestId('enter-link').click();
-
-  await expect(page).toHaveURL(/\/game\.html\?seed=1337/);
-  await expect(page.getByTestId('status')).toContainText('worker ready', { timeout: 15_000 });
-  await expect(page.getByTestId('seed')).toHaveText('seed 1337');
-});
