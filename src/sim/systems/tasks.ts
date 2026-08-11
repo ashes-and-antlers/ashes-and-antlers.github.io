@@ -10,6 +10,7 @@ import {
   TaskState,
   type FactionId,
 } from '../data/content';
+import { seasonReserveMultiplier } from '../core/seasons';
 import { sortedQuery, type SimWorld } from '../ecs/world';
 import { completeTask, createTask, failTask, isActiveTaskState } from './taskops';
 import { executeBuild, runBuildDemand } from './construction';
@@ -23,6 +24,7 @@ import {
 import {
   adjacentGoal,
   effectiveFactionReserve,
+  factionStockCapacity,
   factionStockOf,
   factionStockpiles,
   isNodeInsideFootprint,
@@ -73,14 +75,23 @@ export function runTaskDemand(world: SimWorld): void {
   // --- Gather demand: top up the faction's food reserve (stockpile policy) ---
   for (const faction of FACTIONS) {
     const reserve = effectiveFactionReserve(world, faction, ItemType.Food);
+    // Going into winter the logistics AI builds a buffer: the effective target
+    // is the policy scaled by the season's reserve multiplier, clamped to what
+    // the stockpiles can physically hold. In autumn a 50-reserve faction
+    // stockpiles toward 75 instead of stopping at 50, so the winter slowdown
+    // is survivable. Deterministic: a pure function of the tick.
+    const target = Math.min(
+      factionStockCapacity(world, faction),
+      Math.round(reserve * seasonReserveMultiplier(config, world.tick)),
+    );
     const stock = factionStock(world, faction);
     const active = activeGatherCount(world, faction);
-    if (stock >= reserve || active >= config.maxGatherTasksPerFaction) continue;
+    if (stock >= target || active >= config.maxGatherTasksPerFaction) continue;
     const node = pickBerryNode(world, faction);
     if (node === -1) continue;
     const nx = c.Position.x[node] ?? 0;
     const ny = c.Position.y[node] ?? 0;
-    const deficit = Math.max(0, reserve - stock);
+    const deficit = Math.max(0, target - stock);
     const priority = 1 + deficit / Math.max(1, reserve);
     createTask(world, TaskKind.GatherFood, faction, node, nx, ny, priority);
   }

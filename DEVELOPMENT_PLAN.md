@@ -502,6 +502,22 @@ Acceptance scenario:
 > carries, building stock, blueprint cost/funding). Scenario suite:
 > `tests/sim/scenario-economy.test.ts` (+ e2e `construction.spec.ts`),
 > deterministic under the same seed + command stream.
+>
+> **Progress: iterations 3–5 complete.** Iteration 3 added construction
+> priorities (blueprints carry a 1–3 priority that drives funding/build
+> order); iteration 4 added the stockpile policy (desired reserve per item,
+> set by `SetStockpileReserve`, clamped to capacity at demand time);
+> iteration 5 added **seasons and weather** — food gather yield, hunger
+> growth, and berry regrowth scale by season (winter: 0.4× gather, 1.3×
+> hunger, no regrowth), the logistics AI builds an autumn winter buffer
+> (food reserve target × 1.5 going into winter), and each season transition
+> fires exactly one causal `weather.season` alert. All seasonal values are
+> a pure function of the tick (`src/sim/core/seasons.ts`), so there is no
+> new simulation state, PRNG stream, or protocol change; the HUD shows the
+> season name + weather descriptor and the map is subtly tinted per season.
+> Scenario suite: `tests/sim/scenario-seasons.test.ts` (autumn buffer,
+> winter slowdown, winter starvation timing, weather alerts, 100-day
+> determinism) + `tests/unit/seasons.test.ts`.
 
 **Goal:** A functioning settlement that has production chains and meaningful labor tradeoffs.
 

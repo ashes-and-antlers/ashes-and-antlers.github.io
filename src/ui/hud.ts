@@ -5,6 +5,8 @@ import {
   ITEM_NAMES,
   NODE_NAMES,
   PRIORITY_NAMES,
+  SEASON_NAMES,
+  WEATHER_NAMES,
 } from '../shared/labels';
 import type { Calendar, InspectDetail, SimAlert } from '../shared/protocol';
 import { toHex8 } from '../shared/utils';
@@ -42,6 +44,7 @@ export class Hud {
   private readonly tickEl: HTMLElement;
   private readonly dayEl: HTMLElement;
   private readonly seasonEl: HTMLElement;
+  private readonly weatherEl: HTMLElement;
   private readonly yearEl: HTMLElement;
   private readonly hashEl: HTMLElement;
   private readonly statusEl: HTMLElement;
@@ -78,6 +81,7 @@ export class Hud {
     this.tickEl = q('[data-testid="tick"]');
     this.dayEl = q('[data-testid="day"]');
     this.seasonEl = q('[data-testid="season"]');
+    this.weatherEl = q('[data-testid="weather"]');
     this.yearEl = q('[data-testid="year"]');
     this.hashEl = q('[data-testid="hash"]');
     this.statusEl = q('[data-testid="status"]');
@@ -180,7 +184,8 @@ export class Hud {
 
   setCalendar(calendar: Calendar): void {
     this.dayEl.textContent = String(calendar.day);
-    this.seasonEl.textContent = String(calendar.season);
+    this.seasonEl.textContent = `${calendar.season} · ${SEASON_NAMES[calendar.season] ?? calendar.season}`;
+    this.weatherEl.textContent = WEATHER_NAMES[calendar.season] ?? '—';
     this.yearEl.textContent = String(calendar.year);
   }
 
@@ -397,7 +402,8 @@ export class Hud {
           <div class="readouts" aria-label="Simulation state">
             <div class="readout"><span class="readout-label">tick</span><b data-testid="tick">0</b></div>
             <div class="readout"><span class="readout-label">day</span><b data-testid="day">1</b></div>
-            <div class="readout"><span class="readout-label">season</span><b data-testid="season">1</b></div>
+            <div class="readout"><span class="readout-label">season</span><b data-testid="season">1 · Spring</b></div>
+            <div class="readout"><span class="readout-label">weather</span><b data-testid="weather">mild</b></div>
             <div class="readout"><span class="readout-label">year</span><b data-testid="year">1</b></div>
             <div class="readout"><span class="readout-label">terrain hash</span><b class="mono" data-testid="hash">—</b></div>
           </div>

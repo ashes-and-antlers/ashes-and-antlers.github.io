@@ -13,6 +13,7 @@ import {
   type FactionId,
   type ItemCost,
 } from '../data/content';
+import { seasonGatherFactor } from '../core/seasons';
 import { sortedQuery, type SimWorld } from '../ecs/world';
 import { completeTask, createTask, failTask, isActiveTaskState } from './taskops';
 import {
@@ -433,17 +434,42 @@ export function executeGatherMaterial(world: SimWorld, task: number, worker: num
       failTask(world, task, TaskFailReason.Depleted);
       return;
     }
-    c.CarryAmount[worker] = (c.CarryAmount[worker] ?? 0) + 1;
-    c.CarryItem[worker] = item;
-    c.NodeAmount[node] = (c.NodeAmount[node] ?? 0) - 1;
-    c.TaskProgress[task] = (c.TaskProgress[task] ?? 0) + 1;
-    if (item === ItemType.Food) {
-      world.stats.foodGathered++;
-    } else {
-      world.stats.materialsGathered++;
-    }
-    if ((c.NodeAmount[node] ?? 0) <= 0) {
-      c.NodeRegenTick[node] = world.tick + config.berryRegenDelayTicks;
+    // Seasonal food yield (M2 iteration 5): the per-tick rate is the config
+    // base scaled by the season's gather factor. Progress accumulates
+    // fractionally and a unit is harvested each time it crosses an integer, so
+    // winter's 0.4 yield produces roughly one berry every 2-3 ticks while
+    // spring's 1.0 is unchanged. Wood/stone are seasonal-neutral.
+    const yieldNow =
+      item === ItemType.Food
+        ? config.gatherPerTick * seasonGatherFactor(config, world.tick)
+        : config.gatherPerTick;
+    const before = Math.floor(c.TaskProgress[task] ?? 0);
+    c.TaskProgress[task] = (c.TaskProgress[task] ?? 0) + yieldNow;
+    const earned = Math.floor(c.TaskProgress[task] ?? 0) - before;
+    if (earned > 0) {
+      // Only whole units land in the carry and the stats (carry is an Int32
+      // store). A sub-1 remainder on a partially-regrown node is drained and
+      // lost — you cannot carry a fraction of a berry — which also guarantees
+      // the node reaches exactly 0 so its regrowth delay is scheduled.
+      const take = Math.min(
+        earned,
+        c.NodeAmount[node] ?? 0,
+        config.carryCapacity - (c.CarryAmount[worker] ?? 0),
+      );
+      const whole = Math.floor(take);
+      c.NodeAmount[node] = (c.NodeAmount[node] ?? 0) - take;
+      if (whole > 0) {
+        c.CarryAmount[worker] = (c.CarryAmount[worker] ?? 0) + whole;
+        c.CarryItem[worker] = item;
+        if (item === ItemType.Food) {
+          world.stats.foodGathered += whole;
+        } else {
+          world.stats.materialsGathered += whole;
+        }
+      }
+      if ((c.NodeAmount[node] ?? 0) <= 0) {
+        c.NodeRegenTick[node] = world.tick + config.berryRegenDelayTicks;
+      }
     }
     if ((c.CarryAmount[worker] ?? 0) >= config.carryCapacity || (c.NodeAmount[node] ?? 0) <= 0) {
       const sp = nearestStockpileWithRoom(world, c.Faction[worker] as FactionId, worker, 1);

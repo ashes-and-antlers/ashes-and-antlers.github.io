@@ -146,6 +146,8 @@ async function boot(): Promise<void> {
           camera.fitView(map.naturalWidth, map.naturalHeight);
           map.updateGrid(camera.currentZoom);
         }
+        // After setTiles so the first snapshot can draw the tint immediately.
+        map.setSeason(msg.calendar.season);
         if (msg.ownerTiles !== undefined) {
           map.setOwnerTiles(new Uint8Array(msg.ownerTiles), msg.width, msg.height);
         }

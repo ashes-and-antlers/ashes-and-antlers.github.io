@@ -388,6 +388,46 @@ buildPriorityStep` per level), so scarce materials and scarce builders
   `stateHash` covers reserves.
   `tests/sim/scenario-policy.test.ts` covers defaults, reserve-driven
   gather + craft, rejection, and determinism + e2e `policy.spec.ts`.
+- **M2 iteration 5 (seasons and weather):** the calendar's four seasons now
+  have real consequences. `src/sim/core/seasons.ts` derives every seasonal
+  factor from the tick alone (pure function of `calendarAt`) — no new
+  simulation state, no PRNG stream, no protocol change (the calendar was
+  already in every snapshot). Four SIM_CONFIG arrays (index = season − 1:
+  spring/summer/autumn/winter) drive: food gather yield per tick
+  (`seasonGatherFactor` [1, 1.2, 1.1, 0.4] — the gather Work phase now
+  accumulates fractional `TaskProgress` and harvests a unit each time it
+  crosses an integer, so winter's 0.4 yields ~one berry every 2–3 ticks,
+  spring's 1.0 is byte-for-byte the old behavior); hunger growth
+  (`seasonHungerFactor` [1, 1, 1.05, 1.3] — winter cold raises food needs);
+  berry regrowth (`seasonRegenFactor` [1, 1, 1, 0] — winter plants lie
+  dormant); and the autumn **winter buffer** (`seasonReserveMultiplier`
+  [1, 1, 1.5, 1]): at demand time the food reserve target is scaled by the
+  season and re-clamped to stockpile capacity, so an autumn 50-reserve
+  faction stockpiles toward 75 before winter hits — the "AI changes
+  priorities ahead of winter" behavior from the M2 acceptance scenario.
+  Every season transition fires exactly one causal `weather.season` alert
+  (winter is severity 1, the rest informational). The HUD shows the season
+  name + weather descriptor and the map gets a subtle per-season tint.
+  `tests/unit/seasons.test.ts` (calendar boundaries + factors) and
+  `tests/sim/scenario-seasons.test.ts` (autumn buffer, winter slowdown vs
+  autumn rate, winter starvation timing vs spring, weather alerts, and a
+  100-day determinism run) cover it. Balance note: the seasonal tests use
+  seed 1337 (the default game seed) because it keeps both factions viable
+  for a full year; a longer winter is survival-tight by design — the autumn
+  buffer exists to absorb it.
+
+  **Known worldgen issue (pre-existing, surfaced by the long seasonal runs):**
+  `spawnNodes` places resource nodes by terrain scan only and never checks
+  whether a node is reachable from its faction's command center. On some
+  seeds (e.g. 8012 = "vertical-slice-01") a faction's berry patches sit
+  behind water: every gather task fails `Unreachable` each tick (no retry
+  cooldown for gather), the faction starves within a week, and the
+  `food.shortage` alert never fires because the berries still "have stock".
+  Nothing before M2-5 ran past 9,000 ticks, so this was invisible. Fix
+  belongs in worldgen (skip unreachable node candidates) or demand
+  (reachability check + fail cooldown); both would bump `WORLD_VERSION`.
+
 - **Next:** M2 continued — accepted-item stockpile rules/faction access,
-  spoilage, seasons; then M3 strategic competition, M4 war and logistics,
-  M5 emergence, M6 beta quality (per the plan's roadmap).
+  spoilage; fix unreachable-node placement (above); then M3 strategic
+  competition, M4 war and logistics, M5 emergence, M6 beta quality (per the
+  plan's roadmap).

@@ -1,12 +1,25 @@
 import { query } from 'bitecs';
-import { FACTIONS, FACTION_META, ItemType, NodeKind, type FactionId } from '../data/content';
+import { SEASON_NAMES } from '../../shared/labels';
+import { calendarAt } from '../core/calendar';
+import { FACTIONS, FACTION_META, FactionId, ItemType, NodeKind } from '../data/content';
 import { sortedQuery, type SimWorld } from '../ecs/world';
 import { pushAlert } from './needs';
 import { factionStock } from './tasks';
 
+/** Per-season weather explanation shown in the transition alert. */
+const WEATHER_TEXT: Record<number, string> = {
+  1: 'berry patches regrow and foraging is at full strength',
+  2: 'abundant foraging — food gathering peaks',
+  3: 'the logistics AI stockpiles food ahead of winter',
+  4: 'berry patches lie dormant and food gathering slows',
+};
+
 /**
  * Alert system. Alerts are consequences of simulation state, never arbitrary
  * events (DEVELOPMENT_PLAN §3.9).
+ *
+ * weather.season fires exactly once per season transition (calendarAt is a
+ * pure function of the tick, so the boundary tick is unambiguous).
  *
  * food.shortage fires when a faction has no food anywhere, no berry nodes
  * with stock, and hungry citizens — i.e. gathering has genuinely failed.
@@ -14,6 +27,20 @@ import { factionStock } from './tasks';
 export function runAlerts(world: SimWorld): void {
   const c = world.components;
   const config = world.config;
+
+  // Weather: a season transition is a deterministic, state-derived event.
+  if (world.tick > 0) {
+    const seasonNow = calendarAt(world.tick).season;
+    const seasonPrev = calendarAt(world.tick - 1).season;
+    if (seasonNow !== seasonPrev) {
+      pushAlert(world, {
+        code: 'weather.season',
+        severity: seasonNow === 4 ? 1 : 0,
+        factionId: FactionId.None,
+        text: `${SEASON_NAMES[seasonNow] ?? seasonNow} arrives — ${WEATHER_TEXT[seasonNow] ?? 'the seasons turn'}.`,
+      });
+    }
+  }
 
   const citizens = sortedQuery(query(world, [c.Citizen]));
   const hungryByFaction = new Map<FactionId, number>();

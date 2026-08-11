@@ -9,6 +9,14 @@ export interface DecodedTile {
   elevation: number;
 }
 
+/** Subtle per-season map tint (index = season - 1); cheap, derived from the snapshot calendar. */
+const SEASON_TINTS: readonly { color: number; alpha: number }[] = [
+  { color: 0x7fbf5f, alpha: 0.1 }, // Spring: fresh green
+  { color: 0xffd76a, alpha: 0.1 }, // Summer: golden
+  { color: 0xff9e4a, alpha: 0.12 }, // Autumn: orange
+  { color: 0xbcd8ff, alpha: 0.16 }, // Winter: icy blue
+];
+
 /** Decode a snapshot tile byte: 3 bits terrain, 5 bits elevation. */
 export function decodeTileByte(byte: number): DecodedTile {
   return { terrain: (byte >> 5) as TerrainType, elevation: (byte & 0x1f) << 3 };
@@ -55,13 +63,17 @@ export class MapView {
   private readonly ownershipLayer = new OwnershipLayer();
   private readonly entityLayer = new EntityLayer();
   private readonly grid: Graphics = new Graphics();
+  private readonly seasonOverlay: Graphics = new Graphics();
 
   private terrainSprite: Sprite | null = null;
   private gridEnabled = false;
   private worldWidth = 0;
   private worldHeight = 0;
+  private lastSeason = -1;
 
   constructor() {
+    // Stacking order inside terrainLayer: [terrain sprite, season tint, grid].
+    this.terrainLayer.addChild(this.seasonOverlay);
     this.terrainLayer.addChild(this.grid);
     this.container.addChild(this.terrainLayer);
     this.container.addChild(this.ownershipLayer.sprite);
@@ -95,6 +107,23 @@ export class MapView {
 
   setOwnerTiles(owner: Uint8Array, width: number, height: number): void {
     this.ownershipLayer.setOwnerTiles(owner, width, height);
+  }
+
+  /**
+   * Re-tint the map for the snapshot's season (1-4). Redraws only when the
+   * season changes, so this is effectively free on routine snapshots.
+   */
+  setSeason(season: number): void {
+    if (season === this.lastSeason || this.worldWidth === 0) return;
+    this.lastSeason = season;
+    const tint = SEASON_TINTS[season - 1];
+    if (tint === undefined) return;
+    const g = this.seasonOverlay;
+    g.clear();
+    g.rect(0, 0, this.naturalWidth, this.naturalHeight).fill({
+      color: tint.color,
+      alpha: tint.alpha,
+    });
   }
 
   setOwnerVisible(visible: boolean): void {

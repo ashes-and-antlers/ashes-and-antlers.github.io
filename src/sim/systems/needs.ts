@@ -1,5 +1,6 @@
 import { entityExists, query, removeEntity } from 'bitecs';
 import { CitizenState, FactionId, FACTION_META, ItemType, TaskFailReason } from '../data/content';
+import { seasonHungerFactor } from '../core/seasons';
 import { sortedQuery, type SimWorld } from '../ecs/world';
 import { failTask } from './taskops';
 import { clearCarry } from './inventory';
@@ -13,9 +14,11 @@ export function runNeeds(world: SimWorld): void {
   const c = world.components;
   const config = world.config;
   const citizens = sortedQuery(query(world, [c.Citizen]));
+  // Winter cold raises food needs: hunger grows at the season-scaled rate.
+  const hungerFactor = seasonHungerFactor(config, world.tick);
 
   for (const eid of citizens) {
-    c.Hunger[eid] += config.hungerPerTick;
+    c.Hunger[eid] += config.hungerPerTick * hungerFactor;
 
     const state = c.CitizenState[eid] ?? CitizenState.Idle;
     if (state === CitizenState.Working) {

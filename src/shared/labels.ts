@@ -84,3 +84,19 @@ export const PRIORITY_NAMES: Record<number, string> = {
   2: 'normal',
   3: 'high',
 };
+
+/** Calendar season names (1 = Spring, 2 = Summer, 3 = Autumn, 4 = Winter). */
+export const SEASON_NAMES: Record<number, string> = {
+  1: 'Spring',
+  2: 'Summer',
+  3: 'Autumn',
+  4: 'Winter',
+};
+
+/** Short weather descriptor per season (shown in the HUD readouts). */
+export const WEATHER_NAMES: Record<number, string> = {
+  1: 'mild',
+  2: 'warm',
+  3: 'cool',
+  4: 'cold',
+};

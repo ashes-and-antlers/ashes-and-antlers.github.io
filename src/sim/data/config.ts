@@ -94,6 +94,23 @@ export interface SimConfig {
   /** Crafting recipes keyed by RecipeKind (data-driven; plan §3.4). */
   recipes: Partial<Record<RecipeKind, Recipe>>;
 
+  // Seasons (M2 iteration 5)
+  /**
+   * Food gather yield multiplier per season (index = season - 1: spring,
+   * summer, autumn, winter). Winter foraging is slow; spring is baseline.
+   * Fixed 4-entry tuples — seasonIndexAt is always 0..3.
+   */
+  seasonGatherFactor: [number, number, number, number];
+  /** Hunger growth multiplier per season (winter cold raises food needs). */
+  seasonHungerFactor: [number, number, number, number];
+  /**
+   * Food reserve multiplier the logistics AI targets going into winter (the
+   * autumn buffer: a 50-reserve stockpiles toward 75 before winter hits).
+   */
+  seasonReserveMultiplier: [number, number, number, number];
+  /** Renewable regrowth multiplier per season (0 in winter: dormant). */
+  seasonRegenFactor: [number, number, number, number];
+
   // Movement
   speedTilesPerTick: number;
   maxPathNodes: number;
@@ -181,6 +198,15 @@ export const SIM_CONFIG: SimConfig = {
       workTicks: 3,
     },
   },
+
+  // Seasons (M2 iteration 5): four entries, index = season - 1
+  // (spring, summer, autumn, winter). Deterministic — a pure function of the
+  // tick via src/sim/core/seasons.ts; no protocol change (the calendar is
+  // already in every snapshot).
+  seasonGatherFactor: [1, 1.2, 1.1, 0.4],
+  seasonHungerFactor: [1, 1, 1.05, 1.3],
+  seasonReserveMultiplier: [1, 1, 1.5, 1],
+  seasonRegenFactor: [1, 1, 1, 0],
 
   speedTilesPerTick: 1,
   maxPathNodes: 4096,

@@ -41,3 +41,6 @@ plugins/impeccable-live.client.ts
 app/plugins/impeccable-live.client.ts
 src/plugins/impeccable-live.client.ts
 # impeccable-live-ignore-end
+
+# stray shell redirect artifact at repo root (not part of the product)
+/-l
