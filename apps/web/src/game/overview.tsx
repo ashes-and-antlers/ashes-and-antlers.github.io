@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatCoordinate, type PlanetView, type WorldView } from '@ashes/contracts';
 import { assertProtocol, fetchOverview } from './api';
-import { PLANET_PORTRAIT_SIZE, PlanetThumb, RESOURCE_NAMES } from './planet-ui';
+import { PlanetThumb, RESOURCE_NAMES } from './planet-ui';
 
 const POLL_MS = 2_000;
 const MAX_CONSECUTIVE_FAILURES = 3;
@@ -169,37 +169,6 @@ function Overview({ view, seed }: { view: WorldView; seed: string }) {
 
   return (
     <main className="game-grid">
-      <section className="panel home-panel" aria-labelledby="home-heading">
-        <h2 id="home-heading" className="panel-title">
-          Home planet
-        </h2>
-        <a
-          className="home-card"
-          data-testid="home-planet-link"
-          href={`planet.html?seed=${seed}&planet=${encodeURIComponent(home.id)}`}
-        >
-          <PlanetThumb
-            worldId={view.worldId}
-            planetId={home.id}
-            name={home.name}
-            size={PLANET_PORTRAIT_SIZE}
-            className="planet-thumb-large"
-            priority
-          />
-          <div className="home-card-plate">
-            <p className="home-card-name">
-              <strong>{home.name}</strong>
-              {home.factionId && <span className="faction-tag">{home.factionId}</span>}
-            </p>
-            <p className="home-coord">
-              <span className="micro-label">Coordinate</span>
-              <strong data-testid="home-coordinate">{formatCoordinate(home.coordinate)}</strong>
-            </p>
-            <span className="home-card-cta">Open the ledger →</span>
-          </div>
-        </a>
-      </section>
-
       <section className="panel orders-panel" aria-labelledby="orders-heading">
         <h2 id="orders-heading" className="panel-title">
           Pending next tick
@@ -222,7 +191,12 @@ function Overview({ view, seed }: { view: WorldView; seed: string }) {
           Known planets
         </h2>
         <div className="table-scroll">
-          <PlanetTable planets={view.planets} seed={seed} worldId={view.worldId} />
+          <PlanetTable
+            planets={view.planets}
+            seed={seed}
+            worldId={view.worldId}
+            homePlanetId={home.id}
+          />
         </div>
       </section>
     </main>
@@ -257,10 +231,12 @@ function PlanetTable({
   planets,
   seed,
   worldId,
+  homePlanetId,
 }: {
   planets: PlanetView[];
   seed: string;
   worldId: string;
+  homePlanetId: string;
 }) {
   return (
     <table className="planet-table">
@@ -286,6 +262,20 @@ function PlanetTable({
                 >
                   {p.name}
                 </a>
+                {p.id === homePlanetId && (
+                  <span
+                    className="home-marker"
+                    data-testid="home-planet-marker"
+                    role="img"
+                    aria-label="Home planet"
+                    title="Home planet"
+                  >
+                    <svg viewBox="0 0 16 12" aria-hidden="true" focusable="false">
+                      <path d="M1.8 8.6 1 3.2 5.2 5.6 8 2.2 10.8 5.6 15 3.2 14.2 8.6Z" />
+                      <rect x="1.6" y="8.2" width="12.8" height="2.6" rx="0.8" />
+                    </svg>
+                  </span>
+                )}
               </span>
             </td>
             <td>

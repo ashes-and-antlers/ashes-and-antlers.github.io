@@ -3,8 +3,9 @@ import { expect, test } from '@playwright/test';
 /**
  * M0 overview boot: the game page derives its world id from the seed, talks
  * to the API, and shows the authoritative tick, the next-tick countdown, and
- * the player's home planet coordinate. The API webServer is started with
- * TICK_DURATION_MS=2000, so the tick advances live during the test.
+ * a crown pip marking the player's home planet in the known-planets list.
+ * The API webServer is started with TICK_DURATION_MS=2000, so the tick
+ * advances live during the test.
  */
 test('command overview boots and shows the authoritative tick', async ({ page }) => {
   await page.goto('/game.html?seed=424242');
@@ -16,8 +17,8 @@ test('command overview boots and shows the authoritative tick', async ({ page })
   await expect(page.getByTestId('game-seed')).toHaveCount(0);
   await expect(page.getByTestId('world-hash')).toHaveCount(0);
 
-  // Home planet coordinate (galaxy:sector:system:planet).
-  await expect(page.getByTestId('home-coordinate')).toHaveText(/^\d+:\d+:\d+:\d+$/);
+  // The home planet is marked with a crown pip in the known-planets list.
+  await expect(page.getByTestId('home-planet-marker')).toHaveCount(1);
 
   // The tick counter is a number and advances as the scheduler resolves.
   const tick = page.getByTestId('overview-tick');
@@ -62,5 +63,5 @@ test('shows the offline card, stops polling, and recovers on retry', async ({ pa
   await page.unroute('**/api/**');
   await page.getByTestId('retry-button').click();
   await expect(page.getByTestId('overview-tick')).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByTestId('home-coordinate')).toBeVisible();
+  await expect(page.getByTestId('home-planet-marker')).toBeVisible();
 });

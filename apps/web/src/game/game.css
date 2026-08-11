@@ -146,11 +146,7 @@ body {
   margin: 0 0 14px;
 }
 
-.home-panel,
-.orders-panel {
-  grid-column: span 1;
-}
-
+.orders-panel,
 .planets-panel {
   grid-column: 1 / -1;
 }
@@ -158,10 +154,6 @@ body {
 @media (max-width: 720px) {
   .game-grid {
     grid-template-columns: 1fr;
-  }
-  .home-panel,
-  .orders-panel {
-    grid-column: auto;
   }
   .game-header {
     flex-direction: column;
@@ -177,113 +169,7 @@ body {
   color: var(--muted);
 }
 
-/* ---------- home planet ---------- */
-
-/* The home world as a portrait card: image + identity, deep link to the
-   planetary ledger (management happens on the planet page). */
-.home-card {
-  display: block;
-  text-align: center;
-  padding: 8px 6px 14px;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  transition:
-    border-color 150ms ease,
-    background 150ms ease;
-}
-
-.home-card:hover {
-  border-color: rgba(168, 201, 240, 0.35);
-  background: rgba(205, 219, 238, 0.04);
-}
-
-.home-card:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.planet-thumb.planet-thumb-large {
-  /* The 512px render (same asset as the planet page) fills the card. */
-  width: min(100%, 460px);
-  aspect-ratio: 1;
-  height: auto;
-  margin: 0 auto 14px;
-  border-radius: 16px;
-}
-
-/* The caption plate below the portrait: name, faction, coordinate, CTA.
-   An opaque solid one step off the panel surface (Flat Ledger Rule) so
-   the section reads as designed even before the hover state — not
-   floating text. */
-.home-card-plate {
-  background: #171f31;
-  border: 1px solid var(--panel-border);
-  border-radius: 10px;
-  padding: 12px 14px 10px;
-}
-
-.home-card-name {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin: 0 0 6px;
-  flex-wrap: wrap;
-}
-
-.home-card-name strong {
-  font-family: var(--font);
-  font-size: 20px;
-  font-weight: 650;
-  letter-spacing: 0.02em;
-  color: var(--text);
-}
-
-.home-card .home-coord {
-  justify-content: center;
-  margin: 0 0 10px;
-}
-
-.home-card-cta {
-  display: inline-block;
-  margin: 10px 0 0;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted);
-  transition: color 150ms ease;
-}
-
-.home-card:hover .home-card-cta {
-  color: var(--accent);
-}
-
-.faction-tag {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--accent);
-  background: var(--accent-soft);
-  border: 1px solid rgba(168, 201, 240, 0.35);
-  border-radius: 999px;
-  padding: 2px 8px;
-}
-
-.home-coord {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  margin: 0 0 16px;
-}
-
-.home-coord strong {
-  font-family: var(--mono);
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--text);
-}
+/* ---------- warning chips ---------- */
 
 .warning-chips {
   display: flex;
@@ -567,6 +453,21 @@ body {
   background:
     radial-gradient(circle at 50% 40%, rgba(205, 219, 238, 0.08), transparent 70%), #0a0e14;
   animation: pulse 1.6s ease-in-out infinite;
+}
+
+/* Crown pip marking the player's home planet in the known-planets list. */
+.home-marker {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.home-marker svg {
+  display: block;
+  width: 14px;
+  height: 10.5px;
+  fill: currentColor;
 }
 
 @media (max-width: 720px) {
