@@ -34,6 +34,29 @@ test('places a stockpile blueprint and builders construct it', async ({ page }) 
   });
 });
 
+test('places a blueprint at high priority and the inspector shows it', async ({ page }) => {
+  await workerReady(page);
+
+  // The priority selector defaults to normal (2) and is part of the build UI.
+  await expect(page.getByTestId('build-priority')).toHaveValue('2');
+
+  await page.getByTestId('speed-0').click();
+
+  // Raise the priority to high, then place a stockpile on Hearth land.
+  await page.getByTestId('build-priority').selectOption('3');
+  const spot = await tileScreen(page, 19, 59);
+  await page.getByTestId('build-stockpile').click();
+  await page.mouse.click(spot.x, spot.y);
+
+  await page.keyboard.press('Escape');
+  await page.mouse.click(spot.x, spot.y);
+  await expect(page.getByTestId('inspector-title')).toContainText('blueprint', {
+    timeout: 5_000,
+  });
+  // The inspector reports the construction priority.
+  await expect(page.getByTestId('inspector-content')).toContainText('high');
+});
+
 test('places a sawpit blueprint and the inspector shows its work-building detail', async ({
   page,
 }) => {

@@ -356,6 +356,19 @@ From DEVELOPMENT_PLAN §7 (contract):
   footprint (a site hugging the sawpit can no longer block its delivery
   tile). `tests/sim/scenario-economy.test.ts` covers the full chain
   wood → supply → planks → hut + e2e.
-- **Next:** M2 continued — construction priorities, stockpile rules/policy,
-  spoilage, seasons; then M3 strategic competition, M4 war and logistics,
-  M5 emergence, M6 beta quality (per the plan's roadmap).
+- **M2 iteration 3 (construction priorities):** blueprints carry a priority
+  (1 low / 2 normal / 3 high, default 2) set from the HUD build palette and
+  carried in the `PlaceBlueprint` command (protocol v5). Out-of-range
+  priorities are rejected deterministically (`bad-priority`). Demand funds
+  and builds sites in priority order (highest first, eid tie-break) and the
+  build task priority is derived from the blueprint's (`buildTaskPriority ±
+buildPriorityStep` per level), so scarce materials and scarce builders
+  serve urgent sites first. The blueprint inspector shows the priority.
+  (Known scope cut: material gather demand still pulls toward the aggregate
+  cost of all unfunded sites; funding order — not gather demand — is what
+  favors high-priority sites.) `tests/sim/scenario-priority.test.ts`
+  covers funding/completion order,
+  task-priority derivation, the default, rejection, and determinism + e2e.
+- **Next:** M2 continued — stockpile rules/policy, spoilage, seasons; then
+  M3 strategic competition, M4 war and logistics, M5 emergence, M6 beta
+  quality (per the plan's roadmap).

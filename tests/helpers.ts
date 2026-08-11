@@ -152,6 +152,10 @@ export function checkInvariants(world: SimWorld): void {
     if (progress < 0) {
       throw new Error(`blueprint ${bp} has negative progress`);
     }
+    const prio = c.BlueprintPriority[bp] ?? 0;
+    if (prio < 1 || prio > 3) {
+      throw new Error(`blueprint ${bp} has out-of-range priority ${prio}`);
+    }
     const reserved = c.BlueprintReservedBy[bp] ?? -1;
     if (reserved !== -1) {
       const workerTask = c.TaskId[reserved] ?? -1;

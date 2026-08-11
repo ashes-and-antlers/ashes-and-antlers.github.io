@@ -77,3 +77,10 @@ export const TASK_FAIL_NAMES: Record<number, string> = {
   5: 'worker died',
   6: 'no material',
 };
+
+/** Construction priority labels (1 low / 2 normal / 3 high). */
+export const PRIORITY_NAMES: Record<number, string> = {
+  1: 'low',
+  2: 'normal',
+  3: 'high',
+};

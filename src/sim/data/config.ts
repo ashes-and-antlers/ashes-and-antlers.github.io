@@ -62,6 +62,13 @@ export interface SimConfig {
   maxBlueprintsPerFaction: number;
   /** Material cost per building kind; consumed from faction stockpiles when a site is funded. */
   constructionCosts: Record<BuildingKind, ItemCost[]>;
+  /** Blueprint priority when a placement omits one (1 = low, 2 = normal, 3 = high). */
+  defaultBlueprintPriority: number;
+  /** Inclusive bounds for blueprint priority (validated on placement). */
+  minBlueprintPriority: number;
+  maxBlueprintPriority: number;
+  /** Task-priority delta per blueprint priority step above/below normal. */
+  buildPriorityStep: number;
 
   // Economy (M2 materials)
   /** Max wood a tree node holds (finite, no regrowth in M2). */
@@ -137,6 +144,10 @@ export const SIM_CONFIG: SimConfig = {
   buildTaskPriority: 1,
   buildRetryCooldownTicks: 60,
   maxBlueprintsPerFaction: 6,
+  defaultBlueprintPriority: 2,
+  minBlueprintPriority: 1,
+  maxBlueprintPriority: 3,
+  buildPriorityStep: 1,
   constructionCosts: {
     [BuildingKind.CommandCenter]: [],
     [BuildingKind.Stockpile]: [{ item: ItemType.Wood, amount: 8 }],

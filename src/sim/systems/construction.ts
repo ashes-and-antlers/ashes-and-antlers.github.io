@@ -10,9 +10,10 @@ import {
 } from '../data/content';
 import { buildingWorkTicks, spawnBlueprint, spawnBuildingFromBlueprint } from '../ecs/entities';
 import { sortedQuery, type SimWorld } from '../ecs/world';
+import { BUILDING_NAMES } from '../../shared/labels';
 import { completeTask, createTask, failTask, isActiveTaskState } from './taskops';
 import { pushAlert } from './needs';
-import { fundBlueprint } from './inventory';
+import { adjacentGoal, fundBlueprint } from './inventory';
 
 /**
  * Construction (Milestone 1b).
@@ -105,27 +106,53 @@ export function canPlaceBlueprint(
   return null;
 }
 
-/** Place a blueprint. Deterministic: same call, same world, same result. */
+/**
+ * Place a blueprint. Deterministic: same call, same world, same result.
+ * `priority` (1 low / 2 normal / 3 high) defaults to the configured value;
+ * any explicit value outside the configured bounds is rejected so the
+ * command stream stays validated (the HUD surfaces `bad-priority`).
+ */
 export function placeBlueprint(
   world: SimWorld,
   faction: FactionId,
   kind: BuildingKind,
   x: number,
   y: number,
+  priority?: number,
 ): PlacementResult {
+  const p = priority ?? world.config.defaultBlueprintPriority;
+  if (
+    !Number.isInteger(p) ||
+    p < world.config.minBlueprintPriority ||
+    p > world.config.maxBlueprintPriority
+  ) {
+    return { ok: false, reason: 'bad-priority' };
+  }
   const reason = canPlaceBlueprint(world, faction, kind, x, y);
   if (reason !== null) {
     return { ok: false, reason };
   }
-  spawnBlueprint(world, faction, kind, x, y);
+  spawnBlueprint(world, faction, kind, x, y, p);
   return { ok: true };
 }
 
-/** Demand: one Build task per unreserved, unbuilt, funded blueprint. */
+/**
+ * Demand: one Build task per unreserved, unbuilt, funded blueprint.
+ *
+ * Sites are processed in construction priority order (highest first, then
+ * lowest blueprint eid) so scarce materials fund high-priority sites before
+ * low-priority ones, and the build task carries a priority derived from the
+ * blueprint's own (buildTaskPriority ± step per priority level) so scarce
+ * builders claim urgent sites first.
+ */
 export function runBuildDemand(world: SimWorld): void {
   const c = world.components;
   const config = world.config;
-  const blueprints = sortedQuery(query(world, [c.Blueprint]));
+  const blueprints = [...sortedQuery(query(world, [c.Blueprint]))].sort((a, b) => {
+    const pa = c.BlueprintPriority[a] ?? config.defaultBlueprintPriority;
+    const pb = c.BlueprintPriority[b] ?? config.defaultBlueprintPriority;
+    return pb - pa || a - b;
+  });
   for (const bp of blueprints) {
     if ((c.BlueprintReservedBy[bp] ?? -1) !== -1) continue;
     if (hasActiveBuildTask(world, bp)) continue;
@@ -134,16 +161,15 @@ export function runBuildDemand(world: SimWorld): void {
     // Fund the site exactly once from the faction's stockpiles; an unfunded
     // site waits (no task) until its materials arrive (M2 economy).
     if ((c.BlueprintFunded[bp] ?? 0) !== 1 && !fundBlueprint(world, bp)) continue;
-    const [gx, gy] = blueprintAdjacentGoal(world, bp);
-    createTask(
-      world,
-      TaskKind.Build,
-      c.Faction[bp] as FactionId,
-      bp,
-      gx,
-      gy,
-      config.buildTaskPriority,
-    );
+    const priority = c.BlueprintPriority[bp] ?? config.defaultBlueprintPriority;
+    const taskPriority =
+      config.buildTaskPriority +
+      (priority - config.defaultBlueprintPriority) * config.buildPriorityStep;
+    // adjacentGoal rejects tiles inside any building/blueprint footprint (a
+    // site hugging its neighbor must not pick a goal that later becomes
+    // unreachable once movement rebuilds the blocked-tile map).
+    const [gx, gy] = adjacentGoal(world, bp);
+    createTask(world, TaskKind.Build, c.Faction[bp] as FactionId, bp, gx, gy, taskPriority);
   }
 }
 
@@ -188,11 +214,12 @@ function convertBlueprint(world: SimWorld, blueprint: number): void {
   const kind = c.BlueprintKind[blueprint] ?? BuildingKind.Stockpile;
   spawnBuildingFromBlueprint(world, blueprint); // removes the blueprint entity
   world.stats.buildingsCompleted++;
+  const kindName = (BUILDING_NAMES[kind] ?? 'building').toLowerCase();
   pushAlert(world, {
     code: 'construction.complete',
     severity: 0,
     factionId: faction,
-    text: `${FACTION_META[faction].name} finished a ${kind === BuildingKind.Stockpile ? 'stockpile' : 'hut'}.`,
+    text: `${FACTION_META[faction].name} finished a ${kindName}.`,
   });
 }
 
@@ -209,30 +236,6 @@ function hasActiveBuildTask(world: SimWorld, blueprint: number): boolean {
     }
   }
   return false;
-}
-
-/** First walkable, unblocked tile adjacent to a blueprint footprint. */
-function blueprintAdjacentGoal(world: SimWorld, blueprint: number): [number, number] {
-  const c = world.components;
-  const bx = Math.floor(c.Position.x[blueprint] ?? 0);
-  const by = Math.floor(c.Position.y[blueprint] ?? 0);
-  const f = world.config.buildingFootprint;
-  const candidates: readonly (readonly [number, number])[] = [
-    [bx - 1, by],
-    [bx + f, by],
-    [bx, by - 1],
-    [bx, by + f],
-    [bx - 1, by + 1],
-    [bx + f, by + 1],
-  ];
-  for (const [x, y] of candidates) {
-    if (!world.tiles.isInside(x, y)) continue;
-    const tile = world.tiles.index(x, y);
-    if ((world.tiles.movementCost[tile] ?? 0) < 75 && world.blockedTiles[tile] !== 1) {
-      return [x, y];
-    }
-  }
-  return [bx, by];
 }
 
 function atTaskGoal(world: SimWorld, worker: number, task: number): boolean {

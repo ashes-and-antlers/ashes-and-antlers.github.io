@@ -58,8 +58,9 @@ export class Simulation {
     building: BuildingKind,
     x: number,
     y: number,
+    priority?: number,
   ): PlacementResult {
-    return placeBlueprintInWorld(this.world, faction, building, x, y);
+    return placeBlueprintInWorld(this.world, faction, building, x, y, priority);
   }
 
   get tick(): number {
@@ -135,6 +136,7 @@ export class Simulation {
       push(c.Position.y[e] ?? 0);
       push(c.Faction[e] ?? 0);
       push(c.BlueprintKind[e] ?? 0);
+      push(c.BlueprintPriority[e] ?? 0);
       push(quant(c.BlueprintProgress[e]));
       push(c.BlueprintReservedBy[e] ?? -1);
       push(c.BlueprintFunded[e] ?? 0);

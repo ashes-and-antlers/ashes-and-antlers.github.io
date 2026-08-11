@@ -42,6 +42,8 @@ export interface SimComponents {
 
   // Blueprints (construction sites)
   BlueprintKind: Uint8Array; // BuildingKind being constructed
+  /** Player-set priority: 1 = low, 2 = normal, 3 = high (drives demand/funding order). */
+  BlueprintPriority: Uint8Array;
   BlueprintProgress: Float32Array; // 0..workRequired
   BlueprintReservedBy: Int32Array; // builder eid, -1 = unreserved
   BlueprintFailTick: Int32Array; // last failed build task tick, -1 = none
@@ -107,6 +109,7 @@ export function createSimComponents(maxEntities: number = MAX_ENTITIES): SimComp
     },
     StockpileCapacity: new Int32Array(maxEntities),
     BlueprintKind: new Uint8Array(maxEntities),
+    BlueprintPriority: new Uint8Array(maxEntities),
     BlueprintProgress: new Float32Array(maxEntities),
     BlueprintReservedBy: new Int32Array(maxEntities).fill(-1),
     BlueprintFailTick: new Int32Array(maxEntities).fill(-1),

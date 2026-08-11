@@ -32,6 +32,7 @@ async function boot(): Promise<void> {
   let worldWidth = 0;
   let buildMode: BuildingKind | null = null;
   let buildFaction: FactionId = FactionId.Hearth;
+  let buildPriority = 2; // 1 low / 2 normal / 3 high
 
   const camera = new CameraController(
     app,
@@ -52,6 +53,7 @@ async function boot(): Promise<void> {
             building: buildMode,
             x: tx - 1,
             y: ty - 1,
+            priority: buildPriority,
           } satisfies PlayerCommand,
         };
         worker.postMessage(request);
@@ -101,6 +103,9 @@ async function boot(): Promise<void> {
     },
     onBuildFaction: (faction) => {
       buildFaction = faction;
+    },
+    onBuildPriorityChange: (priority) => {
+      buildPriority = priority;
     },
     onCancelBuild: () => {
       exitBuildMode();
