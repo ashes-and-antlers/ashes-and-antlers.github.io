@@ -84,6 +84,7 @@ export function buildInspectDetail(world: SimWorld, tileIndex: number): InspectD
       eid: blueprint,
       factionId: faction,
       buildingKind: kind,
+      priority: c.BlueprintPriority[blueprint] ?? world.config.defaultBlueprintPriority,
       progress,
       reserved: (c.BlueprintReservedBy[blueprint] ?? -1) !== -1,
       funded,

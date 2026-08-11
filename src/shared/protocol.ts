@@ -16,6 +16,8 @@ export type PlayerCommand =
       /** Top-left tile of the footprint. */
       x: number;
       y: number;
+      /** Construction priority: 1 = low, 2 = normal, 3 = high. */
+      priority: number;
     };
 
 /** Messages the main thread sends to the simulation worker. */
@@ -33,6 +35,7 @@ export const PLACEMENT_REASONS: Record<string, string> = {
   occupied: 'ground already occupied',
   'outside-claim': 'outside your claimed land',
   'max-blueprints': 'too many construction sites',
+  'bad-priority': 'priority must be low, normal, or high',
 };
 
 export type Calendar = { day: number; season: number; year: number };
@@ -107,6 +110,8 @@ export type InspectDetail =
       eid: number;
       factionId: number;
       buildingKind: number;
+      /** Construction priority: 1 = low, 2 = normal, 3 = high. */
+      priority: number;
       /** 0-100 percent of the work required. */
       progress: number;
       reserved: boolean;

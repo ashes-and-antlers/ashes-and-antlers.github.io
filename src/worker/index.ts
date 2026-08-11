@@ -251,6 +251,7 @@ self.onmessage = (ev: MessageEvent<WorkerRequest>) => {
           command.building as BuildingKind,
           command.x,
           command.y,
+          command.priority,
         );
         if (!result.ok) {
           post({

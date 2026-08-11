@@ -1,5 +1,11 @@
 import { SPEED_OPTIONS } from '../shared/constants';
-import { BUILDING_NAMES, CITIZEN_STATE_NAMES, ITEM_NAMES, NODE_NAMES } from '../shared/labels';
+import {
+  BUILDING_NAMES,
+  CITIZEN_STATE_NAMES,
+  ITEM_NAMES,
+  NODE_NAMES,
+  PRIORITY_NAMES,
+} from '../shared/labels';
 import type { Calendar, InspectDetail, SimAlert } from '../shared/protocol';
 import { toHex8 } from '../shared/utils';
 import { SIM_CONFIG } from '../sim/data/config';
@@ -12,6 +18,8 @@ export interface HudCallbacks {
   onToggleOwnership: () => void;
   onBuildClick: (building: BuildingKind) => void;
   onBuildFaction: (faction: FactionId) => void;
+  /** The construction priority selector changed (1 low / 2 normal / 3 high). */
+  onBuildPriorityChange: (priority: number) => void;
   /** Esc pressed while in placement mode. */
   onCancelBuild: () => void;
 }
@@ -38,6 +46,7 @@ export class Hud {
   private readonly inspectorContent: HTMLElement;
   private readonly buildButtons = new Map<BuildingKind, HTMLButtonElement>();
   private readonly buildFaction: HTMLSelectElement;
+  private readonly buildPriority: HTMLSelectElement;
   private readonly stockEls = new Map<ItemType, HTMLElement>();
   private currentSpeed = 1;
   private lastNonZeroSpeed = 1;
@@ -70,6 +79,7 @@ export class Hud {
     this.inspectorTitle = q('[data-testid="inspector-title"]');
     this.inspectorContent = q('[data-testid="inspector-content"]');
     this.buildFaction = q('[data-testid="build-faction"]');
+    this.buildPriority = q('[data-testid="build-priority"]');
     for (const item of [ItemType.Wood, ItemType.Stone, ItemType.Planks, ItemType.Food]) {
       this.stockEls.set(item, q(`[data-testid="stock-${ITEM_NAMES[item]}"]`));
     }
@@ -89,6 +99,9 @@ export class Hud {
       `sawpit — ${costLabel(BuildingKind.Sawpit)}`;
     this.buildFaction.addEventListener('change', () => {
       this.callbacks.onBuildFaction(Number(this.buildFaction.value) as FactionId);
+    });
+    this.buildPriority.addEventListener('change', () => {
+      this.callbacks.onBuildPriorityChange(Number(this.buildPriority.value) as number);
     });
 
     const speedGroup = q<HTMLElement>('[data-testid="speed-group"]');
@@ -247,6 +260,7 @@ export class Hud {
       }
       case 'blueprint': {
         this.inspectorTitle.textContent = `${BUILDING_NAMES[detail.buildingKind] ?? 'Building'} blueprint · ${factionName(detail.factionId)}`;
+        addRow('priority', PRIORITY_NAMES[detail.priority] ?? String(detail.priority));
         addRow('progress', `${detail.progress}%`);
         const costText = costLabelFrom(detail.cost);
         addRow('materials', detail.funded ? 'ready' : costText === '' ? '—' : costText);
@@ -349,6 +363,11 @@ export class Hud {
             <select class="build-faction" data-testid="build-faction" aria-label="Faction to build for" title="Faction to build for">
               <option value="1">Hearth</option>
               <option value="2">Iron Swarm</option>
+            </select>
+            <select class="build-priority" data-testid="build-priority" aria-label="Construction priority" title="Construction priority — high-priority sites are funded and built first">
+              <option value="1">1 · low</option>
+              <option value="2" selected>2 · normal</option>
+              <option value="3">3 · high</option>
             </select>
             <button type="button" class="build-btn" data-testid="build-stockpile" aria-pressed="false" title="Place a stockpile blueprint">stockpile</button>
             <button type="button" class="build-btn" data-testid="build-hut" aria-pressed="false" title="Place a hut blueprint">hut</button>

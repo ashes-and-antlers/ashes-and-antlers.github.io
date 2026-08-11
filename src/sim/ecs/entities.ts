@@ -60,6 +60,7 @@ export function spawnBlueprint(
   kind: BuildingKind,
   x: number,
   y: number,
+  priority: number = world.config.defaultBlueprintPriority,
 ): number {
   const c = world.components;
   const eid = addEntity(world);
@@ -71,6 +72,7 @@ export function spawnBlueprint(
   c.Kind[eid] = EntityKind.Blueprint;
   c.Faction[eid] = faction;
   c.BlueprintKind[eid] = kind;
+  c.BlueprintPriority[eid] = priority;
   c.BlueprintProgress[eid] = 0;
   c.BlueprintReservedBy[eid] = -1;
   c.BlueprintFailTick[eid] = -1;
