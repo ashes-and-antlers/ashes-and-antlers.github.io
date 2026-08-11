@@ -11,7 +11,7 @@
  * marsh → grass → forest → hill → mountain); the renderer shades each band by
  * elevation (×0.78–1.10) exactly as the design doc specifies.
  */
-export const ART_VERSION = 'art-1';
+export const ART_VERSION = 'art-2';
 
 export const PLANET_ART = {
   /** Elevation bands: lowest first. `elevation` is the top of the band. */
@@ -36,6 +36,23 @@ export const PLANET_ART = {
     /** Fresnel rim tint at the limb (bone). */
     rimColor: '#d3c7ac',
     rimStrength: 0.32,
+  },
+  /** Deep-space backdrop painted behind the planet disc (art-2). */
+  starfield: {
+    /** Space color — the night-bound deep forest, darkened. */
+    backgroundColor: '#0b130d',
+    /** Stars are drawn on a hash lattice: roughly one per cell. */
+    cellSize: 14,
+    /** Probability a cell contains a star. */
+    starChance: 0.55,
+    /** Star size in pixels (1 = single pixel). */
+    starRadius: 1.1,
+    /** Rare brighter stars. */
+    brightStarChance: 0.06,
+    /** Bright-star size in pixels. */
+    brightStarRadius: 1.9,
+    /** Base star brightness multiplier (restrained: bone-tinted, not white-hot). */
+    starBrightness: 0.75,
   },
   lighting: {
     ambient: 0.45,

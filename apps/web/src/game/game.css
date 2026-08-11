@@ -407,6 +407,22 @@ body {
   object-fit: contain;
 }
 
+.portrait-brand {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 56px;
+  height: auto;
+  padding: 5px 6px;
+  border-radius: 6px;
+  background: var(--bg); /* solid plate (Flat Ledger Rule) */
+  border: 1px solid var(--panel-border);
+  /* The mark itself is never recolored, tinted, or distorted — only the
+     solid plate separates it from the planet, so the stamp stays legible
+     without breaking The Brand Mark Rule. */
+  z-index: 1;
+}
+
 .portrait-placeholder {
   display: flex;
   align-items: center;

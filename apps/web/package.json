@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@ashes/content": "workspace:^",
     "@ashes/contracts": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

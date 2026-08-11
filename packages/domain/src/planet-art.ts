@@ -38,6 +38,17 @@ const LIGHT = normalize3(-0.45, -0.62, 0.64);
 /** Fraction of the half-frame the planet disc fills; leaves room for the rim. */
 const DISC = 0.8;
 
+/** One star on the hash lattice, in pixel space. */
+type Star = {
+  cx: number;
+  cy: number;
+  radius: number;
+  /** 0..1 star strength. */
+  brightness: number;
+  /** 0..1 → mostly bone; small chances of ember or cool-white. */
+  tint: number;
+};
+
 export function renderPlanetArt(
   planet: Pick<PlanetView, 'id' | 'abundance'>,
   size: number,
@@ -51,6 +62,11 @@ export function renderPlanetArt(
   const orientation = planetOrientation(planet.id);
   const terrainSeed = fnv1a(`${planet.id}:terrain`);
   const cloudSeed = fnv1a(`${planet.id}:clouds`);
+  const starSeed = fnv1a(`${planet.id}:stars`);
+  const stars = buildStars(sizeClamped, starSeed);
+  // Hoisted per-render constants for the starfield (avoid per-pixel work).
+  const spaceBg = hexRgb(PLANET_ART.starfield.backgroundColor);
+  const spaceCells = Math.ceil(sizeClamped / PLANET_ART.starfield.cellSize);
 
   // Abundance-driven art (0..1 ranges).
   const food = planet.abundance.food / 100;
@@ -85,7 +101,15 @@ export function renderPlanetArt(
         const u = sx / DISC;
         const v = sy / DISC;
         const d2 = u * u + v * v;
-        if (d2 > 1) continue; // outside the disc: transparent
+        if (d2 > 1) {
+          // Deep space: the starfield fills the frame behind the planet.
+          const [sr, sg, sb] = spaceColor(x + 0.5 + ox, y + 0.5 + oy, spaceCells, spaceBg, stars);
+          r += sr;
+          g += sg;
+          b += sb;
+          a += 255;
+          continue;
+        }
         const z = -Math.sqrt(1 - d2);
         const nx = u;
         const ny = v;
@@ -189,6 +213,92 @@ function fresnelRim(nz: number, cfg: typeof PLANET_ART): [number, number, number
   const falloff = Math.pow(limb, 2.2) * strength;
   const [r, g, b] = hexRgb(cfg.atmosphere.rimColor);
   return [r * falloff, g * falloff, b * falloff];
+}
+
+// ---------------------------------------------------------------------------
+// starfield (deep-space backdrop)
+// ---------------------------------------------------------------------------
+
+/**
+ * Build the deterministic star set for an image: one hash-lattice cell per
+ * `cellSize` pixels, each cell holding a star with probability starChance.
+ * Stars are placed on a jittered grid so no two cells collide.
+ */
+function buildStars(size: number, seed: number): Map<number, Star> {
+  const cfg = PLANET_ART.starfield;
+  const stars = new Map<number, Star>();
+  const cells = Math.ceil(size / cfg.cellSize);
+  for (let cy = 0; cy < cells; cy++) {
+    for (let cx = 0; cx < cells; cx++) {
+      const hash = latticeHash(cx, cy, 0, seed);
+      const bright = hash < cfg.brightStarChance;
+      const present = hash < cfg.starChance || bright;
+      if (!present) continue;
+      const radius = bright ? cfg.brightStarRadius : cfg.starRadius;
+      // Jittered center within the cell (with padding so stars don't bleed
+      // into the planet disc or canvas edge).
+      const pad = radius + 0.5;
+      const ox = latticeHash(cx, cy, 1, seed);
+      const oy = latticeHash(cx, cy, 2, seed);
+      const cxPx = cx * cfg.cellSize + pad + ox * (cfg.cellSize - 2 * pad);
+      const cyPx = cy * cfg.cellSize + pad + oy * (cfg.cellSize - 2 * pad);
+      const brightness = cfg.starBrightness * (0.6 + 0.4 * latticeHash(cx, cy, 3, seed));
+      const tint = latticeHash(cx, cy, 4, seed);
+      stars.set(cy * cells + cx, { cx: cxPx, cy: cyPx, radius, brightness, tint });
+    }
+  }
+  return stars;
+}
+
+/**
+ * Color of one deep-space pixel: the space fill plus any star whose disc
+ * covers it. Checks the 3×3 cell neighborhood so stars at cell borders stay
+ * complete. Deterministic — driven entirely by the prebuilt star set.
+ */
+function spaceColor(
+  px: number,
+  py: number,
+  cells: number,
+  bg: [number, number, number],
+  stars: Map<number, Star>,
+): [number, number, number] {
+  const cfg = PLANET_ART.starfield;
+  const [bgR, bgG, bgB] = bg;
+  const cellX = Math.floor(px / cfg.cellSize);
+  const cellY = Math.floor(py / cfg.cellSize);
+
+  let r = bgR;
+  let g = bgG;
+  let b = bgB;
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const cx = cellX + dx;
+      const cy = cellY + dy;
+      // Bounds guard: neighbors outside the grid have no stars (an
+      // out-of-range index would otherwise alias to a real star in an
+      // adjacent row — harmless today, but never rely on the wrap).
+      if (cx < 0 || cy < 0 || cx >= cells || cy >= cells) continue;
+      const star = stars.get(cy * cells + cx);
+      if (!star) continue;
+      const dist = Math.sqrt((px - star.cx) ** 2 + (py - star.cy) ** 2);
+      if (dist > star.radius) continue;
+      const falloff = smoothstep(star.radius, star.radius * 0.25, dist);
+      const strength = falloff * star.brightness;
+      // Mostly bone-white; occasional ember (the seal) or cool-white stars.
+      let sr = 226;
+      let sg = 220;
+      let sb = 205;
+      if (star.tint < 0.08) {
+        [sr, sg, sb] = hexRgb('#c97844'); // ember
+      } else if (star.tint < 0.22) {
+        [sr, sg, sb] = [196, 214, 232]; // cool white
+      }
+      r += (sr - bgR) * strength;
+      g += (sg - bgG) * strength;
+      b += (sb - bgB) * strength;
+    }
+  }
+  return [clampByte(r), clampByte(g), clampByte(b)];
 }
 
 // ---------------------------------------------------------------------------

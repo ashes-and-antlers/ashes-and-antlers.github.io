@@ -205,14 +205,26 @@ function PlanetLedger({ view, imageUrl }: { view: PlanetView; imageUrl: string |
               Engraving the sphere…
             </div>
           ) : (
-            <img
-              className="planet-portrait"
-              data-testid="planet-image"
-              src={imageUrl}
-              alt={`Procedurally generated portrait of ${view.name}`}
-              width={IMAGE_SIZE}
-              height={IMAGE_SIZE}
-            />
+            <>
+              <img
+                className="planet-portrait"
+                data-testid="planet-image"
+                src={imageUrl}
+                alt={`Procedurally generated portrait of ${view.name}`}
+                width={IMAGE_SIZE}
+                height={IMAGE_SIZE}
+              />
+              {/* The brand mark, stamped small at the portrait's corner. It is
+                  never recolored, tinted, or distorted (The Brand Mark Rule). */}
+              <img
+                className="portrait-brand"
+                src="logo.png"
+                alt="Ashes and Antlers"
+                width={56}
+                height={38}
+                loading="lazy"
+              />
+            </>
           )}
         </div>
         <p className="portrait-caption">

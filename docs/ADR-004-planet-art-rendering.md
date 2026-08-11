@@ -31,6 +31,17 @@ ramp, a cloud layer, and an atmosphere rim.
   `packages/content` (`planet-art.ts`) keys the image cache; re-tuning a
   color re-renders images without bumping `CONTENT_VERSION` (art affects no
   simulation outcome).
+- **The browser caches by URL, so the client versiones the image URL.** The
+  API serves PNGs with `Cache-Control: immutable`; the web client appends
+  `?v=ART_VERSION` to every image request (and keys its thumbnail blob cache
+  on it), so any art change busts the browser cache and stale portraits
+  (e.g. a pre-starfield image) are never served after an upgrade.
+- **art-2 added a deterministic starfield.** Space behind the disc is a deep-
+  forest-tinted field with a hash-lattice of stars (mostly bone, rare ember
+  or cool-white), derived from the planet id like everything else. The brand
+  mark is stamped at the portrait's bottom-right as a CSS overlay (real
+  `logo.png` on a plate) — never baked into the PNG, so The Brand Mark Rule
+  (no recolor/tint/distort) holds.
 
 ## Consequences
 

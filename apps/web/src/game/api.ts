@@ -1,4 +1,5 @@
 import { PROTOCOL_VERSION, type PlanetView, type WorldView } from '@ashes/contracts';
+import { ART_VERSION } from '@ashes/content';
 
 /**
  * API base: baked at build time. In dev the Vite proxy serves /api from the
@@ -35,13 +36,20 @@ export async function fetchPlanet(worldId: string, planetId: string): Promise<Pl
 /**
  * Fetch the pre-rendered planet PNG as a Blob (the endpoint requires the
  * bearer token, so an <img src> cannot use it directly).
+ *
+ * The URL is versioned with ART_VERSION: the API serves the PNG with
+ * `Cache-Control: immutable`, so the browser must see a *new URL* whenever
+ * the art changes — otherwise a stale portrait (e.g. pre-starfield) keeps
+ * being served from cache forever.
  */
 export async function fetchPlanetImage(
   worldId: string,
   planetId: string,
   size?: number,
 ): Promise<Blob> {
-  const query = size === undefined ? '' : `?size=${size}`;
+  const sizeQuery = size === undefined ? '' : `size=${size}`;
+  const versionQuery = `v=${ART_VERSION}`;
+  const query = sizeQuery === '' ? `?${versionQuery}` : `?${sizeQuery}&${versionQuery}`;
   const res = await fetch(
     `${API_BASE}/api/v1/worlds/${encodeURIComponent(worldId)}/planets/${encodeURIComponent(planetId)}/image.png${query}`,
     { headers: { authorization: `Bearer ${PLAYER_TOKEN}` } },

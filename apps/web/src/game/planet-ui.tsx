@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PlanetView, PlanetWarning, ResourceKey } from '@ashes/contracts';
+import { ART_VERSION } from '@ashes/content';
 import { fetchPlanetImage } from './api';
 
 /** Thumbnail render size; the API caches per (world, planet, art, size). */
@@ -50,7 +51,9 @@ export function PlanetThumb({
 
   useEffect(() => {
     let stale = false;
-    const key = `${worldId}:${planetId}:${size}`;
+    // The art version is part of the key so a starfield/palette change never
+    // returns a stale cached blob.
+    const key = `${worldId}:${planetId}:${size}:${ART_VERSION}`;
     let pending = thumbCache.get(key);
     if (!pending) {
       pending = cacheThumb(key, fetchPlanetImage(worldId, planetId, size));
