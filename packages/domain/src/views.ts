@@ -1,5 +1,6 @@
 import { RESOURCE_KEYS, type Planet, type PlanetView, type PlanetWarning } from '@ashes/contracts';
 import { computePlanetRates, storageCapFor } from './economy';
+import { planetClassId } from './planet-art';
 
 /**
  * Player-visible planet projection, derived from authoritative state. Warnings
@@ -21,6 +22,7 @@ export function planetView(planet: Planet): PlanetView {
     name: planet.name,
     ownerId: planet.ownerId,
     factionId: planet.factionId,
+    classId: planetClassId(planet.id),
     abundance: planet.abundance,
     population: planet.population,
     resources: planet.resources,

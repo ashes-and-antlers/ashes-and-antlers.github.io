@@ -1,6 +1,22 @@
 import type { PlanetId, PlayerId, FactionId } from './ids';
 import type { Coordinate } from './coordinate';
 
+/** Visual class of a world (desert, ice, gas giant…). Presentation-only: the
+ *  art layer derives it deterministically from the planet id. Lives here so
+ *  content (which owns the class palettes) and the web can share it without
+ *  contracts depending on content. */
+export const PLANET_CLASS_KEYS = [
+  'terrestrial',
+  'ocean',
+  'desert',
+  'ice',
+  'volcanic',
+  'toxic',
+  'gas',
+  'barren',
+] as const;
+export type PlanetClassKey = (typeof PLANET_CLASS_KEYS)[number];
+
 export const RESOURCE_KEYS = ['metal', 'mineral', 'food', 'energy'] as const;
 export type ResourceKey = (typeof RESOURCE_KEYS)[number];
 
@@ -66,6 +82,10 @@ export type PlanetView = {
   name: string;
   ownerId: PlayerId | null;
   factionId: FactionId | null;
+  /** Visual class of the world (desert, ice, gas giant…) — presentation-only,
+   *  derived deterministically from the planet id by the art layer. */
+  classId: PlanetClassKey;
+
   abundance: Abundance;
   population: number;
   resources: ResourceStore;

@@ -54,3 +54,36 @@ test('chart level does not render individual planets', async ({ page }) => {
   await expect(svg).toBeVisible({ timeout: 15_000 });
   await expect(page.locator('circle.map-planet')).toHaveCount(0);
 });
+
+/**
+ * Dragging pans the map without breaking click-through: the frame is the
+ * drag surface, planet dots remain clickable after a drag settles.
+ */
+test('dragging pans the chart and clicks still land on targets', async ({ page }) => {
+  await page.goto('/map.html?seed=424242');
+  const svg = page.getByTestId('galaxy-map');
+  await expect(svg).toBeVisible({ timeout: 15_000 });
+  const frame = page.getByTestId('map-frame');
+  const before = await svg.getAttribute('viewBox');
+
+  // Pan by dragging across the frame.
+  const box = await frame.boundingBox();
+  expect(box).not.toBeNull();
+  if (box) {
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 - 150, box.y + box.height / 2 - 80, {
+      steps: 8,
+    });
+    await page.mouse.up();
+  }
+
+  // The viewBox moved (the chart panned) — not left at the fitted start.
+  await expect.poll(() => svg.getAttribute('viewBox')).not.toBe(before);
+
+  // Drill-in still works after a drag: Home opens the home sector viewport
+  // (the sector view, not the chart).
+  await page.getByTestId('map-focus-home').click();
+  await expect(page.locator('.map-sector-view')).toBeVisible();
+  await expect(page.locator('circle.map-planet')).toHaveCount(48);
+});

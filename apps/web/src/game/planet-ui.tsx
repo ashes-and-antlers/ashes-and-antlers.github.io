@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { PlanetView, PlanetWarning, ResourceKey } from '@ashes/contracts';
-import { ART_VERSION } from '@ashes/content';
+import { ART_VERSION, PLANET_CLASSES, type PlanetClassKey } from '@ashes/content';
 import { fetchPlanetImage } from './api';
 
 /** Thumbnail render size; the API caches per (world, planet, art, size). */
@@ -112,6 +112,24 @@ export const RESOURCE_NAMES: Array<[ResourceKey, string]> = [
   ['food', 'Food'],
   ['energy', 'Energy'],
 ];
+
+/**
+ * Planet class → dot/legend color on the map, and its display name. The
+ * single source of truth is PLANET_CLASSES in @ashes/content (which also
+ * drives the art renderer), so adding a class can never drift the UI.
+ * Presentation only: these tint the map, never the simulation.
+ */
+const CLASS_BY_KEY: Record<PlanetClassKey, { name: string; color: string }> = Object.fromEntries(
+  PLANET_CLASSES.map((c) => [c.key, { name: c.name, color: c.mapColor }]),
+) as Record<PlanetClassKey, { name: string; color: string }>;
+
+export function planetClassName(classId: PlanetClassKey): string {
+  return CLASS_BY_KEY[classId]?.name ?? classId;
+}
+
+export function planetClassColor(classId: PlanetClassKey): string {
+  return CLASS_BY_KEY[classId]?.color ?? '#93a2b8';
+}
 
 /**
  * One-click explainer for a ledger section: a compact 'What is this?'

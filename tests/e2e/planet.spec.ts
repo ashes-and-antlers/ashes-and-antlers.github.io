@@ -32,6 +32,9 @@ test('navigates from the overview to a planet ledger with a generated portrait',
   // The ledger loads from the overview data.
   await expect(page.getByTestId('planet-coordinate')).toHaveText(/^\d+:\d+:\d+:\d+$/);
   await expect(page.getByTestId('planet-population')).not.toHaveText('');
+  // Every world has a visual class (terrestrial, gas giant…) shown under the
+  // portrait — the same class the art renderer uses for its palette.
+  await expect(page.getByTestId('planet-class')).not.toBeEmpty();
   await expect(page.getByTestId('planet-faction')).toHaveText('hearth');
 
   // Resources render as glanceable per-resource tiles (stored + net).

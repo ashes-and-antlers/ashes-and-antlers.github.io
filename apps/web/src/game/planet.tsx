@@ -6,6 +6,7 @@ import {
   PLANET_PORTRAIT_SIZE,
   RESOURCE_NAMES,
   SectionHelp,
+  planetClassName,
   WarningsChips,
 } from './planet-ui';
 
@@ -234,6 +235,10 @@ function PlanetLedger({ view, imageUrl }: { view: PlanetView; imageUrl: string |
             </>
           )}
         </div>
+        <p className="portrait-caption">
+          <span className="micro-label">World class</span>
+          <strong data-testid="planet-class">{planetClassName(view.classId)}</strong>
+        </p>
         <p className="portrait-caption">
           <span className="micro-label">Coordinate</span>
           <strong className="mono" data-testid="planet-coordinate">

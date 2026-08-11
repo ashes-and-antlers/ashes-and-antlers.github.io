@@ -1015,12 +1015,10 @@ details[open] > summary .fold-chevron {
 }
 
 .map-planet {
+  /* Per-class tint comes inline (planetClassColor); the accent ring marks
+     owned worlds, so the dot itself keeps its class color. */
   fill: rgba(205, 219, 238, 0.45);
   transition: fill 120ms ease;
-}
-
-.map-planet.known {
-  fill: var(--accent);
 }
 
 .map-planet-link:hover .map-planet {
@@ -1103,6 +1101,18 @@ details[open] > summary .fold-chevron {
 
 .map-legend-dot.known {
   background: var(--accent);
+}
+
+.map-legend-dots {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.map-legend-dots span {
+  width: 6px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
 }
 
 .map-legend-dot.home {

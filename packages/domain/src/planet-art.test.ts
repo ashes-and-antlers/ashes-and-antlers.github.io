@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { planetId, type PlanetView } from '@ashes/contracts';
 import { PLANET_ART } from '@ashes/content';
-import { renderPlanetArt } from './planet-art';
+import { planetClassId, renderPlanetArt } from './planet-art';
 
 function makePlanet(
   overrides: Partial<PlanetView['abundance']> = {},
@@ -158,8 +158,22 @@ describe('renderPlanetArt', () => {
   });
 
   it('varies with abundance: food (clouds) change the pixels', () => {
-    const arid = renderPlanetArt(makePlanet({ food: 20 }), 96);
-    const lush = renderPlanetArt(makePlanet({ food: 100 }), 96);
+    // Only classes that couple food → cloud coverage show this. The default
+    // test planet can be any class, so sweep for one with the coupling
+    // (terrestrial/ocean/toxic/gas) rather than assuming.
+    let foodPlanet = makePlanet({ food: 20 });
+    for (let n = 1; n <= 40; n++) {
+      const id = `planet:${n}:2:3:4`;
+      if (['terrestrial', 'ocean', 'toxic'].includes(planetClassId(id))) {
+        foodPlanet = { ...makePlanet({ food: 20 }), id: planetId(id) };
+        break;
+      }
+    }
+    const arid = renderPlanetArt(foodPlanet, 96);
+    const lush = renderPlanetArt(
+      { ...foodPlanet, abundance: { ...foodPlanet.abundance, food: 100 } },
+      96,
+    );
     expect(arid.data).not.toEqual(lush.data);
   });
 
@@ -167,6 +181,64 @@ describe('renderPlanetArt', () => {
     const a = renderPlanetArt({ ...makePlanet(), id: planetId('planet:1:1:1:1') }, 96);
     const b = renderPlanetArt({ ...makePlanet(), id: planetId('planet:9:9:9:9') }, 96);
     expect(a.data).not.toEqual(b.data);
+  });
+
+  it('assigns planet classes deterministically from the id', () => {
+    // Same id → same class, always.
+    expect(planetClassId('planet:1:2:3:4')).toBe(planetClassId('planet:1:2:3:4'));
+    // A sweep of ids covers more than one visual class (a world could still
+    // be any of the eight kinds).
+    const seen = new Set<string>();
+    for (let n = 1; n <= 24; n++) {
+      seen.add(planetClassId(`planet:${n}:1:1:1`));
+    }
+    expect(seen.size).toBeGreaterThan(1);
+  });
+
+  it('renders different classes with different surface palettes', () => {
+    const desert = renderPlanetArt({ ...makePlanet(), id: planetId('planet:9:9:9:9') }, 96, {
+      supersample: 1,
+    });
+    // Find a class-different planet by sweeping ids (deterministic).
+    let other = desert;
+    let otherId = 'planet:9:9:9:9';
+    for (let n = 1; n <= 40; n++) {
+      const id = `planet:${n}:1:1:1`;
+      if (planetClassId(id) !== planetClassId(otherId)) {
+        other = renderPlanetArt({ ...makePlanet(), id: planetId(id) }, 96, {
+          supersample: 1,
+        });
+        otherId = id;
+        break;
+      }
+    }
+    // Different classes share no terrain ramp — the surfaces must differ.
+    expect(planetClassId(otherId)).not.toBe(planetClassId('planet:9:9:9:9'));
+    expect(desert.data).not.toEqual(other.data);
+  });
+
+  it('gas giants show latitude banding (horizontal band contrast)', () => {
+    // Sweep broadly across galaxies/systems for a planet on the gas class
+    // (the class draw is seeded per id; no one sweep is guaranteed).
+    let gasId: string | null = null;
+    for (let n = 1; n <= 300 && gasId === null; n++) {
+      const id = `planet:${1 + (n % 8)}:${1 + (n % 7)}:${1 + (n % 5)}:1`;
+      if (planetClassId(id) === 'gas') gasId = id;
+    }
+    expect(gasId).not.toBeNull();
+    const image = renderPlanetArt({ ...makePlanet(), id: planetId(gasId!) }, 96, {
+      supersample: 1,
+    });
+    // Sample the disc center column at a handful of latitudes: banding means
+    // the row-to-row luminance varies across the disc (not flat).
+    const cx = Math.floor(image.width / 2);
+    const lums: number[] = [];
+    for (let y = Math.floor(image.width * 0.3); y < image.width * 0.7; y += 3) {
+      const i = (y * image.width + cx) * 4;
+      lums.push(image.data[i] + image.data[i + 1] + image.data[i + 2]);
+    }
+    const spread = Math.max(...lums) - Math.min(...lums);
+    expect(spread).toBeGreaterThan(30);
   });
 
   it('clamps the size into the content-defined bounds', () => {

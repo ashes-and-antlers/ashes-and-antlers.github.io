@@ -1,5 +1,6 @@
 import type { Coordinate } from './coordinate';
 import type { FactionId, PlanetId, WorldId } from './ids';
+import type { PlanetClassKey } from './planet';
 
 /** A point in galaxy map space, derived deterministically from the seed. */
 export type MapPosition = {
@@ -63,6 +64,8 @@ export type GalaxyView = {
     position: MapPosition;
     name: string;
     factionId: FactionId | null;
+    /** Visual class (desert, ice, gas giant…) — for map dot tinting. */
+    classId: PlanetClassKey;
     known: boolean;
   }>;
 };

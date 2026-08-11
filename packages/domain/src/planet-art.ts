@@ -1,5 +1,5 @@
 import type { PlanetView } from '@ashes/contracts';
-import { PLANET_ART } from '@ashes/content';
+import { PLANET_ART, PLANET_CLASSES, type PlanetClass, type PlanetClassKey } from '@ashes/content';
 import { fnv1a, mulberry32 } from './prng';
 
 /**
@@ -35,6 +35,29 @@ export type PlanetArtOptions = {
 /** Fixed light direction in world space (view is +Z). Deterministic on purpose. */
 const LIGHT = normalize3(-0.45, -0.62, 0.64);
 
+/**
+ * Deterministically pick a planet's visual class from its id, weighted by
+ * the class weights so every world is a distinct, stable "kind" of planet.
+ * Presentation-only: derives from the id alone (no sim state), so the same
+ * id always renders the same class.
+ */
+export function planetClassId(planetId: string): PlanetClassKey {
+  const r = (fnv1a(`${planetId}:class`) % 1000) / 1000;
+  const total = PLANET_CLASSES.reduce((acc, c) => acc + c.weight, 0);
+  let acc = 0;
+  for (const c of PLANET_CLASSES) {
+    acc += c.weight / total;
+    if (r < acc) return c.key;
+  }
+  return PLANET_CLASSES[PLANET_CLASSES.length - 1].key;
+}
+
+export function planetClass(key: PlanetClassKey): PlanetClass {
+  const found = PLANET_CLASSES.find((c) => c.key === key);
+  if (!found) throw new Error(`unknown planet class ${key}`);
+  return found;
+}
+
 /** Fraction of the half-frame the planet disc fills (content-defined). */
 const DISC = PLANET_ART.disc.radius;
 
@@ -69,6 +92,10 @@ export function renderPlanetArt(
   const sizeClamped = clampInt(size, cfg.render.minSize, cfg.render.maxSize);
   const supersample = options.supersample ?? 2;
 
+  // The planet's visual class: every class has its own terrain ramp, cloud
+  // and atmosphere colors, so worlds are unmistakably different.
+  const classCfg = planetClass(planetClassId(planet.id));
+
   // Seeded streams derived from the planet id.
   const orientation = planetOrientation(planet.id);
   const terrainSeed = fnv1a(`${planet.id}:terrain`);
@@ -80,11 +107,11 @@ export function renderPlanetArt(
   const spaceBg = hexRgb(PLANET_ART.starfield.backgroundColor);
   const spaceCells = Math.ceil(sizeClamped / PLANET_ART.starfield.cellSize);
 
-  // Abundance-driven art (0..1 ranges).
+  // Abundance-driven art (0..1 ranges), layered on the class's own values.
   const food = planet.abundance.food / 100;
   const metalMineral = (planet.abundance.metal + planet.abundance.mineral) / 200;
   const mountainAmp = 1 + cfg.noise.mountainBoost * metalMineral;
-  const cloudCoverage = cfg.clouds.coverageBase + cfg.clouds.coverageFromFood * food;
+  const cloudCoverage = classCfg.clouds.coverageBase + classCfg.clouds.coverageFromFood * food;
 
   const data = new Uint8Array(sizeClamped * sizeClamped * 4);
   const subSamples = supersample === 2 ? 4 : 1;
@@ -139,7 +166,7 @@ export function renderPlanetArt(
         // unique face.
         const ry = rotateY(nx, ny, nz, orientation.yaw);
         const px = rotateX(ry[0], ry[1], ry[2], orientation.pitch);
-        const e = elevation(px, terrainSeed, mountainAmp);
+        const e = elevation(px, terrainSeed, mountainAmp, classCfg.noiseFrequency);
         const cloudValue = fbm(
           px[0] * cfg.noise.cloudFrequency,
           px[1] * cfg.noise.cloudFrequency,
@@ -148,7 +175,7 @@ export function renderPlanetArt(
           cfg.noise.cloudOctaves,
         );
 
-        const [cr, cg, cb] = shade(cfg, e, cloudValue, cloudCoverage, nx, ny, nz);
+        const [cr, cg, cb] = shade(cfg, classCfg, e, cloudValue, cloudCoverage, nx, ny, nz);
         r += cr;
         g += cg;
         b += cb;
@@ -168,6 +195,7 @@ export function renderPlanetArt(
 
 function shade(
   cfg: typeof PLANET_ART,
+  classCfg: PlanetClass,
   e: number,
   cloudValue: number,
   cloudCoverage: number,
@@ -175,7 +203,18 @@ function shade(
   ny: number,
   nz: number,
 ): [number, number, number] {
-  let [r, g, b] = terrainColor(cfg, e);
+  let [r, g, b] = terrainColor(classCfg, e);
+  // Gas giants: latitude bands (bands follow the view axis, so the band
+  // phase is a function of screen latitude — a stable equator line).
+  if (classCfg.banding) {
+    const { count, amplitude } = classCfg.banding;
+    const latitude = Math.asin(clamp(nz, -1, 1));
+    const band = Math.sin(latitude * count * Math.PI);
+    const bandK = 1 + band * amplitude;
+    r *= bandK;
+    g *= bandK;
+    b *= bandK;
+  }
   // Elevation shade (DESIGN.md: ×0.78–1.10).
   const shadeK =
     cfg.lighting.shadeMin + (cfg.lighting.shadeMax - cfg.lighting.shadeMin) * ((e + 1) / 2);
@@ -187,9 +226,9 @@ function shade(
   // passes the coverage threshold. Edge-softened so coverage stays organic.
   const edge = 0.1;
   const cloudAlpha =
-    smoothstep(1 - cloudCoverage, 1 - cloudCoverage + edge, cloudValue) * cfg.clouds.alpha;
+    smoothstep(1 - cloudCoverage, 1 - cloudCoverage + edge, cloudValue) * classCfg.clouds.alpha;
   if (cloudAlpha > 0) {
-    const [cr, cg, cb] = hexRgb(cfg.clouds.color);
+    const [cr, cg, cb] = hexRgb(classCfg.clouds.color);
     r = lerp(r, cr, cloudAlpha);
     g = lerp(g, cg, cloudAlpha);
     b = lerp(b, cb, cloudAlpha);
@@ -203,12 +242,12 @@ function shade(
   b *= lit;
 
   // Atmosphere rim: fresnel glow at the limb (view = +Z).
-  const [rr, rg, rb] = fresnelRim(nz, cfg);
+  const [rr, rg, rb] = fresnelRim(nz, classCfg.atmosphere);
   return [clampByte(r + rr), clampByte(g + rg), clampByte(b + rb)];
 }
 
-function terrainColor(cfg: typeof PLANET_ART, e: number): [number, number, number] {
-  const bands = cfg.terrain;
+function terrainColor(classCfg: PlanetClass, e: number): [number, number, number] {
+  const bands = classCfg.terrain;
   // Below the first band top → first color; above the last → last color.
   if (e <= bands[0].elevation) return hexRgb(bands[0].color);
   for (let i = 1; i < bands.length; i++) {
@@ -226,12 +265,15 @@ function terrainColor(cfg: typeof PLANET_ART, e: number): [number, number, numbe
   return hexRgb(bands[bands.length - 1].color);
 }
 
-function fresnelRim(nz: number, cfg: typeof PLANET_ART): [number, number, number] {
+function fresnelRim(
+  nz: number,
+  atmosphere: { rimColor: string; rimStrength: number },
+): [number, number, number] {
   // nz = cos of angle to view axis; near the limb nz → 0.
   const limb = 1 - Math.max(nz, 0);
-  const strength = smoothstep(0.45, 0.98, limb) * cfg.atmosphere.rimStrength;
+  const strength = smoothstep(0.45, 0.98, limb) * atmosphere.rimStrength;
   const falloff = Math.pow(limb, 2.2) * strength;
-  const [r, g, b] = hexRgb(cfg.atmosphere.rimColor);
+  const [r, g, b] = hexRgb(atmosphere.rimColor);
   return [r * falloff, g * falloff, b * falloff];
 }
 
@@ -374,9 +416,9 @@ function spaceColor(
 // fbm value noise (deterministic).
 // ---------------------------------------------------------------------------
 
-function elevation(p: number[], seed: number, mountainAmp: number): number {
-  const { baseFrequency, octaves } = PLANET_ART.noise;
-  const raw = fbm(p[0] * baseFrequency, p[1] * baseFrequency, p[2] * baseFrequency, seed, octaves);
+function elevation(p: number[], seed: number, mountainAmp: number, frequency: number): number {
+  const { octaves } = PLANET_ART.noise;
+  const raw = fbm(p[0] * frequency, p[1] * frequency, p[2] * frequency, seed, octaves);
   // fbm ∈ [0,1]. Map to [-1,1] and stretch by mountain prominence.
   const centered = (raw - 0.5) * 2 * mountainAmp;
   return clamp(centered, -1, 1);

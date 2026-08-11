@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PROTOCOL_VERSION, formatCoordinate, type GalaxyView } from '@ashes/contracts';
 import { fetchGalaxy } from './api';
-import { SectionHelp } from './planet-ui';
+import { PLANET_CLASSES } from '@ashes/content';
+import { SectionHelp, planetClassColor, planetClassName } from './planet-ui';
+
+/** Compact class-color swatches for the sector-view legend (content-derived). */
+const PLANET_CLASS_META_SWATCHES: Array<{ classId: string; color: string }> = PLANET_CLASSES.map(
+  (c) => ({ classId: c.key, color: c.mapColor }),
+);
 
 const MAX_CONSECUTIVE_FAILURES = 3;
 /** Narrowest map window (world units) — the maximum zoom-in. */
@@ -166,12 +172,16 @@ export function MapApp() {
 
 function GalaxyMap({ view, seed }: { view: GalaxyView; seed: string }) {
   const frameRef = useRef<HTMLDivElement | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
   const [frame, setFrame] = useState({ w: 0, h: 0 });
   const [win, setWin] = useState<Window | null>(null);
   const [level, setLevel] = useState<Level>({ kind: 'chart' });
   const winRef = useRef<Window | null>(null);
   const dragRef = useRef<{ px: number; py: number; id: number } | null>(null);
   const draggedRef = useRef(false);
+  // Last window the SVG's viewBox was set to, so imperatively updated pan/
+  // zoom always derive from the same state React renders.
+  const lastViewBoxRef = useRef<string | null>(null);
 
   const homeGalaxy = useMemo(() => {
     const home = view.planets.find((p) => p.id === view.homePlanetId);
@@ -183,9 +193,20 @@ function GalaxyMap({ view, seed }: { view: GalaxyView; seed: string }) {
     return home?.coordinate.sector ?? 1;
   }, [view]);
 
-  // Keep the current window + level readable inside native event handlers.
-  const updateWin = (next: Window) => {
+  // The window lives in a ref so native drag/wheel handlers can mutate it
+  // without re-rendering React (the old per-event setWin re-rendered the
+  // whole SVG on every pointermove — the source of the drag jank). React
+  // state is only touched on discrete actions: fit, drill-in, zoom buttons.
+  const applyViewBox = (next: Window) => {
     winRef.current = next;
+    const vb = `${next.minX} ${next.minY} ${next.maxX - next.minX} ${next.maxY - next.minY}`;
+    lastViewBoxRef.current = vb;
+    svgRef.current?.setAttribute('viewBox', vb);
+  };
+  // React-declared path: same source of truth, but goes through state so the
+  // level-driven content (and sizes) re-renders together with the viewBox.
+  const updateWin = (next: Window) => {
+    applyViewBox(next);
     setWin(next);
   };
   const updateLevel = setLevel;
@@ -235,6 +256,18 @@ function GalaxyMap({ view, seed }: { view: GalaxyView; seed: string }) {
     }
   }, [frame, chartBox]);
 
+  // Keep the DOM viewBox in lockstep with React state (initial fit, and any
+  // discrete action that also changes level-driven content).
+  useEffect(() => {
+    if (
+      win &&
+      lastViewBoxRef.current !==
+        `${win.minX} ${win.minY} ${win.maxX - win.minX} ${win.maxY - win.minY}`
+    ) {
+      applyViewBox(win);
+    }
+  }, [win]);
+
   const frameRect = () => frameRef.current?.getBoundingClientRect() ?? null;
 
   /** Screen px → world units (the window fills the frame exactly). */
@@ -263,7 +296,8 @@ function GalaxyMap({ view, seed }: { view: GalaxyView; seed: string }) {
     const nh = h * factor;
     const lr = (cx - prev.minX) / w;
     const tr = (cy - prev.minY) / h;
-    updateWin({
+    // Imperative: wheel zoom must not re-render React per notch.
+    applyViewBox({
       minX: cx - nw * lr,
       maxX: cx + nw * (1 - lr),
       minY: cy - nh * tr,
@@ -319,45 +353,61 @@ function GalaxyMap({ view, seed }: { view: GalaxyView; seed: string }) {
     focusSector(homeGalaxy, homeSector);
   };
 
-  const onPointerDown = (e: React.PointerEvent) => {
-    // Never hijack the control buttons: a press there is a click, not a pan.
-    if ((e.target as Element).closest('.map-controls')) return;
-    dragRef.current = { px: e.clientX, py: e.clientY, id: e.pointerId };
-    draggedRef.current = false;
-  };
-
-  const onPointerMove = (e: React.PointerEvent) => {
-    const start = dragRef.current;
-    const prev = winRef.current;
-    const rect = frameRect();
-    if (!start || !prev || !rect) return;
-    const dx = e.clientX - start.px;
-    const dy = e.clientY - start.py;
-    // Capture the pointer only once a real drag starts, so plain clicks
-    // (buttons, planet dots) keep reaching their targets.
-    if (!draggedRef.current && Math.hypot(dx, dy) < 4) return;
-    if (!draggedRef.current) {
-      draggedRef.current = true;
-      e.currentTarget.setPointerCapture(start.id);
-    }
-    const w = prev.maxX - prev.minX;
-    const h = prev.maxY - prev.minY;
-    updateWin({
-      minX: prev.minX - (dx / rect.width) * w,
-      maxX: prev.maxX - (dx / rect.width) * w,
-      minY: prev.minY - (dy / rect.height) * h,
-      maxY: prev.maxY - (dy / rect.height) * h,
-    });
-  };
-
-  const onPointerUp = (e: React.PointerEvent) => {
-    dragRef.current = null;
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    }
-    // draggedRef intentionally stays set after a drag: the click that follows
-    // a pan must not navigate. It resets on the next pointerdown.
-  };
+  // Pan is handled natively on the frame (not React), so a drag never pays
+  // a React re-render per pointermove — only the SVG viewBox attribute moves.
+  useEffect(() => {
+    const el = frameRef.current;
+    if (!el) return;
+    const onPointerDown = (e: PointerEvent) => {
+      // Any press starts a fresh interaction: a stale drag (draggedRef left
+      // true by a previous pan) must not block this press's click. Control
+      // presses still record a start, but the move handler ignores presses
+      // that never become a real drag.
+      draggedRef.current = false;
+      dragRef.current = { px: e.clientX, py: e.clientY, id: e.pointerId };
+    };
+    const onPointerMove = (e: PointerEvent) => {
+      const start = dragRef.current;
+      const prev = winRef.current;
+      const rect = frameRef.current?.getBoundingClientRect() ?? null;
+      if (!start || !prev || !rect) return;
+      const dx = e.clientX - start.px;
+      const dy = e.clientY - start.py;
+      // Capture the pointer only once a real drag starts, so plain clicks
+      // (buttons, planet dots) keep reaching their targets.
+      if (!draggedRef.current && Math.hypot(dx, dy) < 4) return;
+      if (!draggedRef.current) {
+        draggedRef.current = true;
+        el.setPointerCapture(start.id);
+      }
+      const w = prev.maxX - prev.minX;
+      const h = prev.maxY - prev.minY;
+      applyViewBox({
+        minX: prev.minX - (dx / rect.width) * w,
+        maxX: prev.maxX - (dx / rect.width) * w,
+        minY: prev.minY - (dy / rect.height) * h,
+        maxY: prev.maxY - (dy / rect.height) * h,
+      });
+    };
+    const onPointerUp = (e: PointerEvent) => {
+      dragRef.current = null;
+      if (el.hasPointerCapture(e.pointerId)) {
+        el.releasePointerCapture(e.pointerId);
+      }
+      // draggedRef intentionally stays set after a drag: the click that
+      // follows a pan must not navigate. It resets on the next pointerdown.
+    };
+    el.addEventListener('pointerdown', onPointerDown);
+    el.addEventListener('pointermove', onPointerMove);
+    el.addEventListener('pointerup', onPointerUp);
+    el.addEventListener('pointercancel', onPointerUp);
+    return () => {
+      el.removeEventListener('pointerdown', onPointerDown);
+      el.removeEventListener('pointermove', onPointerMove);
+      el.removeEventListener('pointerup', onPointerUp);
+      el.removeEventListener('pointercancel', onPointerUp);
+    };
+  }, []);
 
   const frameWidth = frame.w > 0 ? frame.w : 1;
   const scale = win ? (win.maxX - win.minX) / frameWidth : 1;
@@ -399,18 +449,12 @@ function GalaxyMap({ view, seed }: { view: GalaxyView; seed: string }) {
         )}
       </nav>
 
-      <div
-        className="map-frame"
-        ref={frameRef}
-        data-testid="map-frame"
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-      >
+      <div className="map-frame" ref={frameRef} data-testid="map-frame">
         {win !== null && (
           <svg
             className="map-svg"
             data-testid="galaxy-map"
+            ref={svgRef}
             viewBox={`${win.minX} ${win.minY} ${win.maxX - win.minX} ${win.maxY - win.minY}`}
             role="img"
             aria-label="Galaxy map of the archive"
@@ -531,9 +575,16 @@ function GalaxyMap({ view, seed }: { view: GalaxyView; seed: string }) {
         <span className="map-legend-item" role="listitem">
           <span className="map-legend-dot known" aria-hidden="true" /> Yours
         </span>
-        <span className="map-legend-item" role="listitem">
-          <span className="map-legend-dot" aria-hidden="true" /> Unclaimed
-        </span>
+        {currentLevel.kind === 'sector' && (
+          <span className="map-legend-item" role="listitem">
+            <span className="map-legend-dots" aria-hidden="true">
+              {PLANET_CLASS_META_SWATCHES.map((c) => (
+                <span key={c.classId} style={{ background: c.color }} />
+              ))}
+            </span>
+            World class
+          </span>
+        )}
       </p>
 
       <SectionHelp id="map">
@@ -710,6 +761,8 @@ function SectorLevelView({
           )}
           <circle
             className={`map-planet${p.known ? ' known' : ''}`}
+            data-class={p.classId}
+            style={{ fill: planetClassColor(p.classId) }}
             cx={p.position.x}
             cy={p.position.y}
             r={p.known ? knownR : dotR}
@@ -724,7 +777,7 @@ function SectorLevelView({
               {p.name}
             </text>
           )}
-          <title>{`${p.name} — ${formatCoordinate(p.coordinate)}`}</title>
+          <title>{`${p.name} — ${planetClassName(p.classId)} — ${formatCoordinate(p.coordinate)}`}</title>
         </a>
       ))}
       {isHome && (

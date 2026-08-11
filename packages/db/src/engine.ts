@@ -21,6 +21,7 @@ import {
   galaxyDiscRadius,
   galaxyOrigin,
   generateWorld,
+  planetClassId,
   planetPosition,
   planetView,
   resolveEconomyTick,
@@ -254,6 +255,7 @@ export class TickEngine {
       position: planetPosition(world.seed, p.coordinate),
       name: p.name,
       factionId: p.factionId,
+      classId: planetClassId(p.id),
       known: knownIds.has(p.id),
     }));
 
