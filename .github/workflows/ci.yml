@@ -8,6 +8,23 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ashes
+          POSTGRES_PASSWORD: ashes
+          POSTGRES_DB: ashes
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ashes"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://ashes:ashes@localhost:5432/ashes
+      TEST_DATABASE_URL: postgres://ashes:ashes@localhost:5432/ashes
     steps:
       - uses: actions/checkout@v4
 
@@ -32,8 +49,11 @@ jobs:
       - name: Format check
         run: pnpm run format:check
 
-      - name: Unit + API tests
+      - name: Unit + API + Postgres integration tests
         run: pnpm run test
+        env:
+          DATABASE_URL: postgres://ashes:ashes@localhost:5432/ashes
+          TEST_DATABASE_URL: postgres://ashes:ashes@localhost:5432/ashes
 
       - name: Production build
         run: pnpm run build
@@ -43,6 +63,8 @@ jobs:
 
       - name: Browser smoke tests
         run: pnpm run test:e2e
+        env:
+          DATABASE_URL: postgres://ashes:ashes@localhost:5432/ashes
 
       - name: Upload Playwright report on failure
         if: failure()

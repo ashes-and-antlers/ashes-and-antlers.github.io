@@ -5,3 +5,4 @@ playwright-report
 test-results
 .freebuff
 pnpm-lock.yaml
+packages/db/drizzle

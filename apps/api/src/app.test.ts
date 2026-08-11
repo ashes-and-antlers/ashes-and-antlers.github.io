@@ -7,10 +7,10 @@ const AUTH: AuthConfig = {
   adminToken: 'dev-admin-token',
 };
 
-function makeApp() {
+async function makeApp() {
   const repository = new InMemoryWorldRepository();
   const engine = new TickEngine({ repository, lock: new WorldLock() });
-  engine.createWorld({ seed: 1337, createdAt: 1000, playerToken: AUTH.playerToken });
+  await engine.createWorld({ seed: 1337, createdAt: 1000, playerToken: AUTH.playerToken });
   const app = createApi(engine, AUTH);
   return { app, engine, repository };
 }
@@ -19,14 +19,14 @@ const bearer = (token: string) => ({ authorization: `Bearer ${token}` });
 
 describe('health and dev world creation', () => {
   it('serves healthz without auth', async () => {
-    const { app } = makeApp();
+    const { app } = await makeApp();
     const res = await app.request('/healthz');
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ ok: true });
   });
 
   it('rejects dev world creation without the admin token', async () => {
-    const { app } = makeApp();
+    const { app } = await makeApp();
     const res = await app.request('/api/v1/dev/worlds', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -38,7 +38,7 @@ describe('health and dev world creation', () => {
   });
 
   it('creates a world from a seed with the admin token', async () => {
-    const { app } = makeApp();
+    const { app } = await makeApp();
     const res = await app.request('/api/v1/dev/worlds', {
       method: 'POST',
       headers: { ...bearer(AUTH.adminToken), 'content-type': 'application/json' },
@@ -63,13 +63,13 @@ describe('health and dev world creation', () => {
 
 describe('overview (player auth required)', () => {
   it('rejects unauthenticated overview with 401', async () => {
-    const { app } = makeApp();
+    const { app } = await makeApp();
     const res = await app.request('/api/v1/worlds/world:1337/overview');
     expect(res.status).toBe(401);
   });
 
   it('rejects a wrong token with 401', async () => {
-    const { app } = makeApp();
+    const { app } = await makeApp();
     const res = await app.request('/api/v1/worlds/world:1337/overview', {
       headers: bearer('wrong-token'),
     });
@@ -77,7 +77,7 @@ describe('overview (player auth required)', () => {
   });
 
   it('serves the overview with tick, next tick time, and home planet', async () => {
-    const { app } = makeApp();
+    const { app } = await makeApp();
     const res = await app.request('/api/v1/worlds/world:1337/overview', {
       headers: bearer(AUTH.playerToken),
     });
@@ -103,7 +103,7 @@ describe('overview (player auth required)', () => {
   });
 
   it('returns 404 for an unknown world', async () => {
-    const { app } = makeApp();
+    const { app } = await makeApp();
     const res = await app.request('/api/v1/worlds/world:9999/overview', {
       headers: bearer(AUTH.playerToken),
     });
@@ -113,7 +113,7 @@ describe('overview (player auth required)', () => {
 
 describe('dev tick trigger', () => {
   it('advances the world tick deterministically', async () => {
-    const { app } = makeApp();
+    const { app } = await makeApp();
     const before = (await (
       await app.request('/api/v1/worlds/world:1337/overview', {
         headers: bearer(AUTH.playerToken),
@@ -141,7 +141,7 @@ describe('dev tick trigger', () => {
 
 describe('commands (M0 rejects all kinds)', () => {
   it('rejects unauthenticated commands with 401', async () => {
-    const { app } = makeApp();
+    const { app } = await makeApp();
     const res = await app.request('/api/v1/worlds/world:1337/commands', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -156,7 +156,7 @@ describe('commands (M0 rejects all kinds)', () => {
   });
 
   it('rejects malformed command envelopes with 400', async () => {
-    const { app } = makeApp();
+    const { app } = await makeApp();
     const res = await app.request('/api/v1/worlds/world:1337/commands', {
       method: 'POST',
       headers: { ...bearer(AUTH.playerToken), 'content-type': 'application/json' },
@@ -168,7 +168,7 @@ describe('commands (M0 rejects all kinds)', () => {
   });
 
   it('rejects well-formed but unsupported command kinds with 400', async () => {
-    const { app } = makeApp();
+    const { app } = await makeApp();
     const res = await app.request('/api/v1/worlds/world:1337/commands', {
       method: 'POST',
       headers: { ...bearer(AUTH.playerToken), 'content-type': 'application/json' },

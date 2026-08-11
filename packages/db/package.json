@@ -13,11 +13,16 @@
     "build": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@ashes/contracts": "workspace:*",
     "@ashes/content": "workspace:*",
-    "@ashes/domain": "workspace:*"
+    "@ashes/contracts": "workspace:*",
+    "@ashes/domain": "workspace:*",
+    "drizzle-orm": "^0.45.2",
+    "pg": "^8.23.0"
   },
   "devDependencies": {
+    "@types/pg": "^8.21.0",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.0"
   }
 }

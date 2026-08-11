@@ -2,7 +2,7 @@
   "name": "ashes-and-antlers",
   "private": true,
   "version": "0.1.0",
-  "description": "Ashes and Antlers (working title) — server-authoritative tick-based galaxy strategy. Workspace: web/api/worker apps + contracts/content/domain/db packages. Milestone 0: deterministic tick engine with in-memory storage (Postgres/Redis arrive in M1).",
+  "description": "Ashes and Antlers (working title) — server-authoritative tick-based galaxy strategy. Workspace: web/api/worker apps + contracts/content/domain/db packages. Milestone 1: deterministic tick engine + economy on PostgreSQL.",
   "type": "module",
   "scripts": {
     "dev": "pnpm --parallel --filter @ashes/api --filter @ashes/web dev",
@@ -16,7 +16,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:e2e:install": "playwright install chromium"
+    "test:e2e:install": "playwright install chromium",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:reset": "docker compose down -v && docker compose up -d",
+    "db:generate": "pnpm --filter @ashes/db exec drizzle-kit generate",
+    "db:migrate": "pnpm --filter @ashes/db exec tsx src/migrate.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

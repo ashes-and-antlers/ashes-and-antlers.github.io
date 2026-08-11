@@ -41,16 +41,16 @@ export function createApi(engine: TickEngine, auth: AuthConfig): Hono {
         400,
       );
     }
-    const world = engine.createWorld({
+    const world = await engine.createWorld({
       seed: parsed.data.seed,
       playerToken: auth.playerToken,
     });
-    return c.json(engine.getWorldView(world.id), 200);
+    return c.json(await engine.getWorldView(world.id), 200);
   });
 
   app.post('/api/v1/dev/worlds/:worldId/tick', bearer(auth.adminToken), async (c) => {
     const worldId = c.req.param('worldId') as WorldId;
-    if (!engine.getWorld(worldId)) {
+    if (!(await engine.getWorld(worldId))) {
       return c.json(apiError('NOT_FOUND', `world ${worldId} not found`), 404);
     }
     try {
@@ -72,20 +72,20 @@ export function createApi(engine: TickEngine, auth: AuthConfig): Hono {
 
   // -- player-facing: overview, planets, commands -------------------------
 
-  app.get('/api/v1/worlds/:worldId/overview', bearer(auth.playerToken), (c) => {
+  app.get('/api/v1/worlds/:worldId/overview', bearer(auth.playerToken), async (c) => {
     const worldId = c.req.param('worldId') as WorldId;
-    if (!engine.getWorld(worldId)) {
+    if (!(await engine.getWorld(worldId))) {
       return c.json(apiError('NOT_FOUND', `world ${worldId} not found`), 404);
     }
-    return c.json(engine.getWorldView(worldId), 200);
+    return c.json(await engine.getWorldView(worldId), 200);
   });
 
-  app.get('/api/v1/worlds/:worldId/planets', bearer(auth.playerToken), (c) => {
+  app.get('/api/v1/worlds/:worldId/planets', bearer(auth.playerToken), async (c) => {
     const worldId = c.req.param('worldId') as WorldId;
-    if (!engine.getWorld(worldId)) {
+    if (!(await engine.getWorld(worldId))) {
       return c.json(apiError('NOT_FOUND', `world ${worldId} not found`), 404);
     }
-    const view = engine.getWorldView(worldId);
+    const view = await engine.getWorldView(worldId);
     return c.json({ planets: view.planets }, 200);
   });
 
@@ -97,7 +97,7 @@ export function createApi(engine: TickEngine, auth: AuthConfig): Hono {
    */
   app.post('/api/v1/worlds/:worldId/commands', bearer(auth.playerToken), async (c) => {
     const worldId = c.req.param('worldId') as WorldId;
-    if (!engine.getWorld(worldId)) {
+    if (!(await engine.getWorld(worldId))) {
       return c.json(apiError('NOT_FOUND', `world ${worldId} not found`), 404);
     }
     const body = await readJson(c);

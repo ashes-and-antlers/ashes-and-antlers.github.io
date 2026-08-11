@@ -53,8 +53,8 @@ export class TickScheduler {
   async checkDue(): Promise<TickResolution[]> {
     const now = this.now();
     const resolved: TickResolution[] = [];
-    for (const worldId of this.repository.listWorldIds()) {
-      const world = this.engine.getWorld(worldId);
+    for (const worldId of await this.repository.listWorldIds()) {
+      const world = await this.engine.getWorld(worldId);
       if (!world) continue;
       if (now >= world.nextTickAt) {
         const resolution = await this.engine.resolveNextTick(worldId, now);
