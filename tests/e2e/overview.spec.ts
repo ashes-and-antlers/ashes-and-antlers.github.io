@@ -2,10 +2,9 @@ import { expect, test } from '@playwright/test';
 
 /**
  * M0 overview boot: the game page derives its world id from the seed, talks
- * to the API, and shows the authoritative tick, the next-tick countdown, the
- * world hash, and the player's home planet coordinate. The API webServer is
- * started with TICK_DURATION_MS=2000, so the tick advances live during the
- * test.
+ * to the API, and shows the authoritative tick, the next-tick countdown, and
+ * the player's home planet coordinate. The API webServer is started with
+ * TICK_DURATION_MS=2000, so the tick advances live during the test.
  */
 test('command overview boots and shows the authoritative tick', async ({ page }) => {
   await page.goto('/game.html?seed=424242');
@@ -15,9 +14,12 @@ test('command overview boots and shows the authoritative tick', async ({ page })
   await expect(page.getByTestId('world-id')).toHaveText('world:424242');
   await expect(page.getByTestId('game-seed')).toHaveText('424242');
 
-  // Home planet coordinate (galaxy:sector:system:planet) + world hash.
+  // Home planet coordinate (galaxy:sector:system:planet).
   await expect(page.getByTestId('home-coordinate')).toHaveText(/^\d+:\d+:\d+:\d+$/);
-  await expect(page.getByTestId('world-hash')).not.toHaveText('');
+
+  // Player surface only: engine internals (world hash, resolution record,
+  // status chips) must not render.
+  await expect(page.getByTestId('world-hash')).toHaveCount(0);
 
   // The tick counter is a number and advances as the scheduler resolves.
   const tick = page.getByTestId('overview-tick');

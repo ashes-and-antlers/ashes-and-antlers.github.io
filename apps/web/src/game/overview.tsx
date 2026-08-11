@@ -1,14 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  formatCoordinate,
-  type PlanetView,
-  type TickResolutionStatus,
-  type WorldView,
-} from '@ashes/contracts';
+import { formatCoordinate, type PlanetView, type WorldView } from '@ashes/contracts';
 import { assertProtocol, fetchOverview } from './api';
 import {
   AbundanceBar,
-  formatNet,
   formatResources,
   PlanetThumb,
   RESOURCE_NAMES,
@@ -160,12 +154,6 @@ function signed(n: number): string {
   return n > 0 ? `+${n}` : `${n}`;
 }
 
-/** Engine/resolution state chip: starting, running, completed, failed. */
-function StatusChip({ status }: { status: TickResolutionStatus | null }) {
-  if (status === null) return <span className="status-chip is-starting">starting</span>;
-  return <span className={`status-chip is-${status}`}>{status}</span>;
-}
-
 function Overview({ view, now, seed }: { view: WorldView; now: number; seed: string }) {
   const secondsLeft = Math.max(0, Math.ceil((view.nextTickAt - now) / 1000));
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
@@ -196,54 +184,7 @@ function Overview({ view, now, seed }: { view: WorldView; now: number; seed: str
               {new Date(view.nextTickAt).toLocaleTimeString()}
             </strong>
           </div>
-          <div className="tick-hero-status">
-            <span className="micro-label">Engine</span>
-            <StatusChip status={view.lastResolution?.status ?? null} />
-          </div>
         </div>
-        <details className="ledger-fold">
-          <summary>
-            <span className="fold-title">World record</span>
-            <span className="fold-meta">{view.tickDurationMs} ms / tick</span>
-            <span className="fold-chevron" aria-hidden="true" />
-          </summary>
-          <div className="fold-body">
-            <dl className="hash-list">
-              <div>
-                <dt>World hash</dt>
-                <dd data-testid="world-hash" title={view.worldHash}>
-                  {view.worldHash}
-                </dd>
-              </div>
-              <div>
-                <dt>Player id</dt>
-                <dd>{view.player.id}</dd>
-              </div>
-              <div>
-                <dt>Protocol</dt>
-                <dd>{view.protocolVersion}</dd>
-              </div>
-              <div>
-                <dt>Worldgen</dt>
-                <dd>{view.worldVersion}</dd>
-              </div>
-              <div>
-                <dt>Content</dt>
-                <dd>{view.contentVersion}</dd>
-              </div>
-              <div>
-                <dt>Created</dt>
-                <dd>{new Date(view.createdAt).toLocaleString()}</dd>
-              </div>
-              <div>
-                <dt>Last resolved</dt>
-                <dd>
-                  {view.lastResolvedAt ? new Date(view.lastResolvedAt).toLocaleTimeString() : '—'}
-                </dd>
-              </div>
-            </dl>
-          </div>
-        </details>
       </section>
 
       <section className="panel home-panel" aria-labelledby="home-heading">
@@ -288,75 +229,6 @@ function Overview({ view, now, seed }: { view: WorldView; now: number; seed: str
         <p className="home-note">The local fleet anchor. Development begins here.</p>
       </section>
 
-      <section className="panel resolution-panel" aria-labelledby="resolution-heading">
-        <h2 id="resolution-heading" className="panel-title">
-          Last tick resolved
-        </h2>
-        {view.lastResolution === null ? (
-          <p className="empty-state">No ticks resolved yet.</p>
-        ) : (
-          <>
-            <div className="resolution-head">
-              <span className="micro-label">Tick</span>
-              <strong className="resolution-tick mono" data-testid="last-resolved-tick">
-                {view.lastResolution.tick}
-              </strong>
-              <StatusChip status={view.lastResolution.status} />
-            </div>
-            <details className="ledger-fold">
-              <summary>
-                <span className="fold-title">Resolution record</span>
-                <span className="fold-chevron" aria-hidden="true" />
-              </summary>
-              <div className="fold-body">
-                <dl className="resolution-list">
-                  <div>
-                    <dt>Resolved at</dt>
-                    <dd>{new Date(view.lastResolution.resolvedAt).toLocaleTimeString()}</dd>
-                  </div>
-                  <div>
-                    <dt>Command cutoff</dt>
-                    <dd>{new Date(view.lastResolution.commandCutoffAt).toLocaleTimeString()}</dd>
-                  </div>
-                  <div>
-                    <dt>Resolution seed</dt>
-                    <dd title={view.lastResolution.seed}>{view.lastResolution.seed}</dd>
-                  </div>
-                  <div>
-                    <dt>Planet state hash</dt>
-                    <dd title={view.lastResolution.planetStateHash}>
-                      {view.lastResolution.planetStateHash}
-                    </dd>
-                  </div>
-                </dl>
-                <h3 className="ledger-subtitle">Phase hashes</h3>
-                <table className="phase-hashes">
-                  <tbody>
-                    {Object.entries(view.lastResolution.phaseHashes)
-                      .sort(([a], [b]) => a.localeCompare(b))
-                      .map(([phase, hash]) => (
-                        <tr key={phase}>
-                          <th scope="row">{phase}</th>
-                          <td title={hash}>{hash}</td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            </details>
-          </>
-        )}
-      </section>
-
-      <section className="panel planets-panel" aria-labelledby="planets-heading">
-        <h2 id="planets-heading" className="panel-title">
-          Known planets
-        </h2>
-        <div className="table-scroll">
-          <PlanetTable planets={view.planets} seed={seed} worldId={view.worldId} />
-        </div>
-      </section>
-
       <section className="panel orders-panel" aria-labelledby="orders-heading">
         <h2 id="orders-heading" className="panel-title">
           Pending next tick
@@ -367,11 +239,20 @@ function Overview({ view, now, seed }: { view: WorldView; now: number; seed: str
           <ul className="orders-list">
             {view.pendingOrders.map((o) => (
               <li key={o.idempotencyKey}>
-                <code>{o.command.kind}</code> — {o.idempotencyKey}
+                <code>{o.command.kind}</code>
               </li>
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="panel planets-panel" aria-labelledby="planets-heading">
+        <h2 id="planets-heading" className="panel-title">
+          Known planets
+        </h2>
+        <div className="table-scroll">
+          <PlanetTable planets={view.planets} seed={seed} worldId={view.worldId} />
+        </div>
       </section>
     </main>
   );
@@ -451,10 +332,6 @@ function PlanetTable({
           <th scope="col">Planet</th>
           <th scope="col">Abundance</th>
           <th scope="col">Population</th>
-          <th scope="col">Resources</th>
-          <th scope="col">Net / tick</th>
-          <th scope="col">Warnings</th>
-          <th scope="col">Resolved</th>
         </tr>
       </thead>
       <tbody>
@@ -477,12 +354,6 @@ function PlanetTable({
               <AbundanceMeter planet={p} />
             </td>
             <td className="mono">{p.population.toLocaleString()}</td>
-            <td className="mono resource-cells">{formatResources(p.resources)}</td>
-            <td className="mono resource-cells">{formatNet(p.rates.net)}</td>
-            <td>
-              <WarningsChips warnings={p.warnings} />
-            </td>
-            <td className="mono">{p.lastResolvedTick}</td>
           </tr>
         ))}
       </tbody>
