@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { PlanetApp } from './planet';
 import { spawnStarfield } from '../starfield';
+import '../starfield.css';
 import './game.css';
 
 spawnStarfield();

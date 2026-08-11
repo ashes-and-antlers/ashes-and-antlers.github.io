@@ -1,4 +1,5 @@
 import { spawnStarfield } from '../starfield';
+import '../starfield.css';
 import './style.css';
 import './landing.css';
 
