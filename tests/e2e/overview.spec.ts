@@ -40,6 +40,27 @@ test('command overview boots and shows the authoritative tick', async ({ page })
 });
 
 /**
+ * The footer links to a standalone glossary — the archive's vocabulary in
+ * one place — and the back link returns to the overview, seed preserved.
+ */
+test('opens the glossary from the footer and returns', async ({ page }) => {
+  await page.goto('/game.html?seed=424242');
+  await expect(page.getByTestId('glossary-link')).toBeVisible();
+  await page.getByTestId('glossary-link').click();
+  await expect(page).toHaveURL(/glossary\.html\?seed=424242/);
+
+  // The core terms are defined in one place.
+  await expect(page.getByTestId('glossary-term-tick')).toBeVisible();
+  await expect(page.getByTestId('glossary-term-abundance')).toBeVisible();
+  await expect(page.getByTestId('glossary-term-upkeep')).toBeVisible();
+  await expect(page.getByTestId('glossary-term-storage-cap')).toBeVisible();
+
+  // The back link returns to the overview.
+  await page.getByTestId('glossary-back').click();
+  await expect(page).toHaveURL(/game\.html\?seed=424242/);
+});
+
+/**
  * Engine-unreachable path: the deployed Pages build is static (no backend),
  * so the overview must stop hammering the dead endpoint, show a clear offline
  * card, and recover via the retry button once the engine is reachable again.

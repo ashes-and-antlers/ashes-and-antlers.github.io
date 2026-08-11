@@ -158,6 +158,9 @@ export function OverviewApp() {
 
       <footer className="game-footer">
         <span>deterministic core · versioned protocol</span>
+        <a className="footer-link" data-testid="glossary-link" href={`glossary.html?seed=${seed}`}>
+          Glossary
+        </a>
         <span>ashfield command archive</span>
       </footer>
     </div>
