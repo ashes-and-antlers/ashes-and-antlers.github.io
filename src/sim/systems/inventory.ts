@@ -1,5 +1,5 @@
 import { query } from 'bitecs';
-import { BuildingKind, ITEM_TYPES, type FactionId, type ItemType } from '../data/content';
+import { BuildingKind, FactionId, ITEM_TYPES, type ItemType } from '../data/content';
 import { buildingCost } from '../ecs/entities';
 import { sortedQuery, type SimWorld } from '../ecs/world';
 
@@ -164,6 +164,65 @@ export function nearestStockpileWithRoom(
     }
   }
   return best;
+}
+
+// ---------------------------------------------------------------------------
+// Stockpile policy (M2 iteration 4: desired reserves)
+// ---------------------------------------------------------------------------
+
+export type ReserveResult = { ok: true } | { ok: false; reason: string };
+
+/** Desired reserve target of a faction's stockpile policy for an item. */
+export function factionReserve(world: SimWorld, faction: FactionId, item: ItemType): number {
+  return world.reservePolicy[faction]?.[item] ?? 0;
+}
+
+/** Total stockpile capacity across a faction's stockpiles. */
+export function factionStockCapacity(world: SimWorld, faction: FactionId): number {
+  let total = 0;
+  for (const b of factionStockpiles(world, faction)) {
+    total += world.components.StockpileCapacity[b] ?? 0;
+  }
+  return total;
+}
+
+/**
+ * Effective reserve target for demand: the player-set policy clamped to what
+ * the faction's stockpiles can actually hold, so an unreachable reserve (e.g.
+ * food 200 with a 100-capacity command center) cannot create endless
+ * gather → full → fail churn.
+ */
+export function effectiveFactionReserve(
+  world: SimWorld,
+  faction: FactionId,
+  item: ItemType,
+): number {
+  return Math.min(factionReserve(world, faction, item), factionStockCapacity(world, faction));
+}
+
+/**
+ * Set a faction's stockpile reserve target (player policy command).
+ * Deterministic: validated against the faction/item enums and the config
+ * bounds; a rejected command leaves the policy untouched. The logistics AI
+ * gathers/crafts toward these targets (see economy.ts, tasks.ts).
+ */
+export function setStockpileReserve(
+  world: SimWorld,
+  faction: FactionId,
+  item: ItemType,
+  amount: number,
+): ReserveResult {
+  if (faction !== FactionId.Hearth && faction !== FactionId.IronSwarm) {
+    return { ok: false, reason: 'bad-faction' };
+  }
+  if (!ITEM_TYPES.includes(item)) {
+    return { ok: false, reason: 'bad-item' };
+  }
+  if (!Number.isInteger(amount) || amount < 0 || amount > world.config.maxStockpileReserve) {
+    return { ok: false, reason: 'bad-amount' };
+  }
+  world.reservePolicy[faction][item] = amount;
+  return { ok: true };
 }
 
 // ---------------------------------------------------------------------------

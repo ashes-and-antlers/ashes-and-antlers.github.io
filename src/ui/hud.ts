@@ -9,7 +9,13 @@ import {
 import type { Calendar, InspectDetail, SimAlert } from '../shared/protocol';
 import { toHex8 } from '../shared/utils';
 import { SIM_CONFIG } from '../sim/data/config';
-import { BuildingKind, FACTION_META, ItemType, type FactionId } from '../sim/data/content';
+import {
+  BuildingKind,
+  FACTION_META,
+  defaultStockpilePolicy,
+  ItemType,
+  type FactionId,
+} from '../sim/data/content';
 import { TERRAIN_NAMES } from '../sim/world/tiles';
 
 export interface HudCallbacks {
@@ -20,6 +26,8 @@ export interface HudCallbacks {
   onBuildFaction: (faction: FactionId) => void;
   /** The construction priority selector changed (1 low / 2 normal / 3 high). */
   onBuildPriorityChange: (priority: number) => void;
+  /** The stockpile reserve panel set a new desired reserve for an item. */
+  onReserveChange: (faction: FactionId, item: ItemType, amount: number) => void;
   /** Esc pressed while in placement mode. */
   onCancelBuild: () => void;
 }
@@ -48,10 +56,12 @@ export class Hud {
   private readonly buildFaction: HTMLSelectElement;
   private readonly buildPriority: HTMLSelectElement;
   private readonly stockEls = new Map<ItemType, HTMLElement>();
+  private readonly reserveEls = new Map<ItemType, HTMLElement>();
   private currentSpeed = 1;
   private lastNonZeroSpeed = 1;
   private activeBuild: BuildingKind | null = null;
   private lastStocks: Record<number, Record<number, number>> = {};
+  private lastPolicy: Record<number, Record<number, number>> = defaultStockpilePolicy();
 
   constructor(root: HTMLElement, callbacks: HudCallbacks) {
     this.callbacks = callbacks;
@@ -82,6 +92,7 @@ export class Hud {
     this.buildPriority = q('[data-testid="build-priority"]');
     for (const item of [ItemType.Wood, ItemType.Stone, ItemType.Planks, ItemType.Food]) {
       this.stockEls.set(item, q(`[data-testid="stock-${ITEM_NAMES[item]}"]`));
+      this.reserveEls.set(item, q(`[data-testid="reserve-${ITEM_NAMES[item]}"]`));
     }
 
     const wireBuild = (building: BuildingKind, testid: string): void => {
@@ -98,11 +109,26 @@ export class Hud {
     this.buildButtons.get(BuildingKind.Sawpit)!.title =
       `sawpit — ${costLabel(BuildingKind.Sawpit)}`;
     this.buildFaction.addEventListener('change', () => {
-      this.callbacks.onBuildFaction(Number(this.buildFaction.value) as FactionId);
+      const faction = Number(this.buildFaction.value) as FactionId;
+      this.callbacks.onBuildFaction(faction);
+      // Re-render both readout panels immediately; while paused there is no
+      // next snapshot to do it.
+      this.renderStocks(faction);
+      this.renderPolicy(faction);
     });
     this.buildPriority.addEventListener('change', () => {
       this.callbacks.onBuildPriorityChange(Number(this.buildPriority.value) as number);
     });
+    for (const item of [ItemType.Wood, ItemType.Stone, ItemType.Planks, ItemType.Food]) {
+      const key = ITEM_NAMES[item] ?? String(item);
+      const step = SIM_CONFIG.stockpileReserveStep;
+      q<HTMLButtonElement>(`[data-testid="reserve-${key}-dec"]`).addEventListener('click', () =>
+        this.stepReserve(item, -step),
+      );
+      q<HTMLButtonElement>(`[data-testid="reserve-${key}-inc"]`).addEventListener('click', () =>
+        this.stepReserve(item, step),
+      );
+    }
 
     const speedGroup = q<HTMLElement>('[data-testid="speed-group"]');
     const speeds = [0, ...SPEED_OPTIONS];
@@ -185,6 +211,7 @@ export class Hud {
   setBuildFaction(faction: FactionId): void {
     this.buildFaction.value = String(faction);
     this.renderStocks(faction);
+    this.renderPolicy(faction);
   }
 
   /** Remember the latest snapshot stocks and show the active faction's. */
@@ -198,6 +225,28 @@ export class Hud {
     for (const [item, el] of this.stockEls) {
       el.textContent = String(row[item] ?? 0);
     }
+  }
+
+  /** Remember the latest snapshot policy and show the active faction's. */
+  setPolicy(policy: Record<number, Record<number, number>>): void {
+    this.lastPolicy = policy;
+    this.renderPolicy(Number(this.buildFaction.value) as FactionId);
+  }
+
+  private renderPolicy(faction: FactionId): void {
+    const row = this.lastPolicy[faction] ?? {};
+    for (const [item, el] of this.reserveEls) {
+      el.textContent = String(row[item] ?? 0);
+    }
+  }
+
+  /** Step the active faction's reserve for an item (worker re-validates). */
+  private stepReserve(item: ItemType, delta: number): void {
+    const faction = Number(this.buildFaction.value) as FactionId;
+    const current = this.lastPolicy[faction]?.[item] ?? 0;
+    const next = Math.min(SIM_CONFIG.maxStockpileReserve, Math.max(0, current + delta));
+    if (next === current) return;
+    this.callbacks.onReserveChange(faction, item, next);
   }
 
   /** Show the latest alerts as a stacked banner (auto-removed oldest). */
@@ -357,6 +406,33 @@ export class Hud {
             <div class="readout"><span class="readout-label">stone</span><b data-testid="stock-stone">0</b></div>
             <div class="readout"><span class="readout-label">planks</span><b data-testid="stock-planks">0</b></div>
             <div class="readout"><span class="readout-label">food</span><b data-testid="stock-food">0</b></div>
+          </div>
+          <div class="policy-group" role="group" aria-label="Stockpile reserve targets" data-testid="policy-group">
+            <span class="group-label">reserve</span>
+            <div class="reserve-row">
+              <span class="reserve-item">wood</span>
+              <button type="button" class="reserve-step" data-testid="reserve-wood-dec" aria-label="Lower the wood reserve" title="Lower the wood reserve by ${SIM_CONFIG.stockpileReserveStep}">−</button>
+              <b class="reserve-value" data-testid="reserve-wood">0</b>
+              <button type="button" class="reserve-step" data-testid="reserve-wood-inc" aria-label="Raise the wood reserve" title="Raise the wood reserve by ${SIM_CONFIG.stockpileReserveStep}">+</button>
+            </div>
+            <div class="reserve-row">
+              <span class="reserve-item">stone</span>
+              <button type="button" class="reserve-step" data-testid="reserve-stone-dec" aria-label="Lower the stone reserve" title="Lower the stone reserve by ${SIM_CONFIG.stockpileReserveStep}">−</button>
+              <b class="reserve-value" data-testid="reserve-stone">0</b>
+              <button type="button" class="reserve-step" data-testid="reserve-stone-inc" aria-label="Raise the stone reserve" title="Raise the stone reserve by ${SIM_CONFIG.stockpileReserveStep}">+</button>
+            </div>
+            <div class="reserve-row">
+              <span class="reserve-item">planks</span>
+              <button type="button" class="reserve-step" data-testid="reserve-planks-dec" aria-label="Lower the planks reserve" title="Lower the planks reserve by ${SIM_CONFIG.stockpileReserveStep}">−</button>
+              <b class="reserve-value" data-testid="reserve-planks">0</b>
+              <button type="button" class="reserve-step" data-testid="reserve-planks-inc" aria-label="Raise the planks reserve" title="Raise the planks reserve by ${SIM_CONFIG.stockpileReserveStep}">+</button>
+            </div>
+            <div class="reserve-row">
+              <span class="reserve-item">food</span>
+              <button type="button" class="reserve-step" data-testid="reserve-food-dec" aria-label="Lower the food reserve" title="Lower the food reserve by ${SIM_CONFIG.stockpileReserveStep}">−</button>
+              <b class="reserve-value" data-testid="reserve-food">0</b>
+              <button type="button" class="reserve-step" data-testid="reserve-food-inc" aria-label="Raise the food reserve" title="Raise the food reserve by ${SIM_CONFIG.stockpileReserveStep}">+</button>
+            </div>
           </div>
           <div class="build-group" role="group" aria-label="Build">
             <span class="group-label">build</span>

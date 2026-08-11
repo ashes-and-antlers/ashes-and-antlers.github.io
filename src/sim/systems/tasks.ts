@@ -2,7 +2,6 @@ import { entityExists, query } from 'bitecs';
 import {
   CitizenState,
   FACTIONS,
-  FACTION_META,
   ItemType,
   NodeKind,
   TaskFailReason,
@@ -23,6 +22,7 @@ import {
 } from './economy';
 import {
   adjacentGoal,
+  effectiveFactionReserve,
   factionStockOf,
   factionStockpiles,
   isNodeInsideFootprint,
@@ -70,9 +70,9 @@ export function runTaskDemand(world: SimWorld): void {
     );
   }
 
-  // --- Gather demand: top up the faction food reserve ---
+  // --- Gather demand: top up the faction's food reserve (stockpile policy) ---
   for (const faction of FACTIONS) {
-    const reserve = FACTION_META[faction].desiredFoodReserve;
+    const reserve = effectiveFactionReserve(world, faction, ItemType.Food);
     const stock = factionStock(world, faction);
     const active = activeGatherCount(world, faction);
     if (stock >= reserve || active >= config.maxGatherTasksPerFaction) continue;

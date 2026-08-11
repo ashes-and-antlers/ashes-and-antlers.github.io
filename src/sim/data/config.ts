@@ -69,6 +69,10 @@ export interface SimConfig {
   maxBlueprintPriority: number;
   /** Task-priority delta per blueprint priority step above/below normal. */
   buildPriorityStep: number;
+  /** Inclusive upper bound for stockpile reserve targets (validated on set). */
+  maxStockpileReserve: number;
+  /** HUD stepper delta for the stockpile reserve panel. */
+  stockpileReserveStep: number;
 
   // Economy (M2 materials)
   /** Max wood a tree node holds (finite, no regrowth in M2). */
@@ -148,6 +152,8 @@ export const SIM_CONFIG: SimConfig = {
   minBlueprintPriority: 1,
   maxBlueprintPriority: 3,
   buildPriorityStep: 1,
+  maxStockpileReserve: 200,
+  stockpileReserveStep: 5,
   constructionCosts: {
     [BuildingKind.CommandCenter]: [],
     [BuildingKind.Stockpile]: [{ item: ItemType.Wood, amount: 8 }],

@@ -4,6 +4,7 @@ import { query } from 'bitecs';
 import { PROTOCOL_VERSION, SNAPSHOT_EVERY_TICKS, WORLD_VERSION } from '../shared/constants';
 import {
   PLACEMENT_REASONS,
+  RESERVE_REASONS,
   type SimSnapshot,
   type WorkerEvent,
   type WorkerRequest,
@@ -15,6 +16,7 @@ import {
   FACTIONS,
   ITEM_TYPES,
   type FactionId,
+  type ItemType,
 } from '../sim/data/content';
 import { sortedQuery, type SimWorld } from '../sim/ecs/world';
 import { buildingWorkTicks } from '../sim/ecs/entities';
@@ -101,6 +103,19 @@ function buildEntityBuffer(): { buffer: ArrayBuffer; count: number } {
   return { buffer: buffer.buffer, count: rows.length / 7 };
 }
 
+/** Per-faction stockpile policy (factionId -> itemType -> desired reserve). */
+function buildPolicy(world: SimWorld): Record<number, Record<number, number>> {
+  const policy: Record<number, Record<number, number>> = {};
+  for (const faction of FACTIONS) {
+    const row: Record<number, number> = {};
+    for (const item of ITEM_TYPES) {
+      row[item] = world.reservePolicy[faction]?.[item] ?? 0;
+    }
+    policy[faction] = row;
+  }
+  return policy;
+}
+
 /** Per-faction stored items (factionId -> itemType -> amount), for HUD readouts. */
 function buildStocks(world: SimWorld): Record<number, Record<number, number>> {
   const c = world.components;
@@ -145,6 +160,7 @@ function buildSnapshot(includeTiles: boolean): SimSnapshot {
     ownerVersion: world.ownerVersion,
     alerts: world.alertLog.slice(-8),
     stocks: buildStocks(world),
+    policy: buildPolicy(world),
   };
 
   const { buffer, count } = buildEntityBuffer();
@@ -256,10 +272,29 @@ self.onmessage = (ev: MessageEvent<WorkerRequest>) => {
         if (!result.ok) {
           post({
             kind: 'commandRejected',
+            command: 'PlaceBlueprint',
             reason: PLACEMENT_REASONS[result.reason] ?? result.reason,
           });
         } else if (speed === 0) {
           // Placement changed authoritative state while paused; the normal
+          // paused-publish trigger keys off the tick, so force one now.
+          publish(false);
+        }
+      } else if (command.kind === 'SetStockpileReserve') {
+        if (!sim) break;
+        const result = sim.setStockpileReserve(
+          command.faction as FactionId,
+          command.item as ItemType,
+          command.amount,
+        );
+        if (!result.ok) {
+          const reason =
+            result.reason === 'bad-amount'
+              ? `reserve must be a whole number from 0 to ${sim.world.config.maxStockpileReserve}`
+              : (RESERVE_REASONS[result.reason] ?? result.reason);
+          post({ kind: 'commandRejected', command: 'SetStockpileReserve', reason });
+        } else if (speed === 0) {
+          // The reserve changed authoritative state while paused; the normal
           // paused-publish trigger keys off the tick, so force one now.
           publish(false);
         }

@@ -124,6 +124,26 @@ export interface FactionMeta {
   desiredFoodReserve: number;
 }
 
+/**
+ * Default stockpile policy per faction: the food reserve comes from the
+ * faction's identity (FACTION_META); every material starts at 0 so nothing
+ * is gathered until a blueprint or a player-set reserve needs it. The world
+ * holds the authoritative policy (SimWorld.reservePolicy); the HUD reuses
+ * this for its first paint.
+ */
+export function defaultStockpilePolicy(): Record<number, Record<number, number>> {
+  const policy: Record<number, Record<number, number>> = {};
+  for (const faction of FACTIONS) {
+    const row: Record<number, number> = {};
+    for (const item of ITEM_TYPES) {
+      row[item] = 0;
+    }
+    row[ItemType.Food] = FACTION_META[faction].desiredFoodReserve;
+    policy[faction] = row;
+  }
+  return policy;
+}
+
 export const FACTION_META: Record<FactionId, FactionMeta> = {
   [FactionId.None]: {
     id: FactionId.None,
