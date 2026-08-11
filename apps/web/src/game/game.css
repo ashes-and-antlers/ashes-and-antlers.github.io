@@ -377,6 +377,142 @@ body {
   text-align: right;
 }
 
+/* ---------- resource tiles (planet ledger) ---------- */
+
+.resource-tiles {
+  display: grid;
+  /* minmax(0, 1fr): a long stored figure must not force its tile wider
+     than its share of the row (especially at 2-up on narrow screens). */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.resource-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 12px;
+  background: #171f31;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+}
+
+.resource-tile-name {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.resource-tile-stored {
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 1.05;
+  color: var(--text);
+}
+
+.resource-tile-track {
+  display: block;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(205, 219, 238, 0.1);
+  overflow: hidden;
+}
+
+.resource-tile-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), #7fa3d4);
+}
+
+.resource-tile-net {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.net-pos {
+  color: var(--ok);
+}
+
+.net-neg {
+  color: var(--danger);
+}
+
+.net-zero {
+  color: var(--muted);
+}
+
+.rates-fold {
+  margin-top: 10px;
+}
+
+.rates-fold summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+}
+
+.rates-fold summary::-webkit-details-marker {
+  display: none;
+}
+
+.rates-fold-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  transition: color 150ms ease;
+}
+
+.rates-fold summary:hover .rates-fold-title {
+  color: var(--text);
+}
+
+.rates-fold-chevron {
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid var(--muted);
+  border-bottom: 1.5px solid var(--muted);
+  transform: rotate(45deg);
+  transition: transform 150ms ease;
+}
+
+.rates-fold[open] .rates-fold-chevron {
+  transform: rotate(-135deg);
+}
+
+.rates-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 12px;
+}
+
+.rates-table th {
+  text-align: left;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 4px 8px 6px 0;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.rates-table td {
+  padding: 5px 8px 5px 0;
+  border-bottom: 1px solid rgba(205, 219, 238, 0.06);
+}
+
+.rates-table td.mono {
+  text-align: right;
+}
+
 .building-list {
   list-style: none;
   margin: 0;

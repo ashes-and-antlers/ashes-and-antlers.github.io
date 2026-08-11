@@ -106,30 +106,12 @@ export function PlanetThumb({
   );
 }
 
-export const RESOURCE_LABELS: Array<[ResourceKey, string]> = [
-  ['metal', 'M'],
-  ['mineral', 'Mn'],
-  ['food', 'F'],
-  ['energy', 'E'],
-];
-
 export const RESOURCE_NAMES: Array<[ResourceKey, string]> = [
   ['metal', 'Metal'],
   ['mineral', 'Mineral'],
   ['food', 'Food'],
   ['energy', 'Energy'],
 ];
-
-export function formatResources(resources: PlanetView['resources']): string {
-  return RESOURCE_LABELS.map(([key, label]) => `${label} ${resources[key]}`).join(' · ');
-}
-
-export function formatNet(net: PlanetView['rates']['net']): string {
-  return RESOURCE_LABELS.map(([key, label]) => {
-    const n = net[key];
-    return `${label} ${n > 0 ? `+${n}` : n}`;
-  }).join(' · ');
-}
 
 const WARNING_LABELS: Record<PlanetWarning, string> = {
   storage_full: 'Storage full',

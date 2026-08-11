@@ -1,13 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatCoordinate, type PlanetView } from '@ashes/contracts';
 import { ApiError, assertProtocol, fetchOverview, fetchPlanet, fetchPlanetImage } from './api';
-import {
-  AbundanceBar,
-  formatNet,
-  formatResources,
-  PLANET_PORTRAIT_SIZE,
-  WarningsChips,
-} from './planet-ui';
+import { AbundanceBar, PLANET_PORTRAIT_SIZE, RESOURCE_NAMES, WarningsChips } from './planet-ui';
 
 const POLL_MS = 2_000;
 const MAX_CONSECUTIVE_FAILURES = 3;
@@ -185,6 +179,11 @@ export function PlanetApp() {
   );
 }
 
+/** Trend color for a signed per-tick rate: surplus green, deficit red, flat muted. */
+function netClass(net: number): string {
+  return net > 0 ? 'net-pos' : net < 0 ? 'net-neg' : 'net-zero';
+}
+
 function PlanetLedger({ view, imageUrl }: { view: PlanetView; imageUrl: string | null }) {
   const buildCount = Object.values(view.buildings).reduce((a, b) => a + b, 0);
 
@@ -266,26 +265,78 @@ function PlanetLedger({ view, imageUrl }: { view: PlanetView; imageUrl: string |
 
         <div className="ledger-section">
           <h3 className="ledger-subtitle">Resources</h3>
-          <dl className="ledger-list">
-            <div>
-              <dt>Stored</dt>
-              <dd className="mono" data-testid="planet-resources">
-                {formatResources(view.resources)}
-              </dd>
-            </div>
-            <div>
-              <dt>Net / tick</dt>
-              <dd className="mono">{formatNet(view.rates.net)}</dd>
-            </div>
-            <div>
-              <dt>Production</dt>
-              <dd className="mono">{formatNet(view.rates.production)}</dd>
-            </div>
-            <div>
-              <dt>Upkeep</dt>
-              <dd className="mono">{formatNet(view.rates.upkeep)}</dd>
-            </div>
-          </dl>
+          {/* One tile per resource: the stored amount is the hero figure, the
+              bar shows how full the stock is against the cap, and the net
+              chip shows the trend in one glance. */}
+          <div className="resource-tiles" data-testid="planet-resource-tiles">
+            {RESOURCE_NAMES.map(([key, label]) => {
+              const stored = view.resources[key];
+              const net = view.rates.net[key];
+              const fillPct =
+                view.storageCap > 0
+                  ? Math.min(100, Math.round((stored / view.storageCap) * 100))
+                  : 0;
+              return (
+                <div className="resource-tile" key={key}>
+                  <span className="resource-tile-name">{label}</span>
+                  <span
+                    className="resource-tile-stored mono"
+                    data-testid={`resource-stored-${key}`}
+                  >
+                    {stored.toLocaleString()}
+                  </span>
+                  <span
+                    className="resource-tile-track"
+                    role="img"
+                    aria-label={`${label} storage ${fillPct}% full`}
+                    title={`${stored.toLocaleString()} / ${view.storageCap.toLocaleString()}`}
+                  >
+                    <span className="resource-tile-fill" style={{ width: `${fillPct}%` }} />
+                  </span>
+                  <span
+                    className={`resource-tile-net mono ${netClass(net)}`}
+                    data-testid={`resource-net-${key}`}
+                  >
+                    {net > 0 ? '+' : ''}
+                    {net} / tick
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* The drivers behind the trend, one fold away. */}
+          <details className="rates-fold">
+            <summary>
+              <span className="rates-fold-title">Production &amp; upkeep</span>
+              <span className="rates-fold-chevron" aria-hidden="true" />
+            </summary>
+            <table className="rates-table">
+              <thead>
+                <tr>
+                  <th scope="col">Resource</th>
+                  <th scope="col">Production</th>
+                  <th scope="col">Upkeep</th>
+                  <th scope="col">Net</th>
+                </tr>
+              </thead>
+              <tbody>
+                {RESOURCE_NAMES.map(([key, label]) => {
+                  const production = view.rates.production[key];
+                  const upkeep = view.rates.upkeep[key];
+                  const net = view.rates.net[key];
+                  return (
+                    <tr key={key}>
+                      <td>{label}</td>
+                      <td className="mono">{production > 0 ? `+${production}` : production}</td>
+                      <td className="mono">{upkeep > 0 ? `−${upkeep}` : upkeep}</td>
+                      <td className={`mono ${netClass(net)}`}>{net > 0 ? `+${net}` : net}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </details>
         </div>
 
         <div className="ledger-section">

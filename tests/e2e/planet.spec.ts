@@ -34,6 +34,10 @@ test('navigates from the overview to a planet ledger with a generated portrait',
   await expect(page.getByTestId('planet-population')).not.toHaveText('');
   await expect(page.getByTestId('planet-faction')).toHaveText('hearth');
 
+  // Resources render as glanceable per-resource tiles (stored + net).
+  await expect(page.getByTestId('resource-stored-metal')).not.toHaveText('');
+  await expect(page.getByTestId('resource-net-metal')).toHaveText(/^[+-]?\d+ \/ tick$/);
+
   // The pre-rendered portrait arrives as a real image.
   const portrait = page.getByTestId('planet-image');
   await expect(portrait).toBeVisible({ timeout: 15_000 });
