@@ -169,7 +169,7 @@ body {
   display: flex;
   gap: 28px;
   flex-wrap: wrap;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 
 .tick-current,
@@ -253,11 +253,83 @@ body {
   border-color: rgba(224, 90, 90, 0.4);
 }
 
-/* World identity strip under the hero: hash, versions, timings. */
-.tick-hero-identity {
+/* ---------- ledger folds (progressive disclosure) ---------- */
+
+/* Deep records (world identity, resource ledger, resolution record) tuck
+   behind native <details> folds: glanceable summary, one click to open.
+   Native disclosure — keyboard accessible, no JS. */
+.ledger-fold {
   border-top: 1px solid var(--panel-border);
-  padding-top: 14px;
-  margin-top: 2px;
+  margin-top: 14px;
+}
+
+.ledger-fold > summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  user-select: none;
+  transition: color 150ms ease;
+}
+
+.ledger-fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+.ledger-fold > summary:hover {
+  color: var(--text);
+}
+
+.ledger-fold > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.fold-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fold-meta {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 55%;
+}
+
+.fold-chevron {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 160ms ease;
+}
+
+.ledger-fold[open] > summary .fold-chevron {
+  transform: rotate(45deg);
+}
+
+.ledger-fold > .fold-body {
+  padding-bottom: 4px;
 }
 
 .hash-list {
@@ -357,24 +429,12 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.home-player-id {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  margin: 0 0 16px;
-}
-
-.home-player-id code {
-  font-size: 12px;
-  color: var(--muted);
-}
-
 /* Per-resource stored / production / upkeep / net ledger. */
 .resource-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
-  margin-top: 14px;
+  margin-top: 4px;
 }
 
 .resource-table th {

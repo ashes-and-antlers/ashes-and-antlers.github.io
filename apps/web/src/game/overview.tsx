@@ -201,42 +201,49 @@ function Overview({ view, now, seed }: { view: WorldView; now: number; seed: str
             <StatusChip status={view.lastResolution?.status ?? null} />
           </div>
         </div>
-        <div className="tick-hero-identity">
-          <dl className="hash-list">
-            <div>
-              <dt>World hash</dt>
-              <dd data-testid="world-hash" title={view.worldHash}>
-                {view.worldHash}
-              </dd>
-            </div>
-            <div>
-              <dt>Protocol</dt>
-              <dd>{view.protocolVersion}</dd>
-            </div>
-            <div>
-              <dt>Worldgen</dt>
-              <dd>{view.worldVersion}</dd>
-            </div>
-            <div>
-              <dt>Content</dt>
-              <dd>{view.contentVersion}</dd>
-            </div>
-            <div>
-              <dt>Tick length</dt>
-              <dd>{view.tickDurationMs} ms</dd>
-            </div>
-            <div>
-              <dt>Created</dt>
-              <dd>{new Date(view.createdAt).toLocaleString()}</dd>
-            </div>
-            <div>
-              <dt>Last resolved</dt>
-              <dd>
-                {view.lastResolvedAt ? new Date(view.lastResolvedAt).toLocaleTimeString() : '—'}
-              </dd>
-            </div>
-          </dl>
-        </div>
+        <details className="ledger-fold">
+          <summary>
+            <span className="fold-title">World record</span>
+            <span className="fold-meta">{view.tickDurationMs} ms / tick</span>
+            <span className="fold-chevron" aria-hidden="true" />
+          </summary>
+          <div className="fold-body">
+            <dl className="hash-list">
+              <div>
+                <dt>World hash</dt>
+                <dd data-testid="world-hash" title={view.worldHash}>
+                  {view.worldHash}
+                </dd>
+              </div>
+              <div>
+                <dt>Player id</dt>
+                <dd>{view.player.id}</dd>
+              </div>
+              <div>
+                <dt>Protocol</dt>
+                <dd>{view.protocolVersion}</dd>
+              </div>
+              <div>
+                <dt>Worldgen</dt>
+                <dd>{view.worldVersion}</dd>
+              </div>
+              <div>
+                <dt>Content</dt>
+                <dd>{view.contentVersion}</dd>
+              </div>
+              <div>
+                <dt>Created</dt>
+                <dd>{new Date(view.createdAt).toLocaleString()}</dd>
+              </div>
+              <div>
+                <dt>Last resolved</dt>
+                <dd>
+                  {view.lastResolvedAt ? new Date(view.lastResolvedAt).toLocaleTimeString() : '—'}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </details>
       </section>
 
       <section className="panel home-panel" aria-labelledby="home-heading">
@@ -247,10 +254,6 @@ function Overview({ view, now, seed }: { view: WorldView; now: number; seed: str
           <span className="micro-label">Player</span>
           <strong>{view.player.name}</strong>
           <span className="faction-tag">{view.player.factionId}</span>
-        </p>
-        <p className="home-player-id">
-          <span className="micro-label">Archive id</span>
-          <code className="mono">{view.player.id}</code>
         </p>
         <p className="home-coord">
           <span className="micro-label">Coordinate</span>
@@ -271,8 +274,17 @@ function Overview({ view, now, seed }: { view: WorldView; now: number; seed: str
             <strong className="mono">{buildCount}</strong>
           </div>
         </div>
-        <ResourceTable planet={home} />
         <WarningsChips warnings={home.warnings} />
+        <details className="ledger-fold">
+          <summary>
+            <span className="fold-title">Resource ledger</span>
+            <span className="fold-meta">{formatResources(home.resources)}</span>
+            <span className="fold-chevron" aria-hidden="true" />
+          </summary>
+          <div className="fold-body">
+            <ResourceTable planet={home} />
+          </div>
+        </details>
         <p className="home-note">The local fleet anchor. Development begins here.</p>
       </section>
 
@@ -291,39 +303,47 @@ function Overview({ view, now, seed }: { view: WorldView; now: number; seed: str
               </strong>
               <StatusChip status={view.lastResolution.status} />
             </div>
-            <dl className="resolution-list">
-              <div>
-                <dt>Resolved at</dt>
-                <dd>{new Date(view.lastResolution.resolvedAt).toLocaleTimeString()}</dd>
+            <details className="ledger-fold">
+              <summary>
+                <span className="fold-title">Resolution record</span>
+                <span className="fold-chevron" aria-hidden="true" />
+              </summary>
+              <div className="fold-body">
+                <dl className="resolution-list">
+                  <div>
+                    <dt>Resolved at</dt>
+                    <dd>{new Date(view.lastResolution.resolvedAt).toLocaleTimeString()}</dd>
+                  </div>
+                  <div>
+                    <dt>Command cutoff</dt>
+                    <dd>{new Date(view.lastResolution.commandCutoffAt).toLocaleTimeString()}</dd>
+                  </div>
+                  <div>
+                    <dt>Resolution seed</dt>
+                    <dd title={view.lastResolution.seed}>{view.lastResolution.seed}</dd>
+                  </div>
+                  <div>
+                    <dt>Planet state hash</dt>
+                    <dd title={view.lastResolution.planetStateHash}>
+                      {view.lastResolution.planetStateHash}
+                    </dd>
+                  </div>
+                </dl>
+                <h3 className="ledger-subtitle">Phase hashes</h3>
+                <table className="phase-hashes">
+                  <tbody>
+                    {Object.entries(view.lastResolution.phaseHashes)
+                      .sort(([a], [b]) => a.localeCompare(b))
+                      .map(([phase, hash]) => (
+                        <tr key={phase}>
+                          <th scope="row">{phase}</th>
+                          <td title={hash}>{hash}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
               </div>
-              <div>
-                <dt>Command cutoff</dt>
-                <dd>{new Date(view.lastResolution.commandCutoffAt).toLocaleTimeString()}</dd>
-              </div>
-              <div>
-                <dt>Resolution seed</dt>
-                <dd title={view.lastResolution.seed}>{view.lastResolution.seed}</dd>
-              </div>
-              <div>
-                <dt>Planet state hash</dt>
-                <dd title={view.lastResolution.planetStateHash}>
-                  {view.lastResolution.planetStateHash}
-                </dd>
-              </div>
-            </dl>
-            <h3 className="ledger-subtitle">Phase hashes</h3>
-            <table className="phase-hashes">
-              <tbody>
-                {Object.entries(view.lastResolution.phaseHashes)
-                  .sort(([a], [b]) => a.localeCompare(b))
-                  .map(([phase, hash]) => (
-                    <tr key={phase}>
-                      <th scope="row">{phase}</th>
-                      <td title={hash}>{hash}</td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
+            </details>
           </>
         )}
       </section>
