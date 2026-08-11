@@ -1,8 +1,5 @@
 import './style.css';
 import './landing.css';
-import React from 'react';
-import { createRoot } from 'react-dom/client';
-import { RepoInfo } from '../components/RepoInfo';
 
 /**
  * Landing page ("The Sequence", seed dc472b5a).
@@ -49,16 +46,6 @@ if (
     spark.style.animationDuration = `${4 + Math.random() * 5}s`;
     ashField.appendChild(spark);
   }
-}
-
-// Live GitHub widget — mounts React RepoInfo into #repo-root (no rewrite of the page).
-const repoRoot = document.getElementById('repo-root');
-if (repoRoot) {
-  // nordicnode/ashes-and-antlers is the connected repo; works unauthenticated
-  // for public repos, uses VITE_GITHUB_TOKEN when set for higher rate limits.
-  createRoot(repoRoot).render(
-    React.createElement(RepoInfo, { owner: 'nordicnode', repo: 'ashes-and-antlers' }),
-  );
 }
 
 // Scroll reveals — the archive opens entry by entry.
