@@ -1,19 +1,7 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "lib": ["ES2022"],
-    "types": ["node"],
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "isolatedModules": true,
-    "verbatimModuleSyntax": true,
-    "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true,
-    "noEmit": true
+    "types": ["node"]
   },
-  "include": ["vite.config.ts", "playwright.config.ts"]
+  "include": ["playwright.config.ts", "vitest.config.ts"]
 }
