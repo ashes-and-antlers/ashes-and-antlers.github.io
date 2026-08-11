@@ -1,12 +1,16 @@
 import type { FactionId } from '@ashes/contracts';
 
 /**
- * Seeded starting package (M0): one player, one faction, one home planet.
- * Planet-name banks are used by worldgen to name worlds deterministically.
+ * Seeded starting package (M1): one player, one faction, one home planet
+ * with a starter settlement, population, and resource seed. Planet-name
+ * banks are used by worldgen to name worlds deterministically.
  */
 export const STARTING_PACKAGE = {
   factionId: 'hearth' as FactionId,
   playerName: 'First Warden of the Hearth',
+  startingPopulation: 500,
+  startingResources: { metal: 100, mineral: 50, food: 200, energy: 50 } as const,
+  startingBuildings: { settlement: 1 } as const,
 } as const;
 
 /** Deterministic planet-name parts (worldgen draws from these via its PRNG). */

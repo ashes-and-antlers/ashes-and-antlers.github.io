@@ -1,3 +1,4 @@
 export * from './prng';
 export * from './worldgen';
-export * from './tick';
+export * from './economy';
+export * from './views';

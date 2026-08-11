@@ -1,5 +1,12 @@
-import type { Coordinate, Player, Planet, WorldId, WorldState } from '@ashes/contracts';
-import { planetIdFromCoordinate } from '@ashes/contracts';
+import type {
+  BuildingKind,
+  Coordinate,
+  Player,
+  Planet,
+  WorldId,
+  WorldState,
+} from '@ashes/contracts';
+import { emptyResourceStore, planetIdFromCoordinate } from '@ashes/contracts';
 import {
   CONTENT_VERSION,
   PLANET_NAME_PARTS,
@@ -63,6 +70,9 @@ export function generateWorld(input: WorldgenInput): WorldState {
               food: intInRange(rngAbundance, 20, 100),
               energy: intInRange(rngAbundance, 20, 100),
             },
+            population: 0,
+            resources: emptyResourceStore(),
+            buildings: {},
             lastResolvedTick: 0,
             version: 1,
           });
@@ -73,9 +83,14 @@ export function generateWorld(input: WorldgenInput): WorldState {
   planets.sort((a, b) => compareCoordinates(a.coordinate, b.coordinate));
 
   // Seeded home planet: a deterministic pick from the stable planet list.
+  // M1 genesis: the home planet carries the starting economy (settlement,
+  // population, resource seed) so the first tick is already productive.
   const homePlanet = planets[intBelow(rngHome, planets.length)];
   homePlanet.ownerId = playerId(seed);
   homePlanet.factionId = STARTING_PACKAGE.factionId;
+  homePlanet.population = STARTING_PACKAGE.startingPopulation;
+  homePlanet.resources = { ...STARTING_PACKAGE.startingResources };
+  homePlanet.buildings = { ...STARTING_PACKAGE.startingBuildings };
 
   const player: Player = {
     id: playerId(seed),
@@ -154,6 +169,10 @@ export function computePlanetStateHash(planets: Planet[]): string {
 
 function canonicalPlanet(p: Planet): string {
   const c = p.coordinate;
+  const buildingCanon = (Object.keys(p.buildings) as BuildingKind[])
+    .sort()
+    .map((k) => `${k}@${p.buildings[k]}`)
+    .join(',');
   return [
     c.galaxy,
     c.sector,
@@ -166,6 +185,12 @@ function canonicalPlanet(p: Planet): string {
     p.abundance.mineral,
     p.abundance.food,
     p.abundance.energy,
+    p.population,
+    p.resources.metal,
+    p.resources.mineral,
+    p.resources.food,
+    p.resources.energy,
+    buildingCanon === '' ? '-' : buildingCanon,
     p.lastResolvedTick,
     p.version,
   ].join(':');
