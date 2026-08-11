@@ -11,6 +11,15 @@ test('navigates from the overview to a planet ledger with a generated portrait',
   await page.goto('/game.html?seed=424242');
   await expect(page.getByTestId('world-id')).toHaveText('world:424242');
 
+  // Each row shows a small generated thumbnail portrait.
+  const thumb = page.locator('img.planet-thumb').first();
+  await expect(thumb).toBeVisible({ timeout: 15_000 });
+  await expect
+    .poll(async () => thumb.evaluate((el) => (el as HTMLImageElement).naturalWidth), {
+      timeout: 15_000,
+    })
+    .toBeGreaterThan(0);
+
   // The home planet row links to the planet page.
   const link = page.locator('a.planet-link').first();
   await expect(link).toBeVisible({ timeout: 15_000 });

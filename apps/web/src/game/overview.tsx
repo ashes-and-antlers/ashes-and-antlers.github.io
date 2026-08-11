@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatCoordinate, type PlanetView, type WorldView } from '@ashes/contracts';
 import { assertProtocol, fetchOverview } from './api';
-import { AbundanceBar, formatNet, formatResources, WarningsChips } from './planet-ui';
+import { AbundanceBar, formatNet, formatResources, PlanetThumb, WarningsChips } from './planet-ui';
 
 const POLL_MS = 2_000;
 const MAX_CONSECUTIVE_FAILURES = 3;
@@ -231,7 +231,7 @@ function Overview({ view, now, seed }: { view: WorldView; now: number; seed: str
         <h2 id="planets-heading" className="panel-title">
           Known planets
         </h2>
-        <PlanetTable planets={view.planets} seed={seed} />
+        <PlanetTable planets={view.planets} seed={seed} worldId={view.worldId} />
       </section>
 
       <section className="panel orders-panel" aria-labelledby="orders-heading">
@@ -254,13 +254,21 @@ function Overview({ view, now, seed }: { view: WorldView; now: number; seed: str
   );
 }
 
-function PlanetTable({ planets, seed }: { planets: PlanetView[]; seed: string }) {
+function PlanetTable({
+  planets,
+  seed,
+  worldId,
+}: {
+  planets: PlanetView[];
+  seed: string;
+  worldId: string;
+}) {
   return (
     <table className="planet-table">
       <thead>
         <tr>
           <th scope="col">Coordinate</th>
-          <th scope="col">Name</th>
+          <th scope="col">Planet</th>
           <th scope="col">Population</th>
           <th scope="col">Resources</th>
           <th scope="col">Net / tick</th>
@@ -273,13 +281,16 @@ function PlanetTable({ planets, seed }: { planets: PlanetView[]; seed: string })
           <tr key={p.id}>
             <td className="mono">{formatCoordinate(p.coordinate)}</td>
             <td>
-              <a
-                className="planet-link"
-                data-testid={`planet-link-${p.id}`}
-                href={`planet.html?seed=${seed}&planet=${encodeURIComponent(p.id)}`}
-              >
-                {p.name}
-              </a>
+              <span className="planet-name-cell">
+                <PlanetThumb worldId={worldId} planetId={p.id} name={p.name} />
+                <a
+                  className="planet-link"
+                  data-testid={`planet-link-${p.id}`}
+                  href={`planet.html?seed=${seed}&planet=${encodeURIComponent(p.id)}`}
+                >
+                  {p.name}
+                </a>
+              </span>
             </td>
             <td className="mono">{p.population.toLocaleString()}</td>
             <td className="mono resource-cells">{formatResources(p.resources)}</td>

@@ -537,6 +537,32 @@ body {
   border-color: rgba(201, 120, 68, 0.5);
 }
 
+/* ---------- planet thumbnails (overview table) ---------- */
+
+.planet-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.planet-thumb {
+  /* Display size (40px); the render size comes from the size prop / fetch
+     (64px), so the portrait stays crisp on high-DPI screens. */
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-border);
+  object-fit: cover;
+  flex-shrink: 0;
+  display: block;
+}
+
+.planet-thumb-empty {
+  background:
+    radial-gradient(circle at 50% 40%, rgba(211, 199, 172, 0.08), transparent 70%), #111b13;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
 @media (max-width: 720px) {
   .planet-grid {
     grid-template-columns: 1fr;

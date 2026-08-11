@@ -1,4 +1,95 @@
+import { useEffect, useRef, useState } from 'react';
 import type { PlanetView, PlanetWarning, ResourceKey } from '@ashes/contracts';
+import { fetchPlanetImage } from './api';
+
+/** Thumbnail render size; the API caches per (world, planet, art, size). */
+export const PLANET_THUMB_SIZE = 64;
+
+/**
+ * In-flight and settled thumbnail blobs, keyed by world+planet+size, so the
+ * overview's 2s poll never re-fetches a thumbnail it already has. The blob is
+ * immutable for a given (planet, ART_VERSION), so caching across polls is safe.
+ * Failed fetches are evicted (never cached), so a later mount retries.
+ */
+const thumbCache = new Map<string, Promise<Blob>>();
+const THUMB_CACHE_LIMIT = 128;
+
+function cacheThumb(key: string, pending: Promise<Blob>): Promise<Blob> {
+  thumbCache.set(key, pending);
+  // Simple cap: evict the oldest entry (Map preserves insertion order).
+  if (thumbCache.size > THUMB_CACHE_LIMIT) {
+    const oldest = thumbCache.keys().next().value as string;
+    thumbCache.delete(oldest);
+  }
+  // Never cache a rejection: a transient failure (API restart, offline
+  // window) must not permanently blank a thumbnail.
+  pending.catch(() => {
+    thumbCache.delete(key);
+  });
+  return pending;
+}
+
+/**
+ * Small planet portrait for table rows. Fetches with the bearer token (an
+ * <img src> cannot attach it) and exposes the result as a revocable object
+ * URL; the caller owns the URL and must revoke it.
+ */
+export function PlanetThumb({
+  worldId,
+  planetId,
+  name,
+  size = PLANET_THUMB_SIZE,
+}: {
+  worldId: string;
+  planetId: string;
+  name: string;
+  size?: number;
+}) {
+  const [url, setUrl] = useState<string | null>(null);
+  const urlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    let stale = false;
+    const key = `${worldId}:${planetId}:${size}`;
+    let pending = thumbCache.get(key);
+    if (!pending) {
+      pending = cacheThumb(key, fetchPlanetImage(worldId, planetId, size));
+    }
+    void pending
+      .then((blob) => {
+        if (stale) return;
+        const next = URL.createObjectURL(blob);
+        if (urlRef.current !== null) URL.revokeObjectURL(urlRef.current);
+        urlRef.current = next;
+        setUrl(next);
+      })
+      .catch(() => {
+        // Portrait failure is non-fatal: the row still renders.
+      });
+    return () => {
+      stale = true;
+      if (urlRef.current !== null) {
+        URL.revokeObjectURL(urlRef.current);
+        urlRef.current = null;
+      }
+    };
+  }, [worldId, planetId, size]);
+
+  if (url === null) {
+    return <span className="planet-thumb planet-thumb-empty" aria-hidden="true" />;
+  }
+  return (
+    <img
+      className="planet-thumb"
+      data-testid={`planet-thumb-${planetId}`}
+      src={url}
+      alt={`Portrait of ${name}`}
+      width={size}
+      height={size}
+      loading="lazy"
+    />
+  );
+}
 
 export const RESOURCE_LABELS: Array<[ResourceKey, string]> = [
   ['metal', 'M'],
