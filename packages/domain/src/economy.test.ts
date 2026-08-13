@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { Planet } from '@ashes/contracts';
+import { technologyId, type Planet } from '@ashes/contracts';
+import { aggregateResearchEffects } from '@ashes/content';
 import { computePlanetStateHash, generateWorld } from './worldgen';
 import { computePlanetRates, resolveEconomyTick } from './economy';
 import { planetView } from './views';
@@ -116,6 +117,49 @@ describe('resolveEconomyTick (M1 acceptance: exact totals over a tick sequence)'
     expect(after.population).toBe(475);
     expect(after.resources.food).toBe(0);
     expect(planetView(after).warnings).toContain('food_deficit');
+  });
+});
+
+describe('research effects on the economy (M2)', () => {
+  it('extraction research multiplies production (floor)', () => {
+    const world = economyWorld();
+    world.players[0].technologies = [technologyId('extraction-1')];
+    const rates = computePlanetRates(
+      homePlanet(world),
+      aggregateResearchEffects(world.players[0].technologies),
+    );
+    // mine L2 on 100 abundance → 20 × 1.15 = 23.
+    expect(rates.production.metal).toBe(23);
+  });
+
+  it('storage research raises the storage cap', () => {
+    const world = economyWorld();
+    world.players[0].technologies = [technologyId('storage-1')];
+    const home = homePlanet(world);
+    home.resources = { metal: 600, mineral: 0, food: 100, energy: 0 };
+    const { world: next } = resolveEconomyTick({ world, tick: 1, resolvedAt: world.nextTickAt });
+    // Base cap 500 × 1.25 = 625; 600 + 20 metal fits.
+    expect(homePlanet(next).resources.metal).toBe(620);
+  });
+
+  it('upkeep reduction research trims building upkeep (floor)', () => {
+    const world = economyWorld();
+    world.players[0].technologies = [technologyId('grid-1')];
+    const rates = computePlanetRates(
+      homePlanet(world),
+      aggregateResearchEffects(world.players[0].technologies),
+    );
+    // Upkeep is floored per building: settlement 1→0, mine L2 2→1, farm 1→0 → 1.
+    expect(rates.upkeep.energy).toBe(1);
+  });
+
+  it("effects only apply to the researching player's planets", () => {
+    const world = economyWorld();
+    world.players[0].technologies = [technologyId('extraction-1')];
+    const home = homePlanet(world);
+    // The home planet belongs to the researching player: boosted.
+    const owned = computePlanetRates(home, aggregateResearchEffects(world.players[0].technologies));
+    expect(owned.production.metal).toBe(23);
   });
 });
 

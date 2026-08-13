@@ -1,31 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { formatCoordinate, type PlanetView, type WorldView } from '@ashes/contracts';
-import { assertProtocol, fetchOverview } from './api';
+import {
+  formatCoordinate,
+  type PendingOrderView,
+  type PlanetView,
+  type WorldView,
+} from '@ashes/contracts';
+import { BUILDING_DEFINITIONS, RESEARCH_BY_ID, SHIP_DEFINITIONS } from '@ashes/content';
+import { ApiError, assertProtocol, fetchMe, fetchOverview } from './api';
+import { GameHeader, HeaderMeta } from './header';
 import { PlanetThumb, RESOURCE_NAMES, SectionHelp } from './planet-ui';
+import { clearSession, getSession, saveSession, sessionWorldId } from './session';
 
 const POLL_MS = 2_000;
 const MAX_CONSECUTIVE_FAILURES = 3;
-
-/** mm:ss until the next tick resolves. */
-function formatCountdown(nextTickAt: number, now: number): string {
-  const secondsLeft = Math.max(0, Math.ceil((nextTickAt - now) / 1000));
-  const mm = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
-  const ss = String(secondsLeft % 60).padStart(2, '0');
-  return `${mm}:${ss}`;
-}
-
-function worldIdFromSeed(seed: string): string {
-  return `world:${seed}`;
-}
-
-function useNow(intervalMs = 250): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), intervalMs);
-    return () => clearInterval(id);
-  }, [intervalMs]);
-  return now;
-}
+// In dev the API restarts constantly (`tsx watch`), so freezing the page after
+// three failures strands it on the offline card while the backend is already
+// back. Dev keeps polling and recovers on its own; the production/static build
+// keeps the stop-on-offline behavior (no request spam on a dead backend).
+const DEV_AUTO_RECOVER = import.meta.env.DEV;
 
 type LoadState =
   | { status: 'loading' }
@@ -41,8 +33,7 @@ function describeError(err: unknown): { message: string; code?: string } {
 export function OverviewApp() {
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
   const seed = params.get('seed') ?? '1337';
-  const worldId = worldIdFromSeed(seed);
-  const now = useNow();
+  const worldId = sessionWorldId(seed);
   const [state, setState] = useState<LoadState>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const failuresRef = useRef(0);
@@ -52,6 +43,21 @@ export function OverviewApp() {
     let stopped = false;
     const load = async () => {
       try {
+        const session = getSession();
+        if (session) {
+          // The token is authoritative. Refresh the cached account view so a
+          // browser session from an older local database cannot pair the right
+          // token with the wrong world id.
+          const account = await fetchMe();
+          if (
+            account.worldId !== session.account.worldId ||
+            account.playerId !== session.account.playerId
+          ) {
+            saveSession({ token: session.token, account });
+            window.location.replace(`game.html?seed=${encodeURIComponent(seed)}`);
+            return;
+          }
+        }
         const view = await fetchOverview(worldId);
         assertProtocol(view);
         if (cancelled) return;
@@ -62,10 +68,18 @@ export function OverviewApp() {
         setState({ status: 'ready', view });
       } catch (err) {
         if (cancelled) return;
+        // A persisted account can outlive a local world/test database. If its
+        // token is gone, return to the seeded dev identity instead of trapping
+        // the overview offline.
+        if (err instanceof ApiError && (err.status === 401 || err.status === 404) && getSession()) {
+          clearSession();
+          window.location.replace(`game.html?seed=${encodeURIComponent(seed)}`);
+          return;
+        }
         failuresRef.current += 1;
         const { message, code } = describeError(err);
         const offline = failuresRef.current >= MAX_CONSECUTIVE_FAILURES;
-        if (offline) stopped = true;
+        if (offline) stopped = !DEV_AUTO_RECOVER;
         setState({
           status: 'error',
           message,
@@ -95,39 +109,22 @@ export function OverviewApp() {
 
   return (
     <div className={`game-shell${offline ? ' is-offline' : ''}`}>
-      <header className="game-header">
-        <div className="brand-lockup">
-          <span className="brand-dot" aria-hidden="true" />
-          <h1 className="brand-word">Command Overview</h1>
-        </div>
-        <div className="header-right">
-          <dl className="header-meta">
-            {readyView && (
-              <>
-                <div className="meta-item">
-                  <dt title="Your name in the archive.">Commander</dt>
-                  <dd data-testid="commander-name">{readyView.player.name}</dd>
-                </div>
-                <div className="meta-item meta-divider">
-                  <dt title="The latest tick the archive has resolved.">Current tick</dt>
-                  <dd className="tick-value" data-testid="overview-tick">
-                    {readyView.tick}
-                  </dd>
-                </div>
-                <div className="meta-item">
-                  <dt title="Countdown to the next beat of the simulation.">Next tick</dt>
-                  <dd className="tick-value" data-testid="next-tick-countdown">
-                    {formatCountdown(readyView.nextTickAt, now)}
-                  </dd>
-                </div>
-              </>
-            )}
-          </dl>
-          <a className="header-action" data-testid="map-link" href={`map.html?seed=${seed}`}>
-            Galaxy map
-          </a>
-        </div>
-      </header>
+      <GameHeader
+        seed={seed}
+        title="Command Overview"
+        current="overview"
+        meta={
+          readyView && (
+            <HeaderMeta
+              meta={{
+                name: readyView.player.name,
+                tick: readyView.tick,
+                nextTickAt: readyView.nextTickAt,
+              }}
+            />
+          )
+        }
+      />
 
       {state.status === 'loading' && <p className="status-line">Opening the archive…</p>}
 
@@ -182,22 +179,60 @@ function Overview({ view, seed }: { view: WorldView; seed: string }) {
           Pending next tick
         </h2>
         {view.pendingOrders.length === 0 ? (
-          <p className="empty-state">No orders pending resolution.</p>
+          <div className="orders-empty">
+            <p className="empty-state">No orders pending resolution.</p>
+            <a className="construction-desk-link" href={`constructions.html?seed=${seed}`}>
+              Raise a building →
+            </a>
+          </div>
         ) : (
-          <ul className="orders-list">
+          <ul className="orders-list" data-testid="pending-orders">
             {view.pendingOrders.map((o) => (
-              <li key={o.idempotencyKey}>
-                <code>{o.command.kind}</code>
+              <li key={o.id} className="pending-order">
+                <span className="pending-order-kind">{pendingLabel(o)}</span>
+                <span className="pending-order-planet">{pendingPlace(o)}</span>
+                <span className="pending-order-eta mono">
+                  {o.status === 'building'
+                    ? `${o.ticksRemaining} tick${o.ticksRemaining === 1 ? '' : 's'} left`
+                    : `queued — position ${o.position + 1}`}
+                </span>
               </li>
             ))}
           </ul>
-        )}{' '}
+        )}
         <SectionHelp id="orders">
           <p>
-            Orders you&apos;ve issued wait here and resolve when the next tick fires. A tick is one
-            fixed beat of the simulation — the world advances by exactly one step, and every order
+            Orders you&apos;ve issued wait here and resolve when the next tick fires — buildings
+            being raised, studies running at the archive, and hulls in your shipyards. A tick is one
+            fixed beat of the simulation: the world advances by exactly one step, and every order
             issued before its cutoff is applied in that same beat. The header countdown is the time
             until that next beat resolves.
+          </p>
+        </SectionHelp>
+      </section>
+
+      <section className="panel reports-panel" aria-labelledby="reports-heading">
+        <h2 id="reports-heading" className="panel-title">
+          Recent completions
+        </h2>
+        {view.reports.length === 0 ? (
+          <p className="empty-state">Nothing has completed yet.</p>
+        ) : (
+          <ul className="reports-list" data-testid="reports-list">
+            {view.reports.map((r) => (
+              <li key={r.id} className="report-row">
+                <span className="report-tick mono">tick {r.tick}</span>
+                <span className="report-label">{r.label}</span>
+                <span className="report-planet">{r.planetName ?? ''}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <SectionHelp id="reports">
+          <p>
+            The archive&apos;s feed of recent completions — research that finished, ships that
+            launched, and buildings that were raised. Derived from the immutable order records, so a
+            refresh can never change history.
           </p>
         </SectionHelp>
       </section>
@@ -248,6 +283,19 @@ function AbundanceMeter({ planet }: { planet: PlanetView }) {
       ))}
     </span>
   );
+}
+
+/** The human label of a pending order, across the three kinds. */
+function pendingLabel(o: PendingOrderView): string {
+  if (o.kind === 'building') return BUILDING_DEFINITIONS[o.building].name;
+  if (o.kind === 'ship') return `${SHIP_DEFINITIONS[o.ship].name} × ${o.quantity}`;
+  return RESEARCH_BY_ID[o.technologyId]?.name ?? o.technologyId;
+}
+
+/** The place a pending order runs: planet name (research uses the lab host). */
+function pendingPlace(o: PendingOrderView): string {
+  if (o.kind === 'research') return o.hostPlanetName;
+  return o.planetName;
 }
 
 function PlanetTable({

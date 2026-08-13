@@ -16,10 +16,16 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index: resolve(root, 'index.html'),
+        account: resolve(root, 'account.html'),
+        constructions: resolve(root, 'constructions.html'),
         game: resolve(root, 'game.html'),
         planet: resolve(root, 'planet.html'),
         glossary: resolve(root, 'glossary.html'),
         map: resolve(root, 'map.html'),
+        research: resolve(root, 'research.html'),
+        fleets: resolve(root, 'fleets.html'),
+        scans: resolve(root, 'scans.html'),
+        admin: resolve(root, 'admin.html'),
       },
     },
   },

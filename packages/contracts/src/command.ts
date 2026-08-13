@@ -1,11 +1,38 @@
 import { z } from 'zod';
+import type { CancelConstructionCommand, StartBuildingCommand } from './construction';
+import type { CancelResearchCommand, StartResearchCommand } from './research';
+import type { CancelShipOrderCommand, QueueShipCommand } from './shipyard';
+import type {
+  LoadCargoCommand,
+  RecallFleetCommand,
+  SendFleetCommand,
+  SplitFleetCommand,
+  TransferFleetCommand,
+  UnloadCargoCommand,
+} from './fleet';
+import type { RunScanCommand } from './scan';
 
 /**
- * Command envelope (DEVELOPMENT_PLAN.md §9). M0 implements the envelope
- * contract but no command kinds: every submission is validated for shape and
- * then rejected as unsupported. The kinds arrive with M1+ systems.
+ * Command envelope (DEVELOPMENT_PLAN.md §9). M0 rejected every kind;
+ * M1 implemented the first real kinds (StartBuilding, CancelConstruction);
+ * M2 adds research, shipyard, and fleet commands; M3 adds fleet movement
+ * (SendFleet/RecallFleet), cargo handling (LoadCargo/UnloadCargo), and
+ * scans (RunScan).
  */
-export type GameCommand = { kind: string } & Record<string, unknown>;
+export type GameCommand =
+  | StartBuildingCommand
+  | CancelConstructionCommand
+  | StartResearchCommand
+  | CancelResearchCommand
+  | QueueShipCommand
+  | CancelShipOrderCommand
+  | TransferFleetCommand
+  | SplitFleetCommand
+  | SendFleetCommand
+  | RecallFleetCommand
+  | LoadCargoCommand
+  | UnloadCargoCommand
+  | RunScanCommand;
 
 export type CommandEnvelope = {
   idempotencyKey: string;

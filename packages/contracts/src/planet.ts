@@ -1,5 +1,8 @@
-import type { PlanetId, PlayerId, FactionId } from './ids';
+import type { PlanetId, PlayerId, FactionId, FleetId } from './ids';
 import type { Coordinate } from './coordinate';
+import type { ConstructionOrder, ConstructionOrderView } from './construction';
+import type { ShipyardOrder, ShipyardOrderView } from './shipyard';
+import type { FleetView } from './fleet';
 
 /** Visual class of a world (desert, ice, gas giant…). Presentation-only: the
  *  art layer derives it deterministically from the planet id. Lives here so
@@ -35,6 +38,7 @@ export const BUILDING_KINDS = [
   'storehouse',
   'lab',
   'shipyard',
+  'scanner',
 ] as const;
 export type BuildingKind = (typeof BUILDING_KINDS)[number];
 
@@ -48,8 +52,9 @@ export type PlanetWarning = 'storage_full' | 'food_deficit' | 'energy_deficit';
 export type Abundance = Record<ResourceKey, number>;
 
 /**
- * Authoritative planet state (M1: economy). Owned by the tick engine; the API
- * and web client only see projections (PlanetView) derived from it.
+ * Authoritative planet state (M1: economy; M2: shipyard + fleets). Owned by
+ * the tick engine; the API and web client only see projections (PlanetView)
+ * derived from it.
  *
  * `population` is a plain number, not bigint, so the aggregate survives JSON
  * serialization into Postgres (see docs/ADR-003).
@@ -64,6 +69,22 @@ export type Planet = {
   population: number;
   resources: ResourceStore;
   buildings: BuildingLevels;
+  /**
+   * The construction queue (M1): accepted build orders in submission order,
+   * including completed/cancelled history. Only one order is under
+   * construction at a time; the rest wait. Costs were deducted at submission.
+   */
+  constructionOrders: ConstructionOrder[];
+  /**
+   * The shipyard queue (M2): accepted ship orders in submission order,
+   * including completed/cancelled history. One order builds at a time; the
+   * rest wait. Completed orders deliver their ships to the planet's local
+   * fleet exactly once, at a tick boundary.
+   */
+  shipyardOrders: ShipyardOrder[];
+  /** Fleets currently orbiting this planet (M2): the local fleet always, plus
+   *  any detachments a commander split off at this location. */
+  localFleets: FleetId[];
   lastResolvedTick: number;
   version: number;
 };
@@ -95,5 +116,11 @@ export type PlanetView = {
   /** Nominal per-tick rates; brownout (energy deficit) only applies at resolution. */
   rates: { production: ResourceRates; upkeep: ResourceRates; net: ResourceRates };
   warnings: PlanetWarning[];
+  /** Construction queue views, active orders first, then history. */
+  construction: ConstructionOrderView[];
+  /** Shipyard queue views, active orders first, then history. */
+  shipyard: ShipyardOrderView[];
+  /** The fleets orbiting this planet (its local fleet plus detachments). */
+  localFleets: FleetView[];
   lastResolvedTick: number;
 };

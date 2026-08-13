@@ -4,6 +4,7 @@ import { MapApp } from './map';
 import { spawnStarfield } from '../starfield';
 import '../starfield.css';
 import './game.css';
+import './map.css';
 
 spawnStarfield();
 

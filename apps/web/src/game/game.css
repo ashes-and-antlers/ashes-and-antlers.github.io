@@ -15,6 +15,11 @@
   --accent-soft: rgba(168, 201, 240, 0.16);
   --accent-on: #0a0e14;
   --danger: #e0605a;
+  /* Operator-console accent (admin surface only): warm amber on the same
+     deep-space field, so administration reads as a distinct layer. */
+  --op-amber: #e8c07a;
+  --op-amber-soft: rgba(232, 192, 122, 0.14);
+  --op-amber-dim: rgba(232, 192, 122, 0.45);
   --ok: #6fcf7f;
   --radius: 10px;
   --mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace;
@@ -73,6 +78,22 @@ body {
   animation: pulse 2.4s ease-in-out infinite;
 }
 
+/* The commander's chosen faction emblem, worn beside the brand mark. */
+.brand-emblem {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+
+.brand-emblem path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .brand-word {
   font-size: 16px;
   font-weight: 700;
@@ -106,6 +127,15 @@ body {
   font-family: var(--mono);
   font-size: 12px;
   color: var(--text);
+}
+
+/* The commander name can be long; clamp it so the bar stays on one line and
+   carry the full name in the tooltip. */
+.meta-item dd.commander-name {
+  max-width: 168px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* The live readout — the tick pulse — sits apart from identity. */
@@ -159,6 +189,12 @@ body {
     flex-direction: column;
     align-items: flex-start;
   }
+  .header-right {
+    width: 100%;
+  }
+  .header-nav {
+    width: 100%;
+  }
 }
 
 .micro-label {
@@ -210,70 +246,88 @@ body {
   border: 1px solid rgba(168, 201, 240, 0.35);
 }
 
-/* ---------- abundance ---------- */
+/* ---------- planet detail page: command dashboard ---------- */
 
-.abundance {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.abundance-row {
-  display: grid;
-  grid-template-columns: 64px 1fr 32px;
-  align-items: center;
-  gap: 10px;
-}
-
-.abundance-label {
-  font-size: 11px;
-  color: var(--text);
-}
-
-.abundance-track {
-  height: 8px;
-  background: rgba(205, 219, 238, 0.08);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.abundance-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent), #7fa3d4);
-  border-radius: 999px;
-  transition: width 300ms ease;
-}
-
-.abundance-value {
-  font-family: var(--mono);
-  font-size: 12px;
-  text-align: right;
-  color: var(--muted);
-}
-
-/* ---------- planet detail page ---------- */
-
+/* A 12-column instrument grid: the whole planet reads at a glance instead of
+   a long ledger scroll. Row 1 carries the dossier (identity) beside the
+   economy readout; the warnings strip and both production surfaces span the
+   whole instrument below. */
 .planet-grid {
   display: grid;
-  grid-template-columns: 1fr 1.4fr;
-  gap: 16px;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 14px;
   align-items: start;
 }
 
-.portrait-panel {
-  text-align: center;
+.planet-grid .panel {
+  padding: 14px 16px;
+}
+
+.planet-grid .panel-title {
+  margin-bottom: 10px;
+}
+
+.planet-identity {
+  grid-column: span 4;
+}
+
+.planet-economy {
+  grid-column: span 8;
+}
+
+/* Warnings, buildings, and the shipyard are full-width rows: the top row is
+   the dossier (identity) beside the economy readout, then the flags and both
+   production surfaces span the whole instrument. */
+.planet-warnings,
+.planet-buildings,
+.planet-shipyard {
+  grid-column: 1 / -1;
+}
+
+.planet-identity-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
 }
 
 .portrait-frame {
   position: relative;
-  margin: 0 auto 12px;
-  width: min(100%, 480px);
+  flex-shrink: 0;
+  width: 128px;
   aspect-ratio: 1;
   border: 1px solid var(--panel-border);
   border-radius: var(--radius);
   overflow: hidden;
   background:
     radial-gradient(circle at 50% 35%, rgba(205, 219, 238, 0.06), transparent 65%), #0a0e14;
+}
+
+.planet-identity-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.planet-name {
+  margin: 0 0 2px;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.planet-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+}
+
+.planet-fact strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
 }
 
 .planet-portrait {
@@ -312,37 +366,8 @@ body {
   animation: pulse 1.6s ease-in-out infinite;
 }
 
-.portrait-caption {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 10px;
-  margin: 4px 0;
-}
-
-.portrait-caption strong {
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.ledger-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.ledger-section {
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--panel-border);
-}
-
-.ledger-section:last-child {
-  padding-bottom: 0;
-  border-bottom: none;
-}
-
 .ledger-subtitle {
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.16em;
@@ -350,31 +375,20 @@ body {
   color: var(--muted);
 }
 
-.ledger-list {
-  margin: 0;
+/* Buildings panel: raised list and construction queue share the top row, the
+   catalog spans the full width below. */
+.buildings-top {
   display: grid;
-  gap: 6px;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 16px;
 }
 
-.ledger-list div {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.ledger-list dt {
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.ledger-list dd {
-  margin: 0;
-  font-family: var(--mono);
-  font-size: 13px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
+@media (max-width: 760px) {
+  .buildings-top {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
 }
 
 /* ---------- resource tiles (planet ledger) ---------- */
@@ -382,16 +396,16 @@ body {
 .resource-tiles {
   display: grid;
   /* minmax(0, 1fr): a long stored figure must not force its tile wider
-     than its share of the row (especially at 2-up on narrow screens). */
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+     than its share of the row. */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .resource-tile {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 10px 12px;
+  gap: 2px;
+  padding: 6px 10px;
   background: #171f31;
   border: 1px solid var(--panel-border);
   border-radius: 10px;
@@ -406,7 +420,7 @@ body {
 }
 
 .resource-tile-stored {
-  font-size: 22px;
+  font-size: 19px;
   font-weight: 650;
   line-height: 1.05;
   color: var(--text);
@@ -430,6 +444,64 @@ body {
 .resource-tile-net {
   font-size: 12px;
   font-weight: 600;
+}
+
+.resource-tile-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+}
+
+.resource-tile-net,
+.resource-tile-abundance {
+  min-width: 0;
+}
+
+.resource-tile-abundance {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* The population / storage / resolved-at trio under the tiles. */
+.planet-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--panel-border);
+}
+
+.planet-stats div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.planet-stats dt {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.planet-stats dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+/* The warnings card when nothing needs attention. */
+.warnings-clear {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
 }
 
 .net-pos {
@@ -584,11 +656,40 @@ details[open] > summary .fold-chevron {
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
+  padding: 3px 0;
+}
+
+.building-list-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.building-list-effect {
+  font-size: 11px;
+  color: var(--muted);
 }
 
 .building-kind {
   font-size: 12px;
   text-transform: capitalize;
+}
+
+/* Owned buildings, grouped by the same catalog categories. */
+.building-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.building-group-title {
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .building-level {
@@ -673,7 +774,7 @@ details[open] > summary .fold-chevron {
     gap: 4px;
   }
   .map-frame {
-    height: 440px;
+    min-height: 420px;
   }
   .header-right {
     flex-wrap: wrap;
@@ -736,9 +837,39 @@ details[open] > summary .fold-chevron {
   fill: currentColor;
 }
 
-@media (max-width: 720px) {
+/* Tablet and below: the instrument stacks to a single column, and the
+   dossier leads with the portrait as a hero above its facts. */
+@media (max-width: 1000px) {
   .planet-grid {
     grid-template-columns: 1fr;
+  }
+  .planet-identity,
+  .planet-economy,
+  .planet-warnings,
+  .planet-buildings,
+  .planet-shipyard {
+    grid-column: 1 / -1;
+  }
+  .planet-identity-main {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  /* In the stacked layout grow would act on the vertical axis; keep it off. */
+  .planet-identity-facts {
+    flex: 0 1 auto;
+  }
+  .portrait-frame {
+    width: 100%;
+    /* Matches PLANET_PORTRAIT_SIZE in planet-ui.tsx — never upscale the
+       cached render past its native size. */
+    max-width: 512px;
+    align-self: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .resource-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -815,7 +946,376 @@ details[open] > summary .fold-chevron {
   font-size: 13px;
 }
 
+/* ---------- construction (planet ledger) ---------- */
+
+.construction-queue {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.construction-order {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  background: #171f31;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+}
+
+.construction-order-main {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.construction-order-eta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.order-queued .construction-order-eta {
+  color: var(--muted);
+}
+
+.order-completed,
+.order-cancelled {
+  opacity: 0.55;
+}
+
+.order-cancelled .construction-order-eta {
+  color: var(--danger);
+}
+
+.cancel-button {
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--danger);
+  background: rgba(224, 90, 90, 0.1);
+  border: 1px solid rgba(224, 90, 90, 0.4);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    color 150ms ease;
+}
+
+.cancel-button:hover:not(:disabled) {
+  background: rgba(224, 90, 90, 0.22);
+  color: #f0a29e;
+}
+
+.cancel-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.construction-subheading {
+  margin: 0 0 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.building-catalog {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+/* Catalog group header: a full-width toggle that labels the category and
+ * reports how many of its buildings the store can afford right now. */
+.building-catalog-group-head {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 8px;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 150ms ease;
+}
+
+.building-catalog-group-head:hover {
+  border-color: var(--accent-soft);
+}
+
+.building-catalog-group-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.building-catalog-group-meta {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Catalog tiles: two per row so the whole catalog reads without a long
+   scroll. An open plan expands its tile across both columns. */
+.building-catalog-group-list {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+
+@media (max-width: 760px) {
+  /* One tile per row on a narrow phone so a build button never overflows
+     its tile (the actions column must not be allowed to run off-screen). */
+  .building-catalog-group-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+.building-catalog-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 10px;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+}
+
+.building-catalog-row:has(.build-plan) {
+  grid-column: 1 / -1;
+}
+
+.building-catalog-tile-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  min-width: 0;
+}
+
+.building-catalog-tile-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.building-catalog-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Hairline separators between the name, level, and effect figures. */
+.building-catalog-tile-head > span + span::before {
+  content: '·';
+  margin-right: 10px;
+  color: rgba(205, 219, 238, 0.28);
+}
+
+.building-catalog-level {
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.building-catalog-effect {
+  font-size: 11px;
+  color: var(--text);
+}
+
+.building-catalog-meta {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.build-button {
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-on);
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    transform 150ms ease;
+}
+
+.build-button:hover:not(:disabled) {
+  background: #8fb0e0;
+}
+
+.build-button:disabled {
+  background: #1d2740;
+  color: var(--muted);
+  border-color: var(--panel-border);
+  cursor: default;
+}
+
+/* "How to afford" — the build-order planner for unaffordable catalog rows. */
+.plan-toggle {
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease;
+}
+
+.plan-toggle:hover {
+  color: var(--accent);
+  border-color: rgba(168, 201, 240, 0.45);
+}
+
+.plan-toggle[aria-expanded='true'] {
+  color: var(--accent);
+  border-color: rgba(168, 201, 240, 0.45);
+}
+
+.build-plan {
+  padding: 10px 12px;
+  background: #171f31;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+}
+
+.build-plan-summary {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.build-plan-steps {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.build-plan-step-for {
+  color: var(--accent);
+}
+
+/* A cancellation step refunds seed capital to fund the keystone producer;
+ * it reads as a deliberate trade, not a normal build step. */
+.build-plan-step-cancel {
+  color: var(--text);
+}
+
+.build-plan-step-cancel .build-plan-step-for {
+  color: var(--danger);
+}
+
+.build-plan-note {
+  margin: 8px 0 0;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--muted);
+}
+
+.command-notice {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.notice-ok {
+  color: var(--ok);
+  background: rgba(111, 207, 127, 0.1);
+  border: 1px solid rgba(111, 207, 127, 0.35);
+}
+
+.notice-error {
+  color: var(--danger);
+  background: rgba(224, 90, 90, 0.1);
+  border: 1px solid rgba(224, 90, 90, 0.4);
+}
+
+/* Pending orders on the command overview. */
+.pending-order {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pending-order-kind {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.pending-order-planet {
+  color: var(--muted);
+}
+
+.pending-order-eta {
+  font-size: 12px;
+  color: var(--accent);
+}
+
 /* ---------- galaxy map page ---------- */
+
+/* The chart is the page: the shell goes full-bleed and the map frame owns
+   the viewport, so the star chart is the deepest, largest element. */
+.map-shell {
+  max-width: none;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  /* Kept in sync with map.css — the chart frame is the only full-bleed
+     element; the header and chrome hold the shared page column. */
+  padding: 24px 20px 40px;
+}
+
+.map-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
 
 /* Breadcrumb: where you are in the chart. */
 .map-crumbs {
@@ -862,51 +1362,101 @@ details[open] > summary .fold-chevron {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 20px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px 20px;
 }
 
-.header-action {
+/* Primary navigation — the same bar on every view. */
+.header-nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
   flex-shrink: 0;
+}
+
+.header-nav-link {
   font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text);
+  color: var(--muted);
   text-decoration: none;
-  border: 1px solid var(--panel-border);
+  border: 1px solid transparent;
   border-radius: 999px;
-  padding: 6px 14px;
+  padding: 6px 12px;
   transition:
     color 150ms ease,
-    border-color 150ms ease;
+    border-color 150ms ease,
+    background 150ms ease;
 }
 
-.header-action:hover {
+.header-nav-link:hover {
   color: var(--accent);
-  border-color: rgba(168, 201, 240, 0.5);
+  border-color: rgba(168, 201, 240, 0.4);
+}
+
+.header-nav-link.is-current {
+  color: var(--accent);
+  border-color: rgba(168, 201, 240, 0.35);
+  background: var(--accent-soft);
+}
+
+/* Reference/meta surfaces (Glossary, Account) sit behind a divider and read
+   one step quieter than the five game flows, so the primary loop stays first. */
+.nav-sep {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: var(--panel-border);
+  flex-shrink: 0;
+}
+
+.header-nav-link.is-secondary {
+  font-weight: 600;
+  color: rgba(147, 162, 184, 0.82);
+  padding: 6px 10px;
+}
+
+.header-nav-link.is-secondary.is-current {
+  color: var(--accent);
 }
 
 .map-frame {
   position: relative;
-  height: 600px;
+  flex: 1;
+  min-height: 460px;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 50% 40%, rgba(205, 219, 238, 0.05), transparent 70%), var(--panel);
+  background: radial-gradient(120% 90% at 50% 32%, #0d1420 0%, #0a0e14 64%), #0a0e14;
   border: 1px solid var(--panel-border);
   border-radius: var(--radius);
   touch-action: none;
   cursor: grab;
   user-select: none;
+  isolation: isolate;
 }
 
 .map-frame:active {
   cursor: grabbing;
 }
 
-.map-svg {
-  display: block;
+/* Sky layer: the seeded star field, behind the interactive chart. */
+.map-sky {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.map-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
 }
 
 .map-galaxy-label {
@@ -924,24 +1474,26 @@ details[open] > summary .fold-chevron {
 }
 
 .map-galaxy-disc {
-  fill: rgba(205, 219, 238, 0.03);
-  stroke: rgba(205, 219, 238, 0.14);
+  /* The sky paints the galaxy's light; the disc is a hairline witness of
+     its extent, revealed on hover. */
+  fill: rgba(205, 219, 238, 0.02);
+  stroke: rgba(205, 219, 238, 0.16);
   stroke-width: 1;
-  stroke-dasharray: 3 5;
   transition: stroke 150ms ease;
 }
 
 .map-chart-galaxy:hover .map-galaxy-disc {
-  stroke: rgba(168, 201, 240, 0.5);
+  stroke: rgba(168, 201, 240, 0.55);
 }
 
+/* Sector pearls: the points of light strung along each galaxy's arms. */
 .map-sector-dot {
-  fill: rgba(205, 219, 238, 0.28);
+  fill: rgba(219, 229, 242, 0.5);
   transition: fill 150ms ease;
 }
 
 .map-chart-galaxy:hover .map-sector-dot {
-  fill: rgba(205, 219, 238, 0.6);
+  fill: #f2f6fc;
 }
 
 .map-home-galaxy-ring {
@@ -959,8 +1511,8 @@ details[open] > summary .fold-chevron {
 }
 
 .map-sector-cell-bg {
-  fill: rgba(205, 219, 238, 0.03);
-  stroke: rgba(205, 219, 238, 0.18);
+  fill: rgba(205, 219, 238, 0.035);
+  stroke: rgba(205, 219, 238, 0.2);
   stroke-width: 1;
   transition:
     fill 150ms ease,
@@ -968,8 +1520,8 @@ details[open] > summary .fold-chevron {
 }
 
 .map-sector-cell:hover .map-sector-cell-bg {
-  fill: rgba(168, 201, 240, 0.07);
-  stroke: rgba(168, 201, 240, 0.5);
+  fill: rgba(168, 201, 240, 0.08);
+  stroke: rgba(168, 201, 240, 0.55);
 }
 
 .map-sector-label {
@@ -1006,7 +1558,7 @@ details[open] > summary .fold-chevron {
 }
 
 .map-star {
-  fill: rgba(205, 219, 238, 0.35);
+  fill: rgba(219, 229, 242, 0.8);
   pointer-events: none;
 }
 
@@ -1017,12 +1569,11 @@ details[open] > summary .fold-chevron {
 .map-planet {
   /* Per-class tint comes inline (planetClassColor); the accent ring marks
      owned worlds, so the dot itself keeps its class color. */
-  fill: rgba(205, 219, 238, 0.45);
-  transition: fill 120ms ease;
+  transition: filter 120ms ease;
 }
 
 .map-planet-link:hover .map-planet {
-  fill: #fff;
+  filter: brightness(1.7) saturate(1.15);
 }
 
 .map-home-ring {
@@ -1045,6 +1596,7 @@ details[open] > summary .fold-chevron {
   position: absolute;
   top: 12px;
   right: 12px;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1259,6 +1811,998 @@ details[open] > summary .fold-chevron {
   }
 }
 
+/* ---------- research page ---------- */
+
+.research-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  gap: 14px;
+}
+
+.research-queue-panel {
+  grid-column: span 1;
+}
+
+.research-effects-panel {
+  grid-column: span 1;
+}
+
+.research-tree-panel {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 720px) {
+  .research-grid {
+    grid-template-columns: 1fr;
+  }
+  .research-queue-panel,
+  .research-effects-panel,
+  .research-tree-panel {
+    grid-column: span 1;
+  }
+}
+
+/* The host-lab picker row. */
+.field-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 10px;
+}
+
+.field-row.compact {
+  margin: 0;
+}
+
+.field-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.field-select {
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+  background: #171f31;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  max-width: 100%;
+}
+
+.field-hint {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.field-input {
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+  background: #171f31;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  width: 76px;
+}
+
+.research-queue {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.research-order {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  background: #171f31;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+}
+
+.research-order-main {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.research-completed-count {
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: var(--text);
+}
+
+/* The primary number on the research page: how much of the tree is done. */
+.research-completed-count strong {
+  color: var(--accent);
+}
+
+.research-completed-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.research-completed-chip {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ok);
+  background: rgba(111, 207, 127, 0.1);
+  border: 1px solid rgba(111, 207, 127, 0.35);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.effects-summary {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.effects-summary li {
+  font-size: 12px;
+  color: var(--accent);
+}
+
+/* The tree: branches as columns of study rows. */
+.tech-tree {
+  display: grid;
+  gap: 14px;
+}
+
+.tech-branch {
+  display: grid;
+  gap: 6px;
+}
+
+.tech-branch-title {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.tech-branch-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+@media (max-width: 760px) {
+  .tech-branch-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tech-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+}
+
+.tech-done {
+  opacity: 0.6;
+}
+
+.tech-row-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tech-row-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.tech-name {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+/* Depth in the tree: a tier chip marks how deep a study sits, so the flat
+   branch lists still read as progression. */
+.tech-tier-chip {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid rgba(168, 201, 240, 0.35);
+  border-radius: 999px;
+  padding: 1px 7px;
+  flex-shrink: 0;
+}
+
+/* The overview's quiet-archive cue: a single next action, not a wall of text. */
+.orders-empty {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+
+/* The no-lab gates: a short explanation with a direct path to fix it. */
+.research-gate,
+.research-tree-gate {
+  display: grid;
+  gap: 10px;
+}
+
+.research-gate .construction-desk-link {
+  justify-self: start;
+  margin-top: 2px;
+}
+
+.research-tree-gate {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.tech-done .tech-name {
+  color: var(--ok);
+}
+
+.tech-meta {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.tech-summary {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.tech-row-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tech-effects {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.tech-effects-list {
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.tech-prereqs {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.tech-prereq-chip {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--danger);
+  background: rgba(224, 90, 90, 0.1);
+  border: 1px solid rgba(224, 90, 90, 0.4);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.tech-prereq-done {
+  color: var(--ok);
+  background: rgba(111, 207, 127, 0.1);
+  border-color: rgba(111, 207, 127, 0.35);
+}
+
+/* ---------- fleets page ---------- */
+
+.fleets-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  gap: 14px;
+}
+
+@media (max-width: 760px) {
+  .fleets-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The fleet summary strip: the whole command's strength at a glance. */
+.fleets-summary {
+  grid-column: 1 / -1;
+}
+
+.fleets-summary-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.fleets-summary-stats div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fleets-summary-stats dt {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.fleets-summary-stats dd {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.fleet-cards {
+  display: grid;
+  gap: 8px;
+}
+
+.fleet-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #171f31;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+}
+
+.fleet-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.fleet-name {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.fleet-location {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.fleet-card-stats {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.fleet-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fleet-stat strong {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  text-transform: capitalize;
+}
+
+.fleet-card-cargo {
+  display: grid;
+  gap: 4px;
+}
+
+.fleet-ships {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px 16px;
+}
+
+.fleet-ship-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.fleet-cargo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+}
+
+.fleet-cargo-value {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* An empty fleet offers a direct path to the shipyard that can fill it. */
+.fleet-empty {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+
+.fleet-card-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.fleet-split {
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--panel-border);
+}
+
+.fleet-split-counts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 16px;
+}
+
+@media (max-width: 560px) {
+  .fleet-split-counts {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Fleet movement (M3): in-flight banner, send panel, and cargo ops. */
+.fleet-travel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  background: #14202f;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.fleet-travel .plan-toggle {
+  margin-left: auto;
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+.fleet-cargo-cap {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.fleet-send,
+.fleet-cargo-ops {
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--panel-border);
+}
+
+.fleet-cargo-ops {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+}
+
+@media (max-width: 560px) {
+  .fleet-cargo-ops {
+    grid-template-columns: 1fr;
+  }
+}
+
+.route-preview {
+  margin: 0;
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.route-preview-idle {
+  color: var(--muted);
+}
+
+.notice-error-text {
+  color: var(--danger);
+}
+
+.transfer-pick {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+@media (max-width: 560px) {
+  .transfer-pick {
+    grid-template-columns: 1fr;
+  }
+}
+
+.transfer-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 16px;
+  margin-bottom: 10px;
+}
+
+.transfer-group {
+  display: grid;
+  gap: 6px;
+}
+
+@media (max-width: 560px) {
+  .transfer-inputs {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- shipyard (planet ledger) ---------- */
+
+.ship-catalog {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+@media (max-width: 760px) {
+  .ship-catalog {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ship-catalog-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+}
+
+.ship-locked {
+  opacity: 0.6;
+}
+
+.ship-catalog-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ship-catalog-role {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.ship-catalog-summary {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.ship-catalog-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ship-catalog-meta {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.ship-catalog-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.quantity-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.quantity-label {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+
+.quantity-input {
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+  background: #171f31;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 3px 6px;
+  width: 56px;
+}
+
+.quantity-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* No-yard state: the ship catalog stays visible as a locked preview so the
+   player can see what a Shipyard unlocks before raising one. */
+.shipyard-absent-note {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* The exact shortfall on an unaffordable catalog row, beside the plan. */
+.building-catalog-shortfall {
+  margin: 0;
+  font-size: 11px;
+  color: var(--danger);
+}
+
+/* ---------- constructions desk ---------- */
+
+.constructions-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* The construction-desk link on the planet ledger: one tap from the dossier
+   to the work. */
+.construction-desk-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-decoration: none;
+  background: var(--accent-soft);
+  border: 1px solid rgba(168, 201, 240, 0.35);
+  border-radius: 6px;
+  padding: 6px 12px;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease;
+}
+
+.construction-desk-link:hover {
+  background: rgba(168, 201, 240, 0.24);
+  border-color: rgba(168, 201, 240, 0.5);
+}
+
+/* The world picker: one pill per owned world, showing the active workload. */
+.planet-picker {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.planet-picker-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 12px;
+  background: #171f31;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease;
+}
+
+.planet-picker-pill:hover {
+  border-color: rgba(168, 201, 240, 0.45);
+}
+
+.planet-picker-pill.is-selected {
+  background: var(--accent-soft);
+  border-color: rgba(168, 201, 240, 0.55);
+}
+
+.planet-picker-name {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.planet-picker-meta {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* ---------- reports feed (overview) ---------- */
+
+.reports-panel {
+  grid-column: 1 / -1;
+}
+
+.reports-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.report-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(205, 219, 238, 0.06);
+  font-size: 13px;
+}
+
+.report-row:last-child {
+  border-bottom: none;
+}
+
+.report-tick {
+  font-size: 11px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.report-label {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.report-planet {
+  color: var(--muted);
+  margin-left: auto;
+}
+
+/* ---------- scans (M3): scan mission, known worlds, archive ---------- */
+
+.scans-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.scan-form-fields {
+  display: grid;
+  gap: 8px;
+}
+
+.planet-class-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.intel-table-wrap {
+  overflow-x: auto;
+}
+
+.intel-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.intel-table th {
+  text-align: left;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--panel-border);
+  white-space: nowrap;
+}
+
+.intel-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--panel-border);
+  color: var(--text);
+  vertical-align: top;
+}
+
+.intel-table tr:last-child td {
+  border-bottom: none;
+}
+
+.intel-world {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 220px;
+}
+
+.intel-name {
+  font-weight: 600;
+}
+
+.intel-coord {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.intel-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.intel-age {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.intel-detail-block {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.intel-entry {
+  padding: 6px 10px;
+  background: #14202f;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+}
+
+.intel-entry summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.intel-entry-name {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.intel-entry-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px 16px;
+  margin: 8px 0 2px;
+}
+
+.intel-entry-grid dt {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.intel-entry-grid dd {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text);
+}
+
+@media (max-width: 560px) {
+  .intel-entry-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.scan-report-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.scan-report {
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+  background: #171f31;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+}
+
+.scan-report-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.scan-report-head .mono {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.scan-report-coord {
+  color: var(--accent);
+}
+
+.scan-report-age {
+  margin-left: auto;
+}
+
+.scan-report-summary {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text);
+}
+
 /* ---------- accessibility ---------- */
 
 :focus-visible {
@@ -1284,4 +2828,409 @@ details[open] > summary .fold-chevron {
   50% {
     opacity: 1;
   }
+}
+
+/* ---------- admin dashboard (M4) ----------
+ * The operator console. Same deep-space tokens as the player surfaces, but
+ * with a warm operator accent (amber) so the administration layer reads as a
+ * distinct surface — never part of the commander's archive UI.
+ */
+
+.admin-shell {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px 20px 64px;
+}
+
+.admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--panel-border);
+  margin-bottom: 20px;
+}
+
+.admin-badge {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  color: var(--op-amber);
+  border: 1px solid var(--op-amber-dim);
+  border-radius: 999px;
+  padding: 3px 10px;
+  text-transform: uppercase;
+}
+
+.admin-header-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.admin-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.admin-tab {
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease;
+}
+
+.admin-tab:hover {
+  color: var(--op-amber);
+}
+
+.admin-tab.is-current {
+  color: var(--op-amber);
+  border-color: var(--op-amber-dim);
+  background: var(--op-amber-soft);
+}
+
+.admin-signout {
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.admin-signout:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.admin-main {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.admin-panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+}
+
+.admin-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 14px;
+}
+
+.admin-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.admin-detail-head .admin-section-title {
+  margin: 0;
+  color: var(--text);
+}
+
+.admin-muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.admin-notice {
+  font-size: 13px;
+  margin: 0 0 14px;
+  color: var(--muted);
+}
+
+.admin-notice.is-ok {
+  color: #8fcaa0;
+}
+
+.admin-notice.is-err {
+  color: var(--danger);
+}
+
+.admin-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.admin-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  min-width: 0;
+}
+
+.admin-stat-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.admin-stat-value {
+  font-size: 14px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+  margin-bottom: 18px;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.admin-table th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--panel-border);
+  white-space: nowrap;
+}
+
+.admin-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--panel-border);
+  vertical-align: top;
+}
+
+.admin-table tbody tr:hover td {
+  background: var(--accent-soft);
+}
+
+.admin-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-actions {
+  white-space: nowrap;
+}
+
+.admin-actions .admin-button {
+  margin-right: 6px;
+}
+
+.admin-actions .admin-button:last-child {
+  margin-right: 0;
+}
+
+.admin-button {
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 6px 12px;
+  cursor: pointer;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease;
+}
+
+.admin-button:hover:not(:disabled) {
+  color: var(--op-amber);
+  border-color: var(--op-amber-dim);
+}
+
+.admin-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-button.is-primary {
+  color: var(--accent-on);
+  background: var(--op-amber);
+  border-color: var(--op-amber);
+}
+
+.admin-button.is-primary:hover:not(:disabled) {
+  background: #f2cf96;
+  border-color: #f2cf96;
+  color: var(--accent-on);
+}
+
+.admin-button.is-danger {
+  color: var(--danger);
+  border-color: rgba(224, 96, 90, 0.45);
+}
+
+.admin-button.is-danger:hover:not(:disabled) {
+  background: rgba(224, 96, 90, 0.12);
+  border-color: var(--danger);
+}
+
+.admin-toolbar {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.admin-field.is-inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-field input,
+.admin-field select {
+  font: inherit;
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+}
+
+.admin-field input:focus,
+.admin-field select:focus {
+  outline: none;
+  border-color: var(--op-amber);
+}
+
+.admin-grant-input {
+  width: 92px;
+}
+
+.admin-check {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--text);
+  cursor: pointer;
+  padding-bottom: 8px;
+}
+
+.admin-check input {
+  accent-color: var(--op-amber);
+}
+
+.admin-resource-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.admin-resource-tile {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+}
+
+.admin-resource-name {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.admin-resource-value {
+  font-size: 14px;
+  color: var(--text);
+}
+
+/* operator gate */
+.admin-gate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 70vh;
+}
+
+.admin-gate-card {
+  width: min(440px, 100%);
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 26px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.admin-gate-copy {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--muted);
+  margin: 0;
+}
+
+.admin-gate-card .admin-field {
+  text-transform: none;
+}
+
+.admin-gate-card .admin-button.is-primary {
+  align-self: flex-start;
 }

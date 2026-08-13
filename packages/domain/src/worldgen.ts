@@ -1,6 +1,7 @@
 import type {
   BuildingKind,
   Coordinate,
+  Fleet,
   Player,
   Planet,
   WorldId,
@@ -15,7 +16,8 @@ import {
   WORLD_VERSION,
 } from '@ashes/content';
 import { createPrng, intBelow, intInRange, hashHex } from './prng';
-import { compareCoordinates } from '@ashes/contracts';
+import { compareCoordinates, RESOURCE_KEYS } from '@ashes/contracts';
+import { localFleetId } from './fleet';
 
 export type WorldgenInput = {
   seed: number;
@@ -73,6 +75,9 @@ export function generateWorld(input: WorldgenInput): WorldState {
             population: 0,
             resources: emptyResourceStore(),
             buildings: {},
+            constructionOrders: [],
+            shipyardOrders: [],
+            localFleets: [],
             lastResolvedTick: 0,
             version: 1,
           });
@@ -86,6 +91,8 @@ export function generateWorld(input: WorldgenInput): WorldState {
   // Seeded home planet: a deterministic pick from the stable planet list.
   // M1 genesis: the home planet carries the starting economy (settlement,
   // population, resource seed) so the first tick is already productive.
+  // M2 genesis: the home planet also spawns its local fleet (the shipyard's
+  // delivery dock) and both queues are empty.
   const homePlanet = planets[intBelow(rngHome, planets.length)];
   homePlanet.ownerId = playerId(seed);
   homePlanet.factionId = STARTING_PACKAGE.factionId;
@@ -93,12 +100,32 @@ export function generateWorld(input: WorldgenInput): WorldState {
   homePlanet.resources = { ...STARTING_PACKAGE.startingResources };
   homePlanet.buildings = { ...STARTING_PACKAGE.startingBuildings };
 
+  const localFleet: Fleet = {
+    id: localFleetId(homePlanet.id),
+    ownerId: playerId(seed),
+    homePlanetId: homePlanet.id,
+    location: homePlanet.coordinate,
+    state: 'orbiting',
+    ships: {},
+    cargo: emptyResourceStore(),
+    troops: 0,
+    mission: null,
+    departureTick: null,
+    arrivalTick: null,
+    route: [],
+    version: 1,
+  };
+  homePlanet.localFleets = [localFleet.id];
+
   const player: Player = {
     id: playerId(seed),
     name: STARTING_PACKAGE.playerName,
     factionId: STARTING_PACKAGE.factionId,
     homePlanetId: homePlanet.id,
     token: input.playerToken ?? `player-${seed}-token`,
+    researchOrders: [],
+    technologies: [],
+    scanReports: [],
     version: 1,
   };
 
@@ -115,7 +142,9 @@ export function generateWorld(input: WorldgenInput): WorldState {
     tickDurationMs,
     planets,
     players: [player],
-    worldHash: computeWorldHash(seed, planets, [player], tickDurationMs),
+    fleets: [localFleet],
+    fleetOps: [],
+    worldHash: computeWorldHash(seed, planets, [player], [localFleet], tickDurationMs),
     version: 1,
   };
   return world;
@@ -163,16 +192,19 @@ function ensureUniquePlanetNames(planets: Planet[]): void {
 }
 
 /**
- * Deterministic content hash over the seed, world version, and every planet
- * and player in stable order. Same seed → same hash (an M0 acceptance test).
+ * Deterministic content hash over the seed, world version, and every planet,
+ * player, and fleet in stable order. Same seed → same hash (an M0 acceptance
+ * test). Fleets are included from M2 so fleet state is part of the hash.
  */
 export function computeWorldHash(
   seed: number,
   planets: Planet[],
   players: Player[],
+  fleets: Fleet[],
   tickDurationMs?: number,
 ): string {
   const sortedPlanets = [...planets].sort((a, b) => compareCoordinates(a.coordinate, b.coordinate));
+  const sortedFleets = [...fleets].sort((a, b) => a.id.localeCompare(b.id));
   const canonical = [
     `worldgen:${WORLD_VERSION}`,
     `content:${CONTENT_VERSION}`,
@@ -180,6 +212,7 @@ export function computeWorldHash(
     `tick:${tickDurationMs ?? WORLD_CONFIG.tickDurationMs}`,
     ...sortedPlanets.map(canonicalPlanet),
     ...players.map(canonicalPlayer),
+    ...sortedFleets.map(canonicalFleet),
   ].join('|');
   return hashHex(canonical);
 }
@@ -200,6 +233,48 @@ function canonicalPlanet(p: Planet): string {
     .sort()
     .map((k) => `${k}@${p.buildings[k]}`)
     .join(',');
+  // `?? []` guards: a stored world whose planets predate an M2 field (a
+  // hot-reload shape drift) must hash and tick instead of crashing.
+  const constructionOrders = p.constructionOrders ?? [];
+  const shipyardOrders = p.shipyardOrders ?? [];
+  const localFleets = p.localFleets ?? [];
+  const ordersCanon = constructionOrders
+    .map((o) =>
+      [
+        o.id,
+        o.building,
+        o.status,
+        o.submittedTick,
+        o.startTick ?? '-',
+        o.ticksRemaining,
+        o.cost.metal,
+        o.cost.mineral,
+        o.cost.food,
+        o.cost.energy,
+        o.completedAtTick ?? '-',
+        o.cancelledAtTick ?? '-',
+      ].join('~'),
+    )
+    .join(',');
+  const shipOrdersCanon = shipyardOrders
+    .map((o) =>
+      [
+        o.id,
+        o.ship,
+        o.quantity,
+        o.status,
+        o.submittedTick,
+        o.startTick ?? '-',
+        o.ticksRemaining,
+        o.cost.metal,
+        o.cost.mineral,
+        o.cost.food,
+        o.cost.energy,
+        o.completedAtTick ?? '-',
+        o.cancelledAtTick ?? '-',
+      ].join('~'),
+    )
+    .join(',');
   return [
     c.galaxy,
     c.sector,
@@ -218,11 +293,92 @@ function canonicalPlanet(p: Planet): string {
     p.resources.food,
     p.resources.energy,
     buildingCanon === '' ? '-' : buildingCanon,
+    ordersCanon === '' ? '-' : ordersCanon,
+    shipOrdersCanon === '' ? '-' : shipOrdersCanon,
+    localFleets.length === 0 ? '-' : localFleets.sort().join(','),
     p.lastResolvedTick,
     p.version,
   ].join(':');
 }
 
 function canonicalPlayer(p: Player): string {
-  return [p.id, p.name, p.factionId, p.homePlanetId].join(':');
+  const researchOrders = p.researchOrders ?? [];
+  const technologies = p.technologies ?? [];
+  const scanReports = p.scanReports ?? [];
+  const researchCanon = researchOrders
+    .map((o) =>
+      [
+        o.id,
+        o.technologyId,
+        o.status,
+        o.submittedTick,
+        o.startTick ?? '-',
+        o.ticksRemaining,
+        o.completedAtTick ?? '-',
+        o.cancelledAtTick ?? '-',
+      ].join('~'),
+    )
+    .join(',');
+  // M3: the scan archive is part of the player's authoritative state, so a
+  // scan moves the world hash.
+  const scansCanon = scanReports
+    .map((r) =>
+      [
+        r.id,
+        r.kind,
+        r.submittedTick,
+        r.target.galaxy,
+        r.target.sector,
+        r.target.system,
+        r.target.planet,
+        r.revealed.ownerId ?? '-',
+        r.revealed.population,
+        r.revealed.resources ? RESOURCE_KEYS.map((k) => r.revealed.resources![k]).join('/') : '-',
+        r.revealed.fleets ? `${r.revealed.fleets.ships}@${r.revealed.fleets.hull}` : '-',
+      ].join('~'),
+    )
+    .join(',');
+  return [
+    p.id,
+    p.name,
+    p.factionId,
+    p.homePlanetId,
+    researchCanon === '' ? '-' : researchCanon,
+    technologies.length === 0 ? '-' : [...technologies].sort().join(','),
+    scansCanon === '' ? '-' : scansCanon,
+  ].join(':');
+}
+
+function canonicalFleet(f: Fleet): string {
+  const ships = f.ships ?? {};
+  const cargo = f.cargo ?? emptyResourceStore();
+  const shipsCanon = Object.keys(ships)
+    .sort()
+    .map((k) => `${k}@${ships[k as keyof typeof ships]}`)
+    .join(',');
+  const loc = f.location;
+  // M3: mission state (kind, destination, departure/arrival ticks) is part of
+  // the fleet's authoritative state, so the world hash covers it.
+  const mission = f.mission;
+  const dest = mission?.destination;
+  return [
+    f.id,
+    f.ownerId,
+    f.homePlanetId ?? '-',
+    loc.galaxy,
+    loc.sector,
+    loc.system,
+    loc.planet,
+    f.state,
+    mission ? mission.kind : '-',
+    dest ? `${dest.galaxy}:${dest.sector}:${dest.system}:${dest.planet}` : '-',
+    f.departureTick ?? '-',
+    f.arrivalTick ?? '-',
+    shipsCanon === '' ? '-' : shipsCanon,
+    cargo.metal,
+    cargo.mineral,
+    cargo.food,
+    cargo.energy,
+    f.version,
+  ].join(':');
 }

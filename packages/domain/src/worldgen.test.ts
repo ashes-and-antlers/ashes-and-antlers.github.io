@@ -93,7 +93,13 @@ describe('computeWorldHash', () => {
     });
     const before = world.worldHash;
     world.planets[1].ownerId = 'player:99' as never;
-    const after = computeWorldHash(world.seed, world.planets, world.players, world.tickDurationMs);
+    const after = computeWorldHash(
+      world.seed,
+      world.planets,
+      world.players,
+      world.fleets,
+      world.tickDurationMs,
+    );
     expect(after).not.toBe(before);
   });
 });

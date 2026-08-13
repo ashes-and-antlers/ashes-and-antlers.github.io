@@ -1,61 +1,46 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import { PROTOCOL_VERSION, formatCoordinate, type GalaxyView } from '@ashes/contracts';
-import { fetchGalaxy } from './api';
 import { PLANET_CLASSES } from '@ashes/content';
-import { SectionHelp, planetClassColor, planetClassName } from './planet-ui';
-
-/** Compact class-color swatches for the sector-view legend (content-derived). */
-const PLANET_CLASS_META_SWATCHES: Array<{ classId: string; color: string }> = PLANET_CLASSES.map(
-  (c) => ({ classId: c.key, color: c.mapColor }),
-);
+import { fetchGalaxy } from './api';
+import { GameHeader, HeaderMeta, useWorldMeta } from './header';
+import { sessionWorldId } from './session';
+import { SectionHelp, planetClassName } from './planet-ui';
+import { buildSky } from './sky';
+import {
+  boundsForLevel,
+  clampWindow,
+  fitWindow,
+  makeViewBox,
+  paintMap,
+  scaleWindow,
+  screenToPoint,
+  type MapLevel,
+  type MapWindow,
+} from './map-engine';
 
 const MAX_CONSECUTIVE_FAILURES = 3;
-/** Narrowest map window (world units) — the maximum zoom-in. */
-const MIN_WINDOW_WIDTH = 80;
-/** Per wheel notch, the window shrinks/grows by this factor. */
-const ZOOM_STEP = 1 / 1.35;
+const MIN_WINDOW_WIDTH = 120;
+const MAX_WINDOW_WIDTH = 80_000;
+const ZOOM_SENSITIVITY = 0.0018;
+
+const PLANET_CLASS_META_SWATCHES: Array<{ classId: string; color: string }> = PLANET_CLASSES.map(
+  (planet) => ({ classId: planet.key, color: planet.mapColor }),
+);
 
 type LoadState =
   | { status: 'loading' }
   | { status: 'error'; message: string; offline: boolean }
   | { status: 'ready'; view: GalaxyView };
 
-/** A rectangular window of map space, in world units. */
-type Window = { minX: number; minY: number; maxX: number; maxY: number };
-
-/** Which viewport the map is showing: the whole chart, one galaxy, one sector. */
-type Level =
-  | { kind: 'chart' }
-  | { kind: 'galaxy'; galaxy: number }
-  | { kind: 'sector'; galaxy: number; sector: number };
-
-/**
- * Fit a box to a window with the frame's aspect ratio, so the map never
- * distorts and `viewBox` always fills the frame exactly.
- */
-function fitBox(
-  box: { minX: number; minY: number; maxX: number; maxY: number },
-  aspect: number,
-): Window {
-  let w = box.maxX - box.minX;
-  let h = box.maxY - box.minY;
-  if (w / h > aspect) {
-    h = w / aspect;
-  } else {
-    w = h * aspect;
-  }
-  const cx = (box.minX + box.maxX) / 2;
-  const cy = (box.minY + box.maxY) / 2;
-  return { minX: cx - w / 2, minY: cy - h / 2, maxX: cx + w / 2, maxY: cy + h / 2 };
-}
-
 export function MapApp() {
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
   const seed = params.get('seed') ?? '1337';
-  const worldId = `world:${seed}`;
+  const worldId = sessionWorldId(seed);
   const [state, setState] = useState<LoadState>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const failuresRef = useRef(0);
+  // The header's live tick readout, polled from the overview projection.
+  const worldMeta = useWorldMeta(worldId);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,10 +58,9 @@ export function MapApp() {
       } catch (err) {
         if (cancelled) return;
         failuresRef.current += 1;
-        const message = err instanceof Error ? err.message : 'unknown error';
         setState({
           status: 'error',
-          message,
+          message: err instanceof Error ? err.message : 'unknown error',
           offline: failuresRef.current >= MAX_CONSECUTIVE_FAILURES,
         });
       }
@@ -90,55 +74,28 @@ export function MapApp() {
   const retry = useCallback(() => {
     failuresRef.current = 0;
     setState({ status: 'loading' });
-    setAttempt((a) => a + 1);
+    setAttempt((value) => value + 1);
   }, []);
 
   const offline = state.status === 'error' && state.offline;
-  const readyView = state.status === 'ready' ? state.view : null;
 
   return (
-    <div className={`game-shell${offline ? ' is-offline' : ''}`}>
-      <header className="game-header">
-        <div className="brand-lockup">
-          <a className="back-link" data-testid="map-back" href={`game.html?seed=${seed}`}>
-            ← Command overview
-          </a>
-        </div>
-        <dl className="header-meta">
-          {readyView && (
-            <>
-              <div className="meta-item">
-                <dt>Galaxies</dt>
-                <dd className="mono" data-testid="map-galaxy-count">
-                  {readyView.config.galaxies}
-                </dd>
-              </div>
-              <div className="meta-item meta-divider">
-                <dt>Worlds</dt>
-                <dd className="mono" data-testid="map-planet-count">
-                  {readyView.planets.length.toLocaleString()}
-                </dd>
-              </div>
-              <div className="meta-item meta-divider">
-                <dt>Sectors</dt>
-                <dd className="mono" data-testid="map-sector-count">
-                  {readyView.sectors.length}
-                </dd>
-              </div>
-            </>
-          )}
-        </dl>
-      </header>
+    <div className={`game-shell map-shell${offline ? ' is-offline' : ''}`}>
+      <GameHeader
+        seed={seed}
+        title="Galaxy Map"
+        current="map"
+        className="map-header"
+        meta={worldMeta && <HeaderMeta meta={worldMeta} />}
+      />
 
-      {state.status === 'loading' && <p className="status-line">Charting the galaxies…</p>}
-
+      {state.status === 'loading' && <p className="status-line">Assembling the deep chart…</p>}
       {state.status === 'error' && !state.offline && (
         <p className="retrying-line" role="status">
           <span className="pulse-dot" aria-hidden="true" />
           Engine not responding — retrying…
         </p>
       )}
-
       {state.status === 'error' && state.offline && (
         <section
           className="offline-card"
@@ -172,257 +129,217 @@ export function MapApp() {
 
 function GalaxyMap({ view, seed }: { view: GalaxyView; seed: string }) {
   const frameRef = useRef<HTMLDivElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
-  const [frame, setFrame] = useState({ w: 0, h: 0 });
-  const [win, setWin] = useState<Window | null>(null);
-  const [level, setLevel] = useState<Level>({ kind: 'chart' });
-  const winRef = useRef<Window | null>(null);
-  const dragRef = useRef<{ px: number; py: number; id: number } | null>(null);
+  const [frame, setFrame] = useState({ width: 0, height: 0 });
+  const [win, setWin] = useState<MapWindow | null>(null);
+  const [level, setLevel] = useState<MapLevel>({ kind: 'chart' });
+  const winRef = useRef<MapWindow | null>(null);
+  const levelRef = useRef<MapLevel>({ kind: 'chart' });
+  const dragRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
   const draggedRef = useRef(false);
-  // Last window the SVG's viewBox was set to, so imperatively updated pan/
-  // zoom always derive from the same state React renders.
-  const lastViewBoxRef = useRef<string | null>(null);
+  const paintFrameRef = useRef<number | null>(null);
+  const sky = useMemo(() => buildSky(view), [view]);
 
-  const homeGalaxy = useMemo(() => {
-    const home = view.planets.find((p) => p.id === view.homePlanetId);
-    return home?.coordinate.galaxy ?? 1;
-  }, [view]);
-
-  const homeSector = useMemo(() => {
-    const home = view.planets.find((p) => p.id === view.homePlanetId);
-    return home?.coordinate.sector ?? 1;
-  }, [view]);
-
-  // The window lives in a ref so native drag/wheel handlers can mutate it
-  // without re-rendering React (the old per-event setWin re-rendered the
-  // whole SVG on every pointermove — the source of the drag jank). React
-  // state is only touched on discrete actions: fit, drill-in, zoom buttons.
-  const applyViewBox = (next: Window) => {
-    winRef.current = next;
-    const vb = `${next.minX} ${next.minY} ${next.maxX - next.minX} ${next.maxY - next.minY}`;
-    lastViewBoxRef.current = vb;
-    svgRef.current?.setAttribute('viewBox', vb);
-  };
-  // React-declared path: same source of truth, but goes through state so the
-  // level-driven content (and sizes) re-renders together with the viewBox.
-  const updateWin = (next: Window) => {
-    applyViewBox(next);
-    setWin(next);
-  };
-  const updateLevel = setLevel;
-
-  const chartBox = useMemo(() => view.bounds, [view]);
-
-  const galaxyBox = useCallback(
-    (galaxy: number): Window => {
-      const g = view.galaxies.find((x) => x.galaxy === galaxy);
-      const r = g ? g.discRadius : 4_000;
-      const o = g ? g.position : { x: 0, y: 0 };
-      return { minX: o.x - r, minY: o.y - r, maxX: o.x + r, maxY: o.y + r };
-    },
+  const homePlanet = useMemo(
+    () => view.planets.find((planet) => planet.id === view.homePlanetId),
     [view],
   );
+  const homeGalaxy = homePlanet?.coordinate.galaxy ?? 1;
+  const homeSector = homePlanet?.coordinate.sector ?? 1;
 
-  const sectorBox = useCallback(
-    (galaxy: number, sector: number): Window => {
-      const s = view.sectors.find((x) => x.galaxy === galaxy && x.sector === sector);
-      if (!s) return galaxyBox(galaxy);
-      return {
-        minX: s.bounds.minX,
-        minY: s.bounds.minY,
-        maxX: s.bounds.maxX,
-        maxY: s.bounds.maxY,
-      };
+  const paint = useCallback(() => {
+    const canvas = canvasRef.current;
+    const frameElement = frameRef.current;
+    const currentWindow = winRef.current;
+    if (!canvas || !frameElement || !currentWindow) return;
+    const width = frameElement.clientWidth;
+    const height = frameElement.clientHeight;
+    if (width === 0 || height === 0) return;
+    const dpr = window.devicePixelRatio || 1;
+    const pixelWidth = Math.ceil(width * dpr);
+    const pixelHeight = Math.ceil(height * dpr);
+    if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+      canvas.width = pixelWidth;
+      canvas.height = pixelHeight;
+    }
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    paintMap(context, view, sky, levelRef.current, currentWindow, width, height);
+    const svg = svgRef.current;
+    if (svg) {
+      const viewBox = makeViewBox(currentWindow);
+      if (svg.getAttribute('viewBox') !== viewBox) svg.setAttribute('viewBox', viewBox);
+    }
+  }, [sky, view]);
+
+  const schedulePaint = useCallback(() => {
+    if (paintFrameRef.current !== null) return;
+    paintFrameRef.current = requestAnimationFrame(() => {
+      paintFrameRef.current = null;
+      paint();
+    });
+  }, [paint]);
+
+  // The first fit is established in an effect after the initial frame
+  // measurement. Paint synchronously once that window exists so a cold boot
+  // cannot leave the canvas at its browser default 300×150 backing store.
+  useEffect(() => {
+    if (win) paint();
+  }, [paint, win]);
+
+  useEffect(() => {
+    schedulePaint();
+    return () => {
+      if (paintFrameRef.current !== null) {
+        cancelAnimationFrame(paintFrameRef.current);
+        // StrictMode (dev) double-invokes effects: mount → cleanup → mount.
+        // Leaving the cancelled id in the ref would make every later
+        // schedulePaint() early-return, so the map would paint once and all
+        // wheel/drag/button interactions would silently do nothing.
+        paintFrameRef.current = null;
+      }
+    };
+  }, [schedulePaint]);
+
+  useEffect(() => {
+    const element = frameRef.current;
+    if (!element) return;
+    const measure = () => {
+      setFrame({ width: element.clientWidth, height: element.clientHeight });
+      schedulePaint();
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [schedulePaint]);
+
+  useEffect(() => {
+    if (frame.width === 0 || frame.height === 0 || winRef.current) return;
+    const firstWindow = fitWindow(view.bounds, frame.width / frame.height, 0.06);
+    winRef.current = firstWindow;
+    setWin(firstWindow);
+    schedulePaint();
+  }, [frame, schedulePaint, view.bounds]);
+
+  const updateWindow = useCallback(
+    (next: MapWindow) => {
+      winRef.current = next;
+      setWin(next);
+      schedulePaint();
     },
-    [view, galaxyBox],
+    [schedulePaint],
   );
 
-  // Measure the frame so dots/labels keep a constant screen size at any zoom
-  // and the fitted window matches the frame's aspect ratio.
+  const updateLevel = useCallback(
+    (next: MapLevel) => {
+      levelRef.current = next;
+      setLevel(next);
+      schedulePaint();
+    },
+    [schedulePaint],
+  );
+
+  const focusLevel = useCallback(
+    (next: MapLevel) => {
+      if (frame.width === 0 || frame.height === 0) return;
+      const nextWindow = fitWindow(boundsForLevel(view, next), frame.width / frame.height, 0.07);
+      updateLevel(next);
+      updateWindow(nextWindow);
+    },
+    [frame.height, frame.width, updateLevel, updateWindow, view],
+  );
+
+  const reset = useCallback(() => focusLevel({ kind: 'chart' }), [focusLevel]);
+  const focusHome = useCallback(
+    () => focusLevel({ kind: 'sector', galaxy: homeGalaxy, sector: homeSector }),
+    [focusLevel, homeGalaxy, homeSector],
+  );
+
   useEffect(() => {
-    const el = frameRef.current;
-    if (!el) return;
-    const measure = () => setFrame({ w: el.clientWidth, h: el.clientHeight });
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  // Fit the chart once the frame is measured and the view is ready.
-  useEffect(() => {
-    if (frame.w > 0 && frame.h > 0 && !winRef.current) {
-      updateWin(fitBox(chartBox, frame.w / frame.h));
-    }
-  }, [frame, chartBox]);
-
-  // Keep the DOM viewBox in lockstep with React state (initial fit, and any
-  // discrete action that also changes level-driven content).
-  useEffect(() => {
-    if (
-      win &&
-      lastViewBoxRef.current !==
-        `${win.minX} ${win.minY} ${win.maxX - win.minX} ${win.maxY - win.minY}`
-    ) {
-      applyViewBox(win);
-    }
-  }, [win]);
-
-  const frameRect = () => frameRef.current?.getBoundingClientRect() ?? null;
-
-  /** Screen px → world units (the window fills the frame exactly). */
-  const screenToWorld = (clientX: number, clientY: number) => {
-    const winNow = winRef.current;
-    const rect = frameRect();
-    if (!winNow || !rect) return null;
-    const w = winNow.maxX - winNow.minX;
-    const h = winNow.maxY - winNow.minY;
-    return {
-      x: winNow.minX + ((clientX - rect.left) / rect.width) * w,
-      y: winNow.minY + ((clientY - rect.top) / rect.height) * h,
+    const element = frameRef.current;
+    if (!element) return;
+    const onWheel = (event: WheelEvent) => {
+      const currentWindow = winRef.current;
+      if (!currentWindow) return;
+      const rect = element.getBoundingClientRect();
+      const anchor = screenToPoint(event.clientX, event.clientY, currentWindow, rect);
+      const factor = Math.exp(event.deltaY * ZOOM_SENSITIVITY);
+      const width = currentWindow.maxX - currentWindow.minX;
+      const boundedFactor = Math.min(
+        MAX_WINDOW_WIDTH / width,
+        Math.max(MIN_WINDOW_WIDTH / width, factor),
+      );
+      if (boundedFactor === 1) return;
+      event.preventDefault();
+      const bounded = clampWindow(
+        scaleWindow(currentWindow, boundedFactor, anchor),
+        boundsForLevel(view, levelRef.current),
+      );
+      winRef.current = bounded;
+      schedulePaint();
     };
-  };
+    element.addEventListener('wheel', onWheel, { passive: false });
+    return () => element.removeEventListener('wheel', onWheel);
+  }, [schedulePaint, view]);
 
-  const zoomAt = (factor: number, cx: number, cy: number) => {
-    const prev = winRef.current;
-    if (!prev) return;
-    const w = prev.maxX - prev.minX;
-    const h = prev.maxY - prev.minY;
-    if (w * factor < MIN_WINDOW_WIDTH) return;
-    // Never zoom out past the chart bounds: the galaxy should not be lost
-    // in empty space, with Fit as the only way back.
-    if (w * factor > chartBox.maxX - chartBox.minX) return;
-    const nw = w * factor;
-    const nh = h * factor;
-    const lr = (cx - prev.minX) / w;
-    const tr = (cy - prev.minY) / h;
-    // Imperative: wheel zoom must not re-render React per notch.
-    applyViewBox({
-      minX: cx - nw * lr,
-      maxX: cx + nw * (1 - lr),
-      minY: cy - nh * tr,
-      maxY: cy + nh * (1 - tr),
-    });
-  };
-
-  // Wheel zoom (non-passive so the page does not scroll while zooming).
   useEffect(() => {
-    const el = frameRef.current;
-    if (!el) return;
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const point = screenToWorld(e.clientX, e.clientY);
-      if (!point) return;
-      zoomAt(e.deltaY > 0 ? ZOOM_STEP : 1 / ZOOM_STEP, point.x, point.y);
-    };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
-  }, []);
-
-  const zoomCenter = (factor: number) => {
-    const prev = winRef.current;
-    if (!prev) return;
-    const cx = (prev.minX + prev.maxX) / 2;
-    const cy = (prev.minY + prev.maxY) / 2;
-    zoomAt(factor, cx, cy);
-  };
-
-  /** Drill into a galaxy: frame its disc and switch to the galaxy viewport. */
-  const focusGalaxy = (galaxy: number) => {
-    if (frame.w > 0 && frame.h > 0) {
-      updateWin(fitBox(galaxyBox(galaxy), frame.w / frame.h));
-    }
-    updateLevel({ kind: 'galaxy', galaxy });
-  };
-
-  /** Drill into a sector: frame its cell and switch to the sector viewport. */
-  const focusSector = (galaxy: number, sector: number) => {
-    if (frame.w > 0 && frame.h > 0) {
-      updateWin(fitBox(sectorBox(galaxy, sector), frame.w / frame.h));
-    }
-    updateLevel({ kind: 'sector', galaxy, sector });
-  };
-
-  /** Back out to the chart. */
-  const reset = () => {
-    if (frame.w > 0 && frame.h > 0) updateWin(fitBox(chartBox, frame.w / frame.h));
-    updateLevel({ kind: 'chart' });
-  };
-
-  const focusHome = () => {
-    focusSector(homeGalaxy, homeSector);
-  };
-
-  // Pan is handled natively on the frame (not React), so a drag never pays
-  // a React re-render per pointermove — only the SVG viewBox attribute moves.
-  useEffect(() => {
-    const el = frameRef.current;
-    if (!el) return;
-    const onPointerDown = (e: PointerEvent) => {
-      // Any press starts a fresh interaction: a stale drag (draggedRef left
-      // true by a previous pan) must not block this press's click. Control
-      // presses still record a start, but the move handler ignores presses
-      // that never become a real drag.
+    const element = frameRef.current;
+    if (!element) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if ((event.target as Element | null)?.closest('.map-controls')) return;
       draggedRef.current = false;
-      dragRef.current = { px: e.clientX, py: e.clientY, id: e.pointerId };
+      dragRef.current = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
     };
-    const onPointerMove = (e: PointerEvent) => {
-      const start = dragRef.current;
-      const prev = winRef.current;
-      const rect = frameRef.current?.getBoundingClientRect() ?? null;
-      if (!start || !prev || !rect) return;
-      const dx = e.clientX - start.px;
-      const dy = e.clientY - start.py;
-      // Capture the pointer only once a real drag starts, so plain clicks
-      // (buttons, planet dots) keep reaching their targets.
+    const onPointerMove = (event: PointerEvent) => {
+      const drag = dragRef.current;
+      const currentWindow = winRef.current;
+      if (!drag || !currentWindow) return;
+      const dx = event.clientX - drag.x;
+      const dy = event.clientY - drag.y;
       if (!draggedRef.current && Math.hypot(dx, dy) < 4) return;
       if (!draggedRef.current) {
         draggedRef.current = true;
-        el.setPointerCapture(start.id);
+        element.setPointerCapture(drag.pointerId);
       }
-      const w = prev.maxX - prev.minX;
-      const h = prev.maxY - prev.minY;
-      applyViewBox({
-        minX: prev.minX - (dx / rect.width) * w,
-        maxX: prev.maxX - (dx / rect.width) * w,
-        minY: prev.minY - (dy / rect.height) * h,
-        maxY: prev.maxY - (dy / rect.height) * h,
-      });
+      const rect = element.getBoundingClientRect();
+      const worldWidth = currentWindow.maxX - currentWindow.minX;
+      const worldHeight = currentWindow.maxY - currentWindow.minY;
+      const next = {
+        minX: currentWindow.minX - (dx / rect.width) * worldWidth,
+        maxX: currentWindow.maxX - (dx / rect.width) * worldWidth,
+        minY: currentWindow.minY - (dy / rect.height) * worldHeight,
+        maxY: currentWindow.maxY - (dy / rect.height) * worldHeight,
+      };
+      winRef.current = clampWindow(next, boundsForLevel(view, levelRef.current));
+      drag.x = event.clientX;
+      drag.y = event.clientY;
+      schedulePaint();
     };
-    const onPointerUp = (e: PointerEvent) => {
+    const onPointerUp = (event: PointerEvent) => {
       dragRef.current = null;
-      if (el.hasPointerCapture(e.pointerId)) {
-        el.releasePointerCapture(e.pointerId);
-      }
-      // draggedRef intentionally stays set after a drag: the click that
-      // follows a pan must not navigate. It resets on the next pointerdown.
+      if (element.hasPointerCapture(event.pointerId))
+        element.releasePointerCapture(event.pointerId);
     };
-    el.addEventListener('pointerdown', onPointerDown);
-    el.addEventListener('pointermove', onPointerMove);
-    el.addEventListener('pointerup', onPointerUp);
-    el.addEventListener('pointercancel', onPointerUp);
+    element.addEventListener('pointerdown', onPointerDown);
+    element.addEventListener('pointermove', onPointerMove);
+    element.addEventListener('pointerup', onPointerUp);
+    element.addEventListener('pointercancel', onPointerUp);
     return () => {
-      el.removeEventListener('pointerdown', onPointerDown);
-      el.removeEventListener('pointermove', onPointerMove);
-      el.removeEventListener('pointerup', onPointerUp);
-      el.removeEventListener('pointercancel', onPointerUp);
+      element.removeEventListener('pointerdown', onPointerDown);
+      element.removeEventListener('pointermove', onPointerMove);
+      element.removeEventListener('pointerup', onPointerUp);
+      element.removeEventListener('pointercancel', onPointerUp);
     };
-  }, []);
-
-  const frameWidth = frame.w > 0 ? frame.w : 1;
-  const scale = win ? (win.maxX - win.minX) / frameWidth : 1;
-  const dotR = 2.4 * scale;
-  const knownR = 4.6 * scale;
-  const starR = 1.7 * scale;
-  const ringR = 7.2 * scale;
-  const labelSize = 10 * scale;
-  const galaxyLabelSize = 12 * scale;
+  }, [schedulePaint, view]);
 
   const currentLevel = level;
+  const currentWindow = win;
 
   return (
     <main className="map-page">
-      {/* Breadcrumb: where you are in the chart. */}
       <nav className="map-crumbs" aria-label="Map level">
         <button type="button" className="map-crumb" data-testid="map-crumb-chart" onClick={reset}>
           Chart
@@ -432,9 +349,24 @@ function GalaxyMap({ view, seed }: { view: GalaxyView; seed: string }) {
             <span className="map-crumb-sep" aria-hidden="true">
               /
             </span>
-            <span className="map-crumb map-crumb-current" data-testid="map-crumb-galaxy">
-              Galaxy {currentLevel.kind === 'galaxy' ? currentLevel.galaxy : homeGalaxy}
-            </span>
+            {currentLevel.kind === 'galaxy' ? (
+              <span
+                className="map-crumb map-crumb-current"
+                data-testid="map-crumb-galaxy"
+                aria-current="page"
+              >
+                Galaxy {currentLevel.galaxy}
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="map-crumb"
+                data-testid="map-crumb-galaxy"
+                onClick={() => focusLevel({ kind: 'galaxy', galaxy: currentLevel.galaxy })}
+              >
+                Galaxy {currentLevel.galaxy}
+              </button>
+            )}
           </>
         )}
         {currentLevel.kind === 'sector' && (
@@ -442,7 +374,11 @@ function GalaxyMap({ view, seed }: { view: GalaxyView; seed: string }) {
             <span className="map-crumb-sep" aria-hidden="true">
               /
             </span>
-            <span className="map-crumb map-crumb-current" data-testid="map-crumb-sector">
+            <span
+              className="map-crumb map-crumb-current"
+              data-testid="map-crumb-sector"
+              aria-current="page"
+            >
               Sector {currentLevel.galaxy}:{currentLevel.sector}
             </span>
           </>
@@ -450,116 +386,61 @@ function GalaxyMap({ view, seed }: { view: GalaxyView; seed: string }) {
       </nav>
 
       <div className="map-frame" ref={frameRef} data-testid="map-frame">
-        {win !== null && (
+        <canvas
+          ref={canvasRef}
+          className="map-canvas"
+          data-testid="map-sky"
+          aria-label="Procedurally drawn galaxy chart"
+        />
+        {currentWindow && (
           <svg
-            className="map-svg"
+            className="map-hit-layer"
             data-testid="galaxy-map"
             ref={svgRef}
-            viewBox={`${win.minX} ${win.minY} ${win.maxX - win.minX} ${win.maxY - win.minY}`}
-            role="img"
-            aria-label="Galaxy map of the archive"
+            viewBox={makeViewBox(currentWindow)}
+            aria-label="Interactive galaxy map"
           >
-            {/* Chart viewport: every galaxy as a disc, sectors as dots on its arms. */}
-            {currentLevel.kind === 'chart' &&
-              view.galaxies.map((g) => (
-                <g
-                  key={g.galaxy}
-                  className="map-chart-galaxy"
-                  data-testid="map-galaxy"
-                  data-home={g.galaxy === homeGalaxy ? 'true' : undefined}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Open galaxy ${g.galaxy}`}
-                  onClick={() => {
-                    if (!draggedRef.current) focusGalaxy(g.galaxy);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      focusGalaxy(g.galaxy);
-                    }
-                  }}
-                >
-                  <circle
-                    className="map-galaxy-disc"
-                    cx={g.position.x}
-                    cy={g.position.y}
-                    r={g.discRadius}
-                  />
-                  {view.sectors
-                    .filter((s) => s.galaxy === g.galaxy)
-                    .map((s) => (
-                      <circle
-                        key={`${s.galaxy}:${s.sector}`}
-                        className="map-sector-dot"
-                        cx={s.position.x}
-                        cy={s.position.y}
-                        r={dotR * 1.6}
-                      />
-                    ))}
-                  {g.galaxy === homeGalaxy && (
-                    <circle
-                      className="map-home-galaxy-ring"
-                      data-testid="map-home-galaxy"
-                      cx={g.position.x}
-                      cy={g.position.y}
-                      r={g.discRadius + ringR}
-                    />
-                  )}
-                  <text
-                    className="map-galaxy-label"
-                    x={g.position.x}
-                    y={g.position.y - g.discRadius - 14 * scale}
-                    fontSize={galaxyLabelSize}
-                    textAnchor="middle"
-                  >
-                    G{g.galaxy}
-                  </text>
-                </g>
-              ))}
-
-            {/* Galaxy viewport: sector cells + system stars of one galaxy. */}
-            {currentLevel.kind === 'galaxy' && (
-              <GalaxyLevelView
-                view={view}
-                galaxy={currentLevel.galaxy}
-                homeGalaxy={homeGalaxy}
-                homeSector={homeSector}
-                starR={starR}
-                labelSize={labelSize}
-                scale={scale}
-                draggedRef={draggedRef}
-                onSectorClick={(sector) => focusSector(currentLevel.galaxy, sector)}
-              />
-            )}
-
-            {/* Sector viewport: planets of one sector. */}
-            {currentLevel.kind === 'sector' && (
-              <SectorLevelView
-                view={view}
-                galaxy={currentLevel.galaxy}
-                sector={currentLevel.sector}
-                homeGalaxy={homeGalaxy}
-                homeSector={homeSector}
-                seed={seed}
-                dotR={dotR}
-                knownR={knownR}
-                starR={starR}
-                ringR={ringR}
-                labelSize={labelSize}
-                scale={scale}
-              />
-            )}
+            <MapHitLayer
+              view={view}
+              level={currentLevel}
+              homeGalaxy={homeGalaxy}
+              homeSector={homeSector}
+              seed={seed}
+              draggedRef={draggedRef}
+              onGalaxy={(galaxy) => focusLevel({ kind: 'galaxy', galaxy })}
+              onSector={(galaxy, sector) => focusLevel({ kind: 'sector', galaxy, sector })}
+            />
           </svg>
         )}
+        <div className="map-readout" aria-live="polite">
+          <span className="map-readout-title">
+            {currentLevel.kind === 'chart'
+              ? 'Galactic chart'
+              : currentLevel.kind === 'galaxy'
+                ? `Galaxy ${currentLevel.galaxy}`
+                : `Sector ${currentLevel.galaxy}:${currentLevel.sector}`}
+          </span>
+          <span className="map-readout-subtitle">
+            {currentLevel.kind === 'chart'
+              ? 'Eight spiral systems · strategic distances'
+              : currentLevel.kind === 'galaxy'
+                ? 'Sector lanes · system beacons'
+                : 'System orbits · world ledgers'}
+          </span>
+        </div>
         <div className="map-controls" role="group" aria-label="Map controls">
-          <button type="button" aria-label="Zoom in" onClick={() => zoomCenter(1 / ZOOM_STEP)}>
+          <button type="button" aria-label="Zoom in" onClick={() => zoomCenter(1 / 1.22)}>
             +
           </button>
-          <button type="button" aria-label="Zoom out" onClick={() => zoomCenter(ZOOM_STEP)}>
+          <button type="button" aria-label="Zoom out" onClick={() => zoomCenter(1.22)}>
             −
           </button>
-          <button type="button" data-testid="map-focus-home" onClick={focusHome}>
+          <button
+            type="button"
+            data-testid="map-focus-home"
+            title="Jump to your home sector"
+            onClick={focusHome}
+          >
             Home
           </button>
           <button type="button" onClick={reset}>
@@ -568,229 +449,246 @@ function GalaxyMap({ view, seed }: { view: GalaxyView; seed: string }) {
         </div>
       </div>
 
+      <p className="map-world-stats" aria-label="World composition">
+        <span>
+          Galaxies <strong data-testid="map-galaxy-count">{view.config.galaxies}</strong>
+        </span>
+        <span>
+          Worlds{' '}
+          <strong data-testid="map-planet-count">{view.planets.length.toLocaleString()}</strong>
+        </span>
+        <span>
+          Sectors <strong data-testid="map-sector-count">{view.sectors.length}</strong>
+        </span>
+      </p>
+
+      {/* The legend tracks the current level: what the chart actually shows
+          at this depth, never a static list of every symbol at once. */}
       <p className="map-legend" role="list" aria-label="Map legend">
-        <span className="map-legend-item" role="listitem">
-          <span className="map-legend-dot home" aria-hidden="true" /> Home
-        </span>
-        <span className="map-legend-item" role="listitem">
-          <span className="map-legend-dot known" aria-hidden="true" /> Yours
-        </span>
-        {currentLevel.kind === 'sector' && (
-          <span className="map-legend-item" role="listitem">
-            <span className="map-legend-dots" aria-hidden="true">
-              {PLANET_CLASS_META_SWATCHES.map((c) => (
-                <span key={c.classId} style={{ background: c.color }} />
-              ))}
+        {currentLevel.kind === 'chart' ? (
+          <>
+            <span className="map-legend-item" role="listitem">
+              <span className="map-legend-dot home" aria-hidden="true" /> Home galaxy
             </span>
-            World class
-          </span>
+            <span className="map-legend-item" role="listitem">
+              <span className="map-legend-dot" aria-hidden="true" /> Galaxy
+            </span>
+          </>
+        ) : currentLevel.kind === 'galaxy' ? (
+          <>
+            <span className="map-legend-item" role="listitem">
+              <span className="map-legend-dot home" aria-hidden="true" /> Home sector
+            </span>
+            <span className="map-legend-item" role="listitem">
+              <span className="map-legend-dot" aria-hidden="true" /> Sector
+            </span>
+          </>
+        ) : (
+          <>
+            <span className="map-legend-item" role="listitem">
+              <span className="map-legend-dot home" aria-hidden="true" /> Home world
+            </span>
+            <span className="map-legend-item" role="listitem">
+              <span className="map-legend-dot known" aria-hidden="true" /> Known world
+            </span>
+            <span className="map-legend-item" role="listitem">
+              <span className="map-legend-dot system" aria-hidden="true" /> System
+            </span>
+            <span className="map-legend-item" role="listitem">
+              <span className="map-legend-dots" aria-hidden="true">
+                {PLANET_CLASS_META_SWATCHES.map((planet) => (
+                  <span key={planet.classId} style={{ background: planet.color }} />
+                ))}
+              </span>
+              World class
+            </span>
+          </>
         )}
       </p>
 
       <SectionHelp id="map">
         <p>
-          Every world of the archive, in map space. The chart shows the eight galaxies; each galaxy
-          is a spiral of sector cells winding out of its core. Open a galaxy to see its sectors,
-          then a sector to see its systems and worlds — coordinates read
-          galaxy:sector:system:planet, and the map is drawn to scale: planets in the same system sit
-          close together, systems cluster inside their sector, sectors trace the spiral arms, and
-          the galaxies are far apart — the same distances fleet drives will later measure. Drag to
-          pan, scroll or use the controls to zoom, and click any galaxy, sector, or world to open
-          it. Filled worlds are yours; the crowned one is your home.
+          This is a scale-aware chart, not a list of worlds. The first level shows each galaxy as a
+          seeded spiral with arms, cores, dust, and sector beacons. Open a galaxy to inspect its
+          sector lanes, then open a sector to read system orbits and world ledgers. The canvas
+          paints the star field and map marks; only visible targets remain in the interactive layer,
+          so dragging and zooming do not rebuild thousands of DOM nodes. Drag to pan, scroll to
+          zoom, and use Home to return to your starting world. Coordinates read{' '}
+          <span className="mono">galaxy:sector:system:planet</span>.
         </p>
       </SectionHelp>
     </main>
   );
+
+  function zoomCenter(factor: number) {
+    const current = winRef.current;
+    if (!current) return;
+    const anchor = {
+      x: (current.minX + current.maxX) / 2,
+      y: (current.minY + current.maxY) / 2,
+    };
+    const width = current.maxX - current.minX;
+    const boundedFactor = Math.min(
+      MAX_WINDOW_WIDTH / width,
+      Math.max(MIN_WINDOW_WIDTH / width, factor),
+    );
+    if (boundedFactor === 1) return;
+    winRef.current = clampWindow(
+      scaleWindow(current, boundedFactor, anchor),
+      boundsForLevel(view, levelRef.current),
+    );
+    schedulePaint();
+  }
 }
 
-/** Galaxy viewport: the sector cells and system stars of one galaxy. */
-function GalaxyLevelView({
+function MapHitLayer({
   view,
-  galaxy,
-  homeGalaxy,
-  homeSector,
-  starR,
-  labelSize,
-  scale,
-  draggedRef,
-  onSectorClick,
-}: {
-  view: GalaxyView;
-  galaxy: number;
-  homeGalaxy: number;
-  homeSector: number;
-  starR: number;
-  labelSize: number;
-  scale: number;
-  draggedRef: React.MutableRefObject<boolean>;
-  onSectorClick: (sector: number) => void;
-}) {
-  const sectors = view.sectors.filter((s) => s.galaxy === galaxy);
-  const systems = view.systems.filter((s) => s.galaxy === galaxy);
-  return (
-    <g className="map-galaxy-view">
-      {sectors.map((s) => (
-        <g
-          key={`${s.galaxy}:${s.sector}`}
-          className="map-sector-cell"
-          data-testid="map-sector"
-          data-home={galaxy === homeGalaxy && s.sector === homeSector ? 'true' : undefined}
-          role="button"
-          tabIndex={0}
-          aria-label={`Open sector ${s.galaxy}:${s.sector}`}
-          onClick={() => {
-            if (!draggedRef.current) onSectorClick(s.sector);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              onSectorClick(s.sector);
-            }
-          }}
-        >
-          <rect
-            className="map-sector-cell-bg"
-            x={s.bounds.minX}
-            y={s.bounds.minY}
-            width={s.bounds.maxX - s.bounds.minX}
-            height={s.bounds.maxY - s.bounds.minY}
-            rx={120 * scale}
-          />
-          {galaxy === homeGalaxy && s.sector === homeSector && (
-            <circle
-              className="map-home-sector-ring"
-              data-testid="map-home-sector"
-              cx={s.position.x}
-              cy={s.position.y}
-              r={300 * scale}
-            />
-          )}
-          <text
-            className="map-sector-label"
-            x={s.position.x}
-            y={s.position.y + labelSize * 0.35}
-            fontSize={labelSize}
-            textAnchor="middle"
-          >
-            {s.sector}
-          </text>
-        </g>
-      ))}
-      {systems.map((sy) => (
-        <circle
-          key={`${sy.galaxy}:${sy.sector}:${sy.system}`}
-          className="map-star"
-          cx={sy.position.x}
-          cy={sy.position.y}
-          r={starR}
-        />
-      ))}
-    </g>
-  );
-}
-
-/** Sector viewport: one sector's systems and worlds, click-through to ledgers. */
-function SectorLevelView({
-  view,
-  galaxy,
-  sector,
+  level,
   homeGalaxy,
   homeSector,
   seed,
-  dotR,
-  knownR,
-  starR,
-  ringR,
-  labelSize,
-  scale,
+  draggedRef,
+  onGalaxy,
+  onSector,
 }: {
   view: GalaxyView;
-  galaxy: number;
-  sector: number;
+  level: MapLevel;
   homeGalaxy: number;
   homeSector: number;
   seed: string;
-  dotR: number;
-  knownR: number;
-  starR: number;
-  ringR: number;
-  labelSize: number;
-  scale: number;
+  draggedRef: MutableRefObject<boolean>;
+  onGalaxy: (galaxy: number) => void;
+  onSector: (galaxy: number, sector: number) => void;
 }) {
-  const s = view.sectors.find((x) => x.galaxy === galaxy && x.sector === sector);
-  const systems = view.systems.filter((x) => x.galaxy === galaxy && x.sector === sector);
-  const planets = view.planets.filter(
-    (p) => p.coordinate.galaxy === galaxy && p.coordinate.sector === sector,
-  );
-  const isHome = galaxy === homeGalaxy && sector === homeSector;
-  if (!s) return null;
-  return (
-    <g className="map-sector-view">
-      <rect
-        className="map-sector-view-bg"
-        x={s.bounds.minX}
-        y={s.bounds.minY}
-        width={s.bounds.maxX - s.bounds.minX}
-        height={s.bounds.maxY - s.bounds.minY}
-        rx={120 * scale}
-      />
-      {systems.map((sy) => (
-        <circle
-          key={`${sy.galaxy}:${sy.sector}:${sy.system}`}
-          className="map-star"
-          cx={sy.position.x}
-          cy={sy.position.y}
-          r={starR}
-        />
-      ))}
-      {planets.map((p) => (
-        <a
-          key={p.id}
-          className="map-planet-link"
-          data-testid={p.known ? 'map-known' : 'map-planet'}
-          href={`planet.html?seed=${seed}&planet=${encodeURIComponent(p.id)}`}
-        >
-          {p.known && (
+  if (level.kind === 'chart') {
+    return (
+      <g className="map-chart-hits">
+        {view.galaxies.map((galaxy) => (
+          <g
+            key={galaxy.galaxy}
+            className="map-chart-galaxy"
+            data-testid="map-galaxy"
+            data-home={galaxy.galaxy === homeGalaxy ? 'true' : undefined}
+            role="button"
+            tabIndex={0}
+            aria-label={`Open galaxy ${galaxy.galaxy}`}
+            onClick={() => {
+              if (!draggedRef.current) onGalaxy(galaxy.galaxy);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onGalaxy(galaxy.galaxy);
+              }
+            }}
+          >
             <circle
-              className="map-home-ring"
-              data-testid="map-home"
-              cx={p.position.x}
-              cy={p.position.y}
-              r={ringR}
+              className="map-galaxy-disc"
+              cx={galaxy.position.x}
+              cy={galaxy.position.y}
+              r={galaxy.discRadius}
             />
-          )}
-          <circle
-            className={`map-planet${p.known ? ' known' : ''}`}
-            data-class={p.classId}
-            style={{ fill: planetClassColor(p.classId) }}
-            cx={p.position.x}
-            cy={p.position.y}
-            r={p.known ? knownR : dotR}
-          />
-          {p.known && (
-            <text
-              className="map-label"
-              x={p.position.x + knownR + 6 * scale}
-              y={p.position.y + labelSize * 0.35}
-              fontSize={labelSize}
+            {galaxy.galaxy === homeGalaxy && (
+              <circle
+                className="map-home-galaxy-ring"
+                data-testid="map-home-galaxy"
+                cx={galaxy.position.x}
+                cy={galaxy.position.y}
+                r={galaxy.discRadius + 24}
+              />
+            )}
+          </g>
+        ))}
+      </g>
+    );
+  }
+
+  if (level.kind === 'galaxy') {
+    return (
+      <g className="map-galaxy-hits">
+        {view.sectors
+          .filter((sector) => sector.galaxy === level.galaxy)
+          .sort((a, b) => Number(a.sector === homeSector) - Number(b.sector === homeSector))
+          .map((sector) => (
+            <g
+              key={`${sector.galaxy}:${sector.sector}`}
+              className="map-sector-cell"
+              data-testid="map-sector"
+              data-home={
+                sector.sector === homeSector && level.galaxy === homeGalaxy ? 'true' : undefined
+              }
+              role="button"
+              tabIndex={0}
+              aria-label={`Open sector ${sector.galaxy}:${sector.sector}`}
+              onClick={() => {
+                if (!draggedRef.current) onSector(sector.galaxy, sector.sector);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onSector(sector.galaxy, sector.sector);
+                }
+              }}
             >
-              {p.name}
-            </text>
-          )}
-          <title>{`${p.name} — ${planetClassName(p.classId)} — ${formatCoordinate(p.coordinate)}`}</title>
-        </a>
-      ))}
-      {isHome && (
-        <text
-          className="map-sector-name"
-          x={s.position.x}
-          y={s.bounds.minY - 10 * scale}
-          fontSize={labelSize * 1.2}
-          textAnchor="middle"
-        >
-          Home sector — {galaxy}:{sector}
-        </text>
-      )}
+              <rect
+                className="map-sector-cell-bg"
+                x={sector.bounds.minX + (sector.bounds.maxX - sector.bounds.minX) * 0.12}
+                y={sector.bounds.minY + (sector.bounds.maxY - sector.bounds.minY) * 0.12}
+                width={(sector.bounds.maxX - sector.bounds.minX) * 0.76}
+                height={(sector.bounds.maxY - sector.bounds.minY) * 0.76}
+                rx={70}
+              />
+              {sector.sector === homeSector && level.galaxy === homeGalaxy && (
+                <circle
+                  className="map-home-sector-ring"
+                  data-testid="map-home-sector"
+                  cx={sector.position.x}
+                  cy={sector.position.y}
+                  r={300}
+                />
+              )}
+            </g>
+          ))}
+      </g>
+    );
+  }
+
+  return (
+    <g className="map-sector-hits">
+      {view.planets
+        .filter(
+          (planet) =>
+            planet.coordinate.galaxy === level.galaxy && planet.coordinate.sector === level.sector,
+        )
+        .map((planet) => (
+          <a
+            key={planet.id}
+            className="map-planet-link"
+            data-testid={planet.known ? 'map-known' : 'map-planet'}
+            href={`planet.html?seed=${seed}&planet=${encodeURIComponent(planet.id)}`}
+            onClick={(event) => {
+              if (draggedRef.current) event.preventDefault();
+            }}
+          >
+            {planet.known && (
+              <circle
+                className="map-home-ring"
+                data-testid="map-home"
+                cx={planet.position.x}
+                cy={planet.position.y}
+                r={12}
+              />
+            )}
+            <circle
+              className={`map-planet${planet.known ? ' known' : ''}`}
+              cx={planet.position.x}
+              cy={planet.position.y}
+              r={planet.known ? 9 : 7}
+              aria-label={`${planet.name} — ${planetClassName(planet.classId)} — ${formatCoordinate(planet.coordinate)}`}
+            />
+            <title>{`${planet.name} — ${planetClassName(planet.classId)} — ${formatCoordinate(planet.coordinate)}`}</title>
+          </a>
+        ))}
     </g>
   );
 }

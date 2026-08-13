@@ -1,4 +1,14 @@
-import { bigint, integer, jsonb, pgTable, primaryKey, text } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import {
+  bigint,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  primaryKey,
+  text,
+  uniqueIndex,
+} from 'drizzle-orm/pg-core';
 import type { WorldState } from '@ashes/contracts';
 
 /**
@@ -43,5 +53,54 @@ export const tickResolutionsTable = pgTable(
   (t) => [primaryKey({ columns: [t.worldId, t.tick] })],
 );
 
+/**
+ * Accounts: one row per registered player. Holds the password hash and the
+ * session bearer token; the game-side identity (player, home planet, faction)
+ * lives in the world aggregate and is referenced here by id.
+ */
+export const accountsTable = pgTable(
+  'accounts',
+  {
+    id: text('id').primaryKey(),
+    username: text('username').notNull(),
+    passwordHash: text('password_hash').notNull(),
+    /** Legacy token column; migrated to hashed account_sessions and kept nullable for old rows. */
+    token: text('token'),
+    worldId: text('world_id').notNull(),
+    playerId: text('player_id').notNull(),
+    name: text('name').notNull(),
+    factionId: text('faction_id').notNull(),
+    symbolId: text('symbol_id').notNull(),
+    homePlanetId: text('home_planet_id').notNull(),
+    createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+  },
+  (t) => [uniqueIndex('accounts_username_lower_unique').on(sql`lower(${t.username})`)],
+);
+
+/** Opaque, expiring bearer sessions. Raw tokens are never persisted. */
+export const accountSessionsTable = pgTable(
+  'account_sessions',
+  {
+    id: text('id').primaryKey(),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accountsTable.id, { onDelete: 'cascade' }),
+    tokenHash: text('token_hash').notNull(),
+    createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+    expiresAt: bigint('expires_at', { mode: 'number' }).notNull(),
+    revokedAt: bigint('revoked_at', { mode: 'number' }),
+    lastSeenAt: bigint('last_seen_at', { mode: 'number' }).notNull(),
+    userAgent: text('user_agent'),
+    ipAddress: text('ip_address'),
+  },
+  (t) => [
+    uniqueIndex('account_sessions_token_hash_unique').on(t.tokenHash),
+    index('account_sessions_account_id_idx').on(t.accountId),
+    index('account_sessions_expires_at_idx').on(t.expiresAt),
+  ],
+);
+
 export type WorldRow = typeof worldsTable.$inferInsert;
 export type TickResolutionRow = typeof tickResolutionsTable.$inferInsert;
+export type AccountRow = typeof accountsTable.$inferInsert;
+export type AccountSessionRow = typeof accountSessionsTable.$inferInsert;

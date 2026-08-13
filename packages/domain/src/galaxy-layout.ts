@@ -12,12 +12,20 @@ import { createPrng, fnv1a } from './prng';
  * one level's scatter never perturbs another's. Distances are tuned so the
  * drive tiers read naturally (see GALAXY_LAYOUT in packages/content).
  *
- * Sector layout (world-4): sectors sit on logarithmic spiral arms winding
+ * System scatter (world-6): a sector's systems start as a uniform disc
+ * scatter but are then relaxed so every pair is at least
+ * `systemMinSeparation` apart — the disc is large enough for 8 systems at
+ * that spacing on every seed, so planetary clusters never overlap and each
+ * system reads as its own beacon with its own orbits.
+ *
+ * Sector layout (world-5): sectors sit on logarithmic spiral arms winding
  * out of the galactic core instead of a grid. Sector `s` belongs to arm
  * `(s - 1) % armsPerGalaxy`; its radius from the core grows exponentially
  * with its index on the arm and its angle advances by `sectorAngleStep` per
- * index, so consecutive sectors interleave across the arms and the galaxy
- * reads as a spiral.
+ * index ON that arm, so consecutive sectors interleave across the arms and
+ * the galaxy reads as a spiral. (Advancing by the global sector index
+ * instead wrapped the outer arms onto the inner ones and collapsed the
+ * spiral into two overlapping lobes — world-5 fixes that.)
  */
 
 function layoutStream(seed: number, key: string): () => number {
@@ -62,12 +70,11 @@ export function sectorPosition(seed: number, galaxy: number, sector: number): Ma
   const origin = galaxyOrigin(seed, galaxy);
   const rotation = spiralRotation(seed, galaxy);
   const { arm, indexOnArm } = sectorArm(sector);
-  // The full spiral sweeps armTurns revolutions; each sector index advances
-  // the angle by sectorAngleStep, so the innermost sectors sit near the core
-  // and later ones wind outward.
+  // Each arm starts at its own evenly-spaced base angle and advances by
+  // sectorAngleStep per sector ON that arm, so the three arms wind outward
+  // in interleave without ever wrapping onto a neighbor's inner sectors.
   const baseAngle = (arm / GALAXY_LAYOUT.armsPerGalaxy) * Math.PI * 2;
-  const angle =
-    baseAngle + (indexOnArm * GALAXY_LAYOUT.armsPerGalaxy + arm) * GALAXY_LAYOUT.sectorAngleStep;
+  const angle = baseAngle + indexOnArm * GALAXY_LAYOUT.sectorAngleStep;
   const radius = GALAXY_LAYOUT.galaxyCoreRadius * GALAXY_LAYOUT.galaxyRadiusStep ** (sector - 1);
 
   const rng = layoutStream(seed, `sector:${galaxy}:${sector}`);
@@ -82,22 +89,83 @@ export function sectorPosition(seed: number, galaxy: number, sector: number): Ma
   };
 }
 
-/** The system's star, scattered within its sector's cluster radius. */
+const SYSTEM_RELAX_ITERATIONS = 256;
+const SYSTEM_LAYOUT_CACHE_MAX = 4096;
+const systemLayoutCache = new Map<string, MapPosition[]>();
+
+/**
+ * Relaxed positions for every system of one sector (world-6). Systems start
+ * as a seeded uniform scatter across the cluster disc, then a deterministic
+ * relaxation pushes pairs closer than `systemMinSeparation` apart (half the
+ * deficit along the pair axis each pass) while clamping each system back
+ * into the disc. The sector's cluster radius easily holds 8 systems at that
+ * separation, so the fixed 256-pass budget converges to exact separation on
+ * every seed (verified across thousands of seeds in galaxy-layout.test.ts).
+ * The whole sector is computed together because separation is a pairwise
+ * constraint; results are memoized per (seed, galaxy, sector) since the view
+ * build calls `systemPosition` once per system and once per planet.
+ */
+function sectorSystemPositions(seed: number, galaxy: number, sector: number): MapPosition[] {
+  const key = `${seed}:${galaxy}:${sector}`;
+  const cached = systemLayoutCache.get(key);
+  if (cached) return cached;
+
+  const center = sectorPosition(seed, galaxy, sector);
+  const count = WORLD_CONFIG.systemsPerSector;
+  const positions: MapPosition[] = [];
+  for (let system = 1; system <= count; system++) {
+    const rng = layoutStream(seed, `system:${galaxy}:${sector}:${system}`);
+    const angle = rng() * Math.PI * 2;
+    // sqrt for a uniform scatter across the disc, not a tight center ball.
+    const radius = Math.sqrt(rng()) * GALAXY_LAYOUT.systemClusterRadius;
+    positions.push({
+      x: center.x + Math.cos(angle) * radius,
+      y: center.y + Math.sin(angle) * radius,
+    });
+  }
+
+  const minSep = GALAXY_LAYOUT.systemMinSeparation;
+  for (let iteration = 0; iteration < SYSTEM_RELAX_ITERATIONS; iteration++) {
+    for (let i = 0; i < count; i++) {
+      for (let j = i + 1; j < count; j++) {
+        const dx = positions[j].x - positions[i].x;
+        const dy = positions[j].y - positions[i].y;
+        const d = Math.hypot(dx, dy);
+        if (d < minSep && d > 1e-9) {
+          const push = (minSep - d) / 2;
+          const ux = dx / d;
+          const uy = dy / d;
+          positions[i].x -= ux * push;
+          positions[i].y -= uy * push;
+          positions[j].x += ux * push;
+          positions[j].y += uy * push;
+        }
+      }
+    }
+    for (const p of positions) {
+      const dx = p.x - center.x;
+      const dy = p.y - center.y;
+      const r = Math.hypot(dx, dy);
+      if (r > GALAXY_LAYOUT.systemClusterRadius) {
+        p.x = center.x + (dx / r) * GALAXY_LAYOUT.systemClusterRadius;
+        p.y = center.y + (dy / r) * GALAXY_LAYOUT.systemClusterRadius;
+      }
+    }
+  }
+
+  if (systemLayoutCache.size >= SYSTEM_LAYOUT_CACHE_MAX) systemLayoutCache.clear();
+  systemLayoutCache.set(key, positions);
+  return positions;
+}
+
+/** The system's star, relaxed to stay clear of its sector's other systems. */
 export function systemPosition(
   seed: number,
   galaxy: number,
   sector: number,
   system: number,
 ): MapPosition {
-  const center = sectorPosition(seed, galaxy, sector);
-  const rng = layoutStream(seed, `system:${galaxy}:${sector}:${system}`);
-  const angle = rng() * Math.PI * 2;
-  // sqrt for a uniform scatter across the disc, not a tight center ball.
-  const radius = Math.sqrt(rng()) * GALAXY_LAYOUT.systemClusterRadius;
-  return {
-    x: center.x + Math.cos(angle) * radius,
-    y: center.y + Math.sin(angle) * radius,
-  };
+  return sectorSystemPositions(seed, galaxy, sector)[system - 1];
 }
 
 /** A planet on its system's orbit: seeded angle + radius, fanned by index. */
@@ -122,8 +190,12 @@ export function planetPosition(seed: number, coordinate: Coordinate): MapPositio
 /** Axis-aligned bounds of one sector's cell, padded to hold its planets. */
 export function sectorBounds(seed: number, galaxy: number, sector: number): GalaxyBounds {
   // Systems scatter within systemClusterRadius of the sector center; planets
-  // orbit within planetOrbitMax. Pad past both so the cell holds everything.
-  const pad = GALAXY_LAYOUT.systemClusterRadius + GALAXY_LAYOUT.planetOrbitMax + 60;
+  // orbit within planetOrbitMax. Pad past both so the cell holds everything,
+  // with a small content-driven margin so cells stay distinct.
+  const pad =
+    GALAXY_LAYOUT.systemClusterRadius +
+    GALAXY_LAYOUT.planetOrbitMax +
+    GALAXY_LAYOUT.sectorBoundsMargin;
   const center = sectorPosition(seed, galaxy, sector);
   return {
     minX: center.x - pad,

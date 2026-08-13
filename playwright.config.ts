@@ -50,5 +50,15 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
+    {
+      // A Vite dev server for the StrictMode map spec: the production build
+      // skips React StrictMode, whose dev-only double effect-invocation once
+      // left the map paint scheduler dead (every control silently froze).
+      command:
+        'VITE_API_BASE=http://localhost:3101 pnpm --filter @ashes/web dev --port 5174 --strictPort',
+      url: 'http://localhost:5174',
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
   ],
 });

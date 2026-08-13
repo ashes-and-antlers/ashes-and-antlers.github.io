@@ -1,4 +1,6 @@
 import { useMemo } from 'react';
+import { GameHeader, HeaderMeta, useWorldMeta } from './header';
+import { sessionWorldId } from './session';
 
 type GlossaryEntry = { id: string; term: string; definition: string };
 
@@ -90,21 +92,51 @@ const ENTRIES: GlossaryEntry[] = [
     term: 'Faction',
     definition: 'The people your archive belongs to.',
   },
+  {
+    id: 'research',
+    term: 'Research',
+    definition:
+      'Account-wide studies run on a planet with a Research Lab. One study at a time, a small queue behind it, and the full cost is reserved when you commit.',
+  },
+  {
+    id: 'technology',
+    term: 'Technology',
+    definition:
+      'A completed study, permanently recorded for the account. Effects are additive and apply from the next tick — extraction and storage bonuses, fleet speed, and new ship unlocks.',
+  },
+  {
+    id: 'shipyard',
+    term: 'Shipyard',
+    definition:
+      "The building that builds hulls into a planet's local fleet. One order builds at a time; completed ships arrive at the next tick boundary, exactly once.",
+  },
+  {
+    id: 'fleet',
+    term: 'Fleet',
+    definition:
+      'A stack of ships orbiting a planet. Shipyards deliver into the local fleet, and you can split detachments off or transfer ships and cargo between co-located fleets.',
+  },
+  {
+    id: 'drive-tier',
+    term: 'Drive tier',
+    definition:
+      'A ship class travel capability. A fleet moves no faster than its slowest ship; navigation research multiplies every fleet speed.',
+  },
 ];
 
 export function GlossaryApp() {
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
   const seed = params.get('seed') ?? '1337';
+  const worldMeta = useWorldMeta(sessionWorldId(seed));
 
   return (
     <div className="game-shell">
-      <header className="game-header">
-        <div className="brand-lockup">
-          <a className="back-link" data-testid="glossary-back" href={`game.html?seed=${seed}`}>
-            ← Command overview
-          </a>
-        </div>
-      </header>
+      <GameHeader
+        seed={seed}
+        title="Glossary"
+        current="glossary"
+        meta={worldMeta && <HeaderMeta meta={worldMeta} />}
+      />
 
       <main className="glossary-grid">
         <section className="panel glossary-panel" aria-labelledby="glossary-heading">

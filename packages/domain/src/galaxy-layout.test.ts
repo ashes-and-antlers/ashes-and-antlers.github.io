@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GALAXY_LAYOUT, WORLD_CONFIG } from '@ashes/content';
-import type { MapPosition } from '@ashes/contracts';
+import type { GalaxyBounds, MapPosition } from '@ashes/contracts';
 import {
   galaxyBounds,
   galaxyDiscRadius,
@@ -53,6 +53,52 @@ describe('galaxy layout', () => {
     expect(new Set(angles.map((a) => a.toFixed(3))).size).toBeGreaterThan(2);
     // The innermost sector sits near the core, the outermost near the rim.
     expect(radii[0]).toBeLessThan(GALAXY_LAYOUT.galaxyCoreRadius * 2);
+  });
+
+  it('keeps every sector cell disjoint from its neighbors (world-5 spiral)', () => {
+    // world-4 wrapped the outer arms onto the inner ones, so cells overlapped
+    // by up to half their width and the map was unreadable. Every sector's
+    // padded bounds must be axis-aligned disjoint from every other sector of
+    // the same galaxy, on any seed.
+    const overlaps = (a: GalaxyBounds, b: GalaxyBounds): boolean =>
+      a.minX < b.maxX && b.minX < a.maxX && a.minY < b.maxY && b.minY < a.maxY;
+    for (const seed of [1337, 42, 7, 2026, 999]) {
+      for (let galaxy = 1; galaxy <= WORLD_CONFIG.galaxies; galaxy++) {
+        const cells: GalaxyBounds[] = [];
+        for (let s = 1; s <= WORLD_CONFIG.sectorsPerGalaxy; s++) {
+          cells.push(sectorBounds(seed, galaxy, s));
+        }
+        for (let a = 0; a < cells.length; a++) {
+          for (let b = a + 1; b < cells.length; b++) {
+            expect(overlaps(cells[a], cells[b])).toBe(false);
+          }
+        }
+      }
+    }
+  });
+
+  it('keeps every system cluster disjoint from its neighbors (world-6)', () => {
+    // world-5 scattered systems freely inside the cluster disc, so orbit
+    // rings and planetary clusters overlapped exactly like the sector cells
+    // used to. Every pair of systems in a sector must sit at least
+    // systemMinSeparation apart (float tolerance), on any seed.
+    const minSep = GALAXY_LAYOUT.systemMinSeparation;
+    for (const seed of [1337, 42, 7, 2026, 999]) {
+      for (let galaxy = 1; galaxy <= WORLD_CONFIG.galaxies; galaxy++) {
+        for (let sector = 1; sector <= WORLD_CONFIG.sectorsPerGalaxy; sector++) {
+          const stars: MapPosition[] = [];
+          for (let sy = 1; sy <= WORLD_CONFIG.systemsPerSector; sy++) {
+            stars.push(systemPosition(seed, galaxy, sector, sy));
+          }
+          for (let a = 0; a < stars.length; a++) {
+            for (let b = a + 1; b < stars.length; b++) {
+              const d = Math.hypot(stars[a].x - stars[b].x, stars[a].y - stars[b].y);
+              expect(d).toBeGreaterThanOrEqual(minSep - 1e-3);
+            }
+          }
+        }
+      }
+    }
   });
 
   it('sector bounds contain every system and planet of the sector', () => {

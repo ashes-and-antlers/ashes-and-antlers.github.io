@@ -1,4 +1,5 @@
 import type { TickResolution } from '@ashes/contracts';
+import { CONTENT_VERSION } from '@ashes/content';
 import type { TickEngine } from './engine';
 import type { WorldRepository } from './repository';
 
@@ -54,12 +55,25 @@ export class TickScheduler {
     const now = this.now();
     const resolved: TickResolution[] = [];
     for (const worldId of await this.repository.listWorldIds()) {
-      const world = await this.engine.getWorld(worldId);
-      if (!world) continue;
-      if (now >= world.nextTickAt) {
-        const resolution = await this.engine.resolveNextTick(worldId, now);
-        resolved.push(resolution);
-        this.onResolution?.(resolution);
+      try {
+        const world = await this.engine.getWorld(worldId);
+        if (!world) continue;
+        // A world stored under a previous content version is stale: its state
+        // predates the current simulation shape and must never be ticked with
+        // newer systems. `createWorld` re-derives the seeded world on content
+        // bumps; any other stale row is skipped until it is re-created.
+        if (world.contentVersion !== CONTENT_VERSION) continue;
+        if (now >= world.nextTickAt) {
+          const resolution = await this.engine.resolveNextTick(worldId, now);
+          resolved.push(resolution);
+          this.onResolution?.(resolution);
+        }
+      } catch (err) {
+        // One bad world must never take the tick loop (or the API) down:
+        // log and move on, the way a durable scheduler would retry later.
+        console.error(
+          `[scheduler] skipping world ${worldId}: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
     }
     return resolved;

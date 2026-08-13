@@ -1,0 +1,356 @@
+/* Account surface — the archive's front door. Uses the game tokens; the
+   form reads as a ledger entry: numbered steps, solid plates, mono figures. */
+
+/* The account door shares the full-width game shell (and its nav) with every
+   other page; only the panel content stays a narrow, centered column. */
+.account-panel {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 22px 24px 26px;
+}
+
+.account-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.account-tab {
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 7px 16px;
+  cursor: pointer;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease;
+}
+
+.account-tab:hover {
+  color: var(--text);
+}
+
+.account-tab.is-active {
+  color: var(--accent);
+  border-color: rgba(168, 201, 240, 0.35);
+  background: var(--accent-soft);
+}
+
+.account-section + .account-section {
+  margin-top: 20px;
+}
+
+/* The power is assigned for balance — a quiet explainer under the emblems. */
+.account-balance-note {
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.account-symbols {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 10px;
+}
+
+.account-symbol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px 10px;
+  background: #171f31;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease;
+}
+
+.account-symbol svg {
+  width: 34px;
+  height: 34px;
+}
+
+.account-symbol path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.account-symbol:hover {
+  color: var(--text);
+  border-color: rgba(168, 201, 240, 0.45);
+}
+
+.account-symbol.is-selected {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(168, 201, 240, 0.08);
+}
+
+/* Credentials fields. */
+.account-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 12px;
+}
+
+.account-field input {
+  font: inherit;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text);
+  background: #0d1320;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  transition: border-color 150ms ease;
+}
+
+.account-field input::placeholder {
+  color: rgba(147, 162, 184, 0.6);
+}
+
+.account-field input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.account-error {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(224, 90, 90, 0.5);
+  border-radius: 8px;
+  background: rgba(224, 90, 90, 0.1);
+  color: var(--danger);
+  font-size: 12px;
+}
+
+/* Why the door is showing: session was cleared, expired, or never existed. */
+.account-session-notice {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border: 1px solid rgba(168, 201, 240, 0.35);
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.account-submit {
+  display: block;
+  margin-top: 18px;
+  width: 100%;
+}
+
+.account-submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.account-signed-in {
+  margin: 0 0 18px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.account-signed-in strong {
+  color: var(--text);
+}
+
+.account-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.account-text-button {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 0;
+  transition: color 150ms ease;
+}
+
+.account-text-button:hover {
+  color: var(--accent);
+}
+
+.account-text-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ---------- control panel ---------- */
+
+.cp-card {
+  margin-top: 20px;
+  padding: 18px 20px 20px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+}
+
+.cp-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.cp-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px 16px;
+  margin: 14px 0 4px;
+}
+
+.cp-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.cp-fact .micro-label {
+  font-family: var(--font);
+}
+
+.cp-emblem-title {
+  margin: 16px 0 10px;
+}
+
+.cp-save {
+  display: block;
+  margin-top: 16px;
+}
+
+.cp-save:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.cp-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.cp-check input {
+  accent-color: var(--accent);
+  width: 14px;
+  height: 14px;
+}
+
+.cp-notice {
+  margin: 14px 0 0;
+  padding: 9px 12px;
+  border: 1px solid rgba(111, 207, 127, 0.4);
+  border-radius: 8px;
+  background: rgba(111, 207, 127, 0.08);
+  color: var(--ok);
+  font-size: 12px;
+}
+
+.cp-notice.is-error {
+  border-color: rgba(224, 90, 90, 0.5);
+  background: rgba(224, 90, 90, 0.1);
+  color: var(--danger);
+}
+
+.cp-sessions {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cp-session {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #171f31;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+}
+
+.cp-session.is-inactive {
+  opacity: 0.55;
+}
+
+.cp-session-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cp-session-device {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cp-current-tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  border: 1px solid rgba(168, 201, 240, 0.35);
+  background: var(--accent-soft);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.cp-session-meta {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

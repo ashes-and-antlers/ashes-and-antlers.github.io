@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import type { PlanetView, PlanetWarning, ResourceKey } from '@ashes/contracts';
+import type { PlanetWarning, ResourceKey } from '@ashes/contracts';
 import { ART_VERSION, PLANET_CLASSES, type PlanetClassKey } from '@ashes/content';
 import { fetchPlanetImage } from './api';
 
@@ -165,21 +165,5 @@ export function WarningsChips({ warnings }: { warnings: PlanetWarning[] }) {
         </li>
       ))}
     </ul>
-  );
-}
-
-export function AbundanceBar({ planet }: { planet: PlanetView }) {
-  return (
-    <div className="abundance" aria-label="planet abundance">
-      {RESOURCE_NAMES.map(([key, label]) => (
-        <div className="abundance-row" key={key}>
-          <span className="abundance-label">{label}</span>
-          <div className="abundance-track" role="meter" aria-valuenow={planet.abundance[key]}>
-            <div className="abundance-fill" style={{ width: `${planet.abundance[key]}%` }} />
-          </div>
-          <span className="abundance-value">{planet.abundance[key]}</span>
-        </div>
-      ))}
-    </div>
   );
 }

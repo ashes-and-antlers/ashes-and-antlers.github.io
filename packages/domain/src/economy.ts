@@ -1,14 +1,19 @@
 import {
   BUILDING_KINDS,
   RESOURCE_KEYS,
+  emptyTechnologyEffects,
+  type Abundance,
+  type BuildingLevels,
   type Planet,
+  type PlayerId,
   type ResourceKey,
   type ResourceRates,
   type ResourceStore,
+  type TechnologyEffects,
   type TickResolution,
   type WorldState,
 } from '@ashes/contracts';
-import { BUILDING_DEFINITIONS, ECONOMY } from '@ashes/content';
+import { BUILDING_DEFINITIONS, ECONOMY, aggregateResearchEffects } from '@ashes/content';
 import { computePlanetStateHash } from './worldgen';
 import { hashHex } from './prng';
 
@@ -23,36 +28,57 @@ export function emptyRates(): ResourceRates {
   return { metal: 0, mineral: 0, food: 0, energy: 0 };
 }
 
-/** Per-resource storage cap from content: base + storehouse bonus. */
-export function storageCapFor(planet: Planet): number {
-  const storehouseLevel = planet.buildings.storehouse ?? 0;
-  return ECONOMY.storage.basePerResource + storehouseLevel * ECONOMY.storage.perStorehouseLevel;
+/**
+ * Per-resource storage cap from content: base + storehouse bonus, scaled by
+ * the storage research bonus (storage-1).
+ */
+export function storageCapFor(
+  planet: Planet,
+  effects: TechnologyEffects = emptyTechnologyEffects(),
+): number {
+  return storageCapForLevel(planet.buildings.storehouse ?? 0, effects);
+}
+
+/** Storage cap for a storehouse level + research effects (shared formula). */
+export function storageCapForLevel(
+  storehouseLevel: number,
+  effects: TechnologyEffects = emptyTechnologyEffects(),
+): number {
+  const base =
+    ECONOMY.storage.basePerResource + storehouseLevel * ECONOMY.storage.perStorehouseLevel;
+  return Math.floor(base * (1 + effects.storageBonus));
 }
 
 /**
- * Nominal per-tick rates for a planet: production and upkeep from its current
- * buildings × abundance, plus the net. Pure and deterministic; brownout (an
- * energy deficit at resolution) only affects the resolved store, not these
- * nominal rates.
+ * Nominal per-tick rates from a set of buildings × abundance, scaled by the
+ * owner's research effects: production gains extractionBonus, upkeep loses
+ * upkeepReduction. Pure and deterministic; brownout (an energy deficit at
+ * resolution) only affects the resolved store, not these nominal rates.
+ * Shared by the engine's economy phase and the build-order planner, so both
+ * speak the same formula.
  */
-export function computePlanetRates(planet: Planet): {
-  production: ResourceRates;
-  upkeep: ResourceRates;
-  net: ResourceRates;
-} {
+export function buildingNetRates(
+  buildings: BuildingLevels,
+  abundance: Abundance,
+  effects: TechnologyEffects = emptyTechnologyEffects(),
+): { production: ResourceRates; upkeep: ResourceRates; net: ResourceRates } {
   const production = emptyRates();
   const upkeep = emptyRates();
   for (const kind of BUILDING_KINDS) {
-    const level = planet.buildings[kind] ?? 0;
+    const level = buildings[kind] ?? 0;
     if (level <= 0) continue;
     const def = BUILDING_DEFINITIONS[kind];
     for (const r of def.produces) {
       production[r] += Math.floor(
-        (ECONOMY.production.baseOutputPerLevel * level * planet.abundance[r]) / 100,
+        (ECONOMY.production.baseOutputPerLevel *
+          level *
+          abundance[r] *
+          (1 + effects.extractionBonus)) /
+          100,
       );
     }
     for (const [r, amount] of Object.entries(def.upkeep)) {
-      upkeep[r as ResourceKey] += amount * level;
+      upkeep[r as ResourceKey] += Math.floor(amount * level * (1 - effects.upkeepReduction));
     }
   }
   const net = emptyRates();
@@ -60,6 +86,17 @@ export function computePlanetRates(planet: Planet): {
     net[r] = production[r] - upkeep[r];
   }
   return { production, upkeep, net };
+}
+
+export function computePlanetRates(
+  planet: Planet,
+  effects: TechnologyEffects = emptyTechnologyEffects(),
+): {
+  production: ResourceRates;
+  upkeep: ResourceRates;
+  net: ResourceRates;
+} {
+  return buildingNetRates(planet.buildings, planet.abundance, effects);
 }
 
 /**
@@ -78,10 +115,21 @@ export function resolveEconomyTick(input: TickInput): {
   const { world, tick } = input;
   const resolvedAt = input.resolvedAt;
 
+  // M2: each owned planet's economy runs under its owner's research effects
+  // (extraction bonus, upkeep reduction, storage bonus).
+  const effectsByPlayer = new Map<PlayerId, TechnologyEffects>();
+  for (const player of world.players) {
+    // `?? []`: a stored world whose player predates the `technologies` field
+    // (a mid-refactor hot-reload write) must not crash tick resolution.
+    effectsByPlayer.set(player.id, aggregateResearchEffects(player.technologies ?? []));
+  }
+
   // Deterministic per (world, tick, content) seed for this resolution.
   const seed = hashHex(`tick:${world.id}:${tick}:${world.contentVersion}:${world.seed}`);
   const planets = world.planets.map((p) =>
-    p.ownerId ? resolvePlanetEconomy(p, tick) : { ...p, lastResolvedTick: tick },
+    p.ownerId
+      ? resolvePlanetEconomy(p, tick, effectsByPlayer.get(p.ownerId) ?? emptyTechnologyEffects())
+      : { ...p, lastResolvedTick: tick },
   );
   const planetStateHash = computePlanetStateHash(planets);
   const phaseHashes: Record<string, string> = {
@@ -113,9 +161,9 @@ export function resolveEconomyTick(input: TickInput): {
   return { world: next, resolution };
 }
 
-function resolvePlanetEconomy(planet: Planet, tick: number): Planet {
-  const rates = computePlanetRates(planet);
-  const cap = storageCapFor(planet);
+function resolvePlanetEconomy(planet: Planet, tick: number, effects: TechnologyEffects): Planet {
+  const rates = computePlanetRates(planet, effects);
+  const cap = storageCapFor(planet, effects);
   const resources: ResourceStore = { ...planet.resources };
   const produced = rates.production;
   const upkeep = rates.upkeep;

@@ -40,14 +40,25 @@ test('command overview boots and shows the authoritative tick', async ({ page })
 });
 
 /**
- * The header action opens the navigable galaxy map, seed preserved.
+ * The header navigation opens the navigable galaxy map, seed preserved,
+ * with the current view highlighted.
  */
 test('navigates to the galaxy map from the header', async ({ page }) => {
   await page.goto('/game.html?seed=424242');
-  await expect(page.getByTestId('map-link')).toBeVisible();
-  await page.getByTestId('map-link').click();
+  await expect(page.getByTestId('nav-overview')).toBeVisible();
+  await expect(page.getByTestId('nav-map')).toBeVisible();
+  await expect(page.getByTestId('nav-account')).toBeVisible();
+  await page.getByTestId('nav-map').click();
   await expect(page).toHaveURL(/map\.html\?seed=424242/);
   await expect(page.getByTestId('galaxy-map')).toBeVisible({ timeout: 15_000 });
+});
+
+/** The header also links to the account control panel (register/login door). */
+test('the header opens the account control panel', async ({ page }) => {
+  await page.goto('/game.html?seed=424242');
+  await page.getByTestId('nav-account').click();
+  await expect(page).toHaveURL(/account\.html/);
+  await expect(page.getByTestId('account-tab-register')).toBeVisible();
 });
 
 /**
@@ -66,8 +77,8 @@ test('opens the glossary from the footer and returns', async ({ page }) => {
   await expect(page.getByTestId('glossary-term-upkeep')).toBeVisible();
   await expect(page.getByTestId('glossary-term-storage-cap')).toBeVisible();
 
-  // The back link returns to the overview.
-  await page.getByTestId('glossary-back').click();
+  // The header navigation returns to the overview.
+  await page.getByTestId('nav-overview').click();
   await expect(page).toHaveURL(/game\.html\?seed=424242/);
 });
 
@@ -76,6 +87,24 @@ test('opens the glossary from the footer and returns', async ({ page }) => {
  * so the overview must stop hammering the dead endpoint, show a clear offline
  * card, and recover via the retry button once the engine is reachable again.
  */
+test('clears a stale persisted session and returns to the seeded identity', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('stale-session-seeded')) return;
+    sessionStorage.setItem('stale-session-seeded', '1');
+    localStorage.setItem(
+      'ashes.session.v1',
+      JSON.stringify({
+        token: 'player-1337-token',
+        account: { worldId: 'world:1337', playerId: 'player:stale' },
+      }),
+    );
+  });
+  await page.goto('/game.html?seed=424242');
+
+  await expect(page.getByTestId('commander-name')).not.toHaveText('', { timeout: 15_000 });
+  expect(await page.evaluate(() => localStorage.getItem('ashes.session.v1'))).toBeNull();
+});
+
 test('shows the offline card, stops polling, and recovers on retry', async ({ page }) => {
   let apiRequests = 0;
   page.on('request', (req) => {
